@@ -25,7 +25,7 @@ void StatusPane::Print(const QString text)
 	output->moveCursor(QTextCursor::End);
 }
 
-ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullptr)
+ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullptr), status(nullptr), settingStatusInterval(SETTINGS_CATEGORY_CHAT_PANE,"StatusInterval",5000)
 {
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
@@ -51,6 +51,18 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	chat->setFrameStyle(QFrame::NoFrame);
 	chat->setCursorWidth(0);
 	layout()->addWidget(chat);
+
+	status=new QLabel(this);
+	status->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
+	status->setFont(QFont("Copperplate Gothic Bold",10));
+	status->setMargin(16);
+	status->setAlignment(Qt::AlignCenter);
+	status->setWordWrap(true);
+	status->setTextFormat(Qt::MarkdownText);
+	layout()->addWidget(status);
+
+	statusClock.setInterval(TimeConvert::Interval(settingStatusInterval));
+	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissAlert);
 }
 
 void ChatPane::Print(const QString text)
@@ -58,6 +70,28 @@ void ChatPane::Print(const QString text)
 	chat->insertHtml(text);
 	chat->insertPlainText("\n");
 	chat->moveCursor(QTextCursor::End);
+}
+
+void ChatPane::Alert(const QString &text)
+{
+	statuses.push(text);
+	if (statuses.size() == 1)
+	{
+		statusClock.start();
+		status->setText(statuses.front());
+	}
+}
+
+void ChatPane::DismissAlert()
+{
+	statuses.pop();
+	if (statuses.empty())
+	{
+		status->clear();
+		statusClock.stop();
+		return;
+	}
+	status->setText(statuses.front());
 }
 
 EphemeralPane::EphemeralPane(QWidget *parent) : Pane(parent)

@@ -2,7 +2,7 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
-#include <QtWin>
+#include <QRandomGenerator>
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
@@ -109,16 +109,57 @@ void Window::JoinStream()
 	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
 }
 
-void Window::FollowChat()
+void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup)
 {
 	ChatPane *chatPane=new ChatPane(this);
 	SwapPane(chatPane);
+
 	ChatMessageReceiver *chatMessageReceiver=new ChatMessageReceiver(this);
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
+
+	chatMessageReceiver->AttachCommand({"vibe",CommandType::DISPATCH,false,QString()});
+	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
+		switch (BUILT_IN_COMMANDS.at(command.name))
+		{
+		case BuiltInCommands::VIBE:
+			if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+				vibeKeeper->pause();
+			else
+				vibeKeeper->play();
+			break;
+		}
+	});
+
+	if (settingVibePlaylist)
+	{
+		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this,chatPane](){
+			chatPane->Alert(QString("**Failed to load vibe playlist**\n\n%2").arg(vibeSources.errorString()));
+		});
+		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane](){
+			vibeSources.shuffle();
+			vibeSources.setCurrentIndex(QRandomGenerator::global()->bounded(0,vibeSources.mediaCount()));
+			vibeKeeper->setPlaylist(&vibeSources);
+			chatPane->Alert("Vibe playlist loaded!");
+		});
+		vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
+		connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
+			chatPane->Alert(QString("**Vibe Keeper failed to start**\n\n%2").arg(vibeKeeper->errorString()));
+		});
+		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
+			if (state == QMediaPlayer::PlayingState)
+			{
+				chatPane->Alert(QString("Now playing %1 by %2\n\nfrom the ablum %3").arg(
+					vibeKeeper->metaData("Title").toString(),
+					vibeKeeper->metaData("AlbumArtist").toString(),
+					vibeKeeper->metaData("AlbumTitle").toString()
+				));
+			}
+		});
+	}
 }
 
 void Window::StageEphemeralPane(EphemeralPane *pane)

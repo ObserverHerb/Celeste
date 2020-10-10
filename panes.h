@@ -5,6 +5,9 @@
 #include <QTextEdit>
 #include <QMediaPlayer>
 #include <QVideoWidget>
+#include <QTimer>
+#include <queue>
+#include "settings.h"
 
 class Pane : public QWidget
 {
@@ -26,6 +29,8 @@ public slots:
 	void Print(const QString text) override;
 };
 
+const QString SETTINGS_CATEGORY_CHAT_PANE="ChatPane";
+
 class ChatPane : public Pane
 {
 	Q_OBJECT
@@ -34,8 +39,15 @@ public:
 protected:
 	QLabel *agenda;
 	QTextEdit *chat;
+	QLabel *status;
+	std::queue<QString> statuses;
+	QTimer statusClock;
+	Setting settingStatusInterval;
 public slots:
 	void Print(const QString text) override;
+	void Alert(const QString &text);
+protected slots:
+	void DismissAlert();
 };
 
 class EphemeralPane : public Pane

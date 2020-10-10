@@ -5,12 +5,22 @@
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 #include <queue>
+#include <unordered_map>
 #include "settings.h"
 #include "panes.h"
 
 const QString SETTINGS_CATEGORY_VIBE="Vibe";
 const QString SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
 const QString SETTINGS_CATEGORY_WINDOW="Window";
+
+enum class BuiltInCommands
+{
+	VIBE
+};
+using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
+const BuiltInCommandLookup BUILT_IN_COMMANDS={
+	{"vibe",BuiltInCommands::VIBE}
+};
 
 class Window : public QWidget
 {

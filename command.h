@@ -1,18 +1,22 @@
 #pragma once
 
 #include <QString>
+#include <unordered_map>
 
 enum class CommandType
 {
+	DISPATCH,
 	VIDEO
 };
 using CommandTypeLookup=std::unordered_map<QString,CommandType>;
 const CommandTypeLookup COMMAND_TYPES={
+	{"dispatch",CommandType::DISPATCH},
 	{"video",CommandType::VIDEO}
 };
 
 struct Command
 {
+	QString name;
 	CommandType type;
 	bool random;
 	QString path;

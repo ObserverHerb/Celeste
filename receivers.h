@@ -54,12 +54,14 @@ class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_er
 	Q_OBJECT
 public:
 	ChatMessageReceiver(QObject *parent=nullptr);
+	void AttachCommand(const Command &command);
 protected:
 	std::unordered_map<QString,Command> commands;
 signals:
 	void PlayVideo(const QString path);
 	void Speak(const QString sentence);
 	void ShowVoices();
+	void DispatchCommand(const Command &command);
 public slots:
 	void Process(const QString data) override;
 };
