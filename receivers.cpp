@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QRandomGenerator>
+#include <vector>
 #include <stdexcept>
 #include "globals.h"
 #include "receivers.h"
@@ -64,7 +65,7 @@ void ChannelJoinReceiver::Fail()
 	emit Failed();
 }
 
-ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(parent)
+ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent) : MessageReceiver(parent)
 {
 	QDir commandListPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 	if (!commandListPath.mkpath(commandListPath.absolutePath())) throw std::runtime_error(QString("Failed to create command list path: %1").arg(commandListPath.absolutePath()).toStdString());
@@ -79,17 +80,30 @@ ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(pare
 	for (const QJsonValue jsonValue : json.array())
 	{
 		QJsonObject jsonObject=jsonValue.toObject();
-		QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
-		CommandType type=COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
-		bool randomPath=jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false;
-		QString path=jsonObject.value(JSON_KEY_COMMAND_PATH).toString();
-		commands[name]={name,type,randomPath,path};
+		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
+		commands[name]={
+			name,
+			jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
+			COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
+			jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
+			jsonObject.value(JSON_KEY_COMMAND_PATH).toString()
+		};
+	}
+	for (const Command &command : builtInCommands) commands[command.Name()]=command;
+	for (const std::pair<QString,Command> command : commands)
+	{
+		if (!command.second.Protect()) userCommands.push_back(command.second);
 	}
 }
 
 void ChatMessageReceiver::AttachCommand(const Command &command)
 {
 	commands[command.Name()]=command;
+}
+
+const Command ChatMessageReceiver::RandomCommand() const
+{
+	return userCommands[QRandomGenerator::global()->bounded(0,userCommands.size())];
 }
 
 void ChatMessageReceiver::Process(const QString data)

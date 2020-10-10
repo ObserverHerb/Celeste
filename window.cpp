@@ -17,6 +17,7 @@ Window::Window() : QWidget(nullptr),
 	visiblePane(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
+	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
 	settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
@@ -43,6 +44,8 @@ Window::Window() : QWidget(nullptr),
 	layout()->addWidget(background);
 
 	SwapPane(new StatusPane(this));
+
+	helpClock.setInterval(TimeConvert::Interval(settingHelpCooldown));
 }
 
 Window::~Window()
@@ -123,16 +126,15 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 	ChatPane *chatPane=new ChatPane(this);
 	SwapPane(chatPane);
 
-	ChatMessageReceiver *chatMessageReceiver=new ChatMessageReceiver(this);
+	ChatMessageReceiver *chatMessageReceiver=new ChatMessageReceiver({
+		PingCommand,SongCommand,VibeCommand
+	},this);
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
 
-	chatMessageReceiver->AttachCommand(PingCommand);
-	chatMessageReceiver->AttachCommand(SongCommand);
-	chatMessageReceiver->AttachCommand(VibeCommand);
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
 		switch (BUILT_IN_COMMANDS.at(command.Name()))
 		{
@@ -153,10 +155,10 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 
 	if (settingVibePlaylist)
 	{
-		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this,chatPane](){
+		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
 			chatPane->Alert(QString("**Failed to load vibe playlist**\n\n%2").arg(vibeSources.errorString()));
 		});
-		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane](){
+		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane]() {
 			vibeSources.shuffle();
 			vibeSources.setCurrentIndex(QRandomGenerator::global()->bounded(0,vibeSources.mediaCount()));
 			vibeKeeper->setPlaylist(&vibeSources);
@@ -167,12 +169,19 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 			chatPane->Alert(QString("**Vibe Keeper failed to start**\n\n%2").arg(vibeKeeper->errorString()));
 		});
 		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
-			if (state == QMediaPlayer::PlayingState)
-			{
-				chatPane->Alert(CurrentSong());
-			}
+			if (state == QMediaPlayer::PlayingState) chatPane->Alert(CurrentSong());
 		});
 	}
+
+	connect(&helpClock,&QTimer::timeout,[this,chatMessageReceiver]() {
+		if (!ephemeralPanes.empty()) return;
+		const Command &command=chatMessageReceiver->RandomCommand();
+		StageEphemeralPane(new AnnouncePane(QString("!%1\n\n%2").arg(
+			command.Name(),
+			command.Description()
+		)));
+	});
+	helpClock.start();
 }
 
 void Window::StageEphemeralPane(EphemeralPane *pane)

@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <vector>
 #include "command.h"
 
 class MessageReceiver : public QObject
@@ -53,10 +54,13 @@ class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_er
 {
 	Q_OBJECT
 public:
-	ChatMessageReceiver(QObject *parent=nullptr);
+	ChatMessageReceiver(QObject *parent) : ChatMessageReceiver(std::vector<Command>(),parent) { }
+	ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent=nullptr);
 	void AttachCommand(const Command &command);
+	const Command RandomCommand() const;
 protected:
 	std::unordered_map<QString,Command> commands;
+	std::vector<Command> userCommands;
 signals:
 	void PlayVideo(const QString path);
 	void Speak(const QString sentence);

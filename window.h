@@ -20,9 +20,9 @@ enum class BuiltInCommands
 	SONG,
 	VIBE
 };
-const Command PingCommand({"ping",CommandType::DISPATCH});
-const Command SongCommand({"song",CommandType::DISPATCH});
-const Command VibeCommand({"vibe",CommandType::DISPATCH});
+const Command PingCommand("ping","Let the Twitch servers know I'm still alive",CommandType::DISPATCH,true);
+const Command SongCommand("song","Show the title, album, and artist of the song that is currently playing.",CommandType::DISPATCH);
+const Command VibeCommand("vibe","Start the playlist of music for the stream",CommandType::DISPATCH,true);
 using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
 const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{PingCommand.Name(),BuiltInCommands::PING},
@@ -46,6 +46,8 @@ protected:
 	QWidget *background;
 	QMediaPlayer *vibeKeeper;
 	QMediaPlaylist vibeSources;
+	QTimer helpClock;
+	Setting settingHelpCooldown;
 	Setting settingVibePlaylist;
 	Setting settingAdministrator;
 	Setting settingOAuthToken;
