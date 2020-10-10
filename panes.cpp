@@ -101,13 +101,11 @@ EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent)
 	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::deleteLater);
 }
 
-VideoPane::VideoPane(const QString path,QWidget *parent) : EphemeralPane(parent)
+VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), viewport(new QVideoWidget(this)), videoPlayer(new QMediaPlayer(this))
 {
-	viewport=new QVideoWidget(this);
-	mediaPlayer=new QMediaPlayer(this);
-	mediaPlayer->setVideoOutput(viewport);
-	mediaPlayer->setMedia(QUrl::fromLocalFile(path));
-	connect(mediaPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+	videoPlayer->setVideoOutput(viewport);
+	videoPlayer->setMedia(QUrl::fromLocalFile(path));
+	connect(videoPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 
@@ -119,7 +117,7 @@ VideoPane::VideoPane(const QString path,QWidget *parent) : EphemeralPane(parent)
 void VideoPane::Show()
 {
 	show();
-	mediaPlayer->play();
+	videoPlayer->play();
 }
 
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
@@ -146,4 +144,18 @@ void AnnouncePane::Show()
 {
 	show();
 	clock.start();
+}
+
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
+{
+	audioPlayer->setMedia(QUrl::fromLocalFile(path));
+	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+		if (state == QMediaPlayer::StoppedState) emit Finished();
+	}); // TODO: report loading failures to status section of chat pane
+}
+
+void AudioAnnouncePane::Show()
+{
+	show();
+	audioPlayer->play(); // FIXME: catch errors above and don't play if the file failed to load
 }

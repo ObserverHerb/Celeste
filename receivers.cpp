@@ -86,7 +86,8 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 			jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
 			COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
 			jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
-			jsonObject.value(JSON_KEY_COMMAND_PATH).toString()
+			jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
+			jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
 		};
 	}
 	for (const Command &command : builtInCommands) commands[command.Name()]=command;
@@ -151,6 +152,9 @@ void ChatMessageReceiver::Process(const QString data)
 					emit PlayVideo(command.Path());
 				}
 				break;
+			case CommandType::AUDIO:
+				emit PlayAudio(user,command.Message(),command.Path());
+				break;
 			case CommandType::DISPATCH:
 				DispatchCommand(command);
 				break;
@@ -159,10 +163,6 @@ void ChatMessageReceiver::Process(const QString data)
 		/*if (commands.front() == "!lurk")
 		{
 			emit PlayVideo("short.mp4");
-		}
-		if (commands.front() == "!gandalf")
-		{
-			emit PlayVideo("gandalf.mp4");
 		}
 		if (commands.front() == "!progress")
 		{

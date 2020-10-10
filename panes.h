@@ -63,10 +63,10 @@ class VideoPane : public EphemeralPane
 {
 	Q_OBJECT
 public:
-	VideoPane(const QString path,QWidget *parent=nullptr);
+	VideoPane(const QString &path,QWidget *parent=nullptr);
 	void Show() override;
 protected:
-	QMediaPlayer *mediaPlayer;
+	QMediaPlayer *videoPlayer;
 	QVideoWidget *viewport;
 };
 
@@ -81,4 +81,14 @@ protected:
 	QTimer clock;
 	Setting settingDuration;
 	static const QString SETTINGS_CATEGORY;
+};
+
+class AudioAnnouncePane : public AnnouncePane
+{
+	Q_OBJECT
+public:
+	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent=nullptr);
+	void Show() override;
+protected:
+	QMediaPlayer *audioPlayer;
 };

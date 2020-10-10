@@ -62,7 +62,8 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::vector<Command> userCommands;
 signals:
-	void PlayVideo(const QString path);
+	void PlayVideo(const QString &path);
+	void PlayAudio(const QString &user,const QString &message,const QString &path);
 	void Speak(const QString sentence);
 	void ShowVoices();
 	void DispatchCommand(const Command &command);

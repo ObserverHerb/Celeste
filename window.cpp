@@ -131,8 +131,11 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 	},this);
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
-	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString path) {
+	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
+	});
+	connect(chatMessageReceiver,&ChatMessageReceiver::PlayAudio,[this](const QString &user,const QString &message,const QString &path) {
+		StageEphemeralPane(new AudioAnnouncePane(QString("**%1**\n\n%2").arg(user,message),path));
 	});
 
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
