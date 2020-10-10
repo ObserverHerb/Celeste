@@ -50,6 +50,27 @@ bool Window::event(QEvent *event)
 {
 	if (event->type() == QEvent::Polish)
 	{
+		if (settingVibePlaylist)
+		{
+			connect(&vibeSources,&QMediaPlaylist::loadFailed,[this](){
+				QString error=vibeSources.errorString();
+				int x=0;
+				x++;
+			});
+			connect(&vibeSources,&QMediaPlaylist::loaded,[this](){
+				int x=vibeSources.mediaCount();
+				//x++;
+				vibeSources.setCurrentIndex(1);
+				vibeKeeper->setPlaylist(&vibeSources);
+			});
+			vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
+			connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
+				QString what=vibeKeeper->errorString();
+				int x=0;
+				x++;
+			});
+		}
+
 		ircSocket=new QTcpSocket(this);
 		connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
 		connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
@@ -109,7 +130,7 @@ void Window::JoinStream()
 	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
 }
 
-void Window::FollowChat()
+void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup)
 {
 	ChatPane *chatPane=new ChatPane(this);
 	SwapPane(chatPane);
@@ -118,6 +139,19 @@ void Window::FollowChat()
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString path) {
 		StageEphemeralPane(new VideoPane(path));
+	});
+
+	chatMessageReceiver->AttachCommand({"vibe",CommandType::DISPATCH,false,QString()});
+	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
+		switch (BUILT_IN_COMMANDS.at(command.name))
+		{
+		case BuiltInCommands::VIBE:
+			if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+				vibeKeeper->pause();
+			else
+				vibeKeeper->play();
+			break;
+		}
 	});
 }
 

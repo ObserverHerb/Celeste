@@ -83,8 +83,13 @@ ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(pare
 		CommandType type=COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
 		bool randomPath=jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false;
 		QString path=jsonObject.value(JSON_KEY_COMMAND_PATH).toString();
-		commands[name]={type,randomPath,path};
+		commands[name]={name,type,randomPath,path};
 	}
+}
+
+void ChatMessageReceiver::AttachCommand(const Command &command)
+{
+	commands[command.name]=command;
 }
 
 void ChatMessageReceiver::Process(const QString data)
@@ -131,6 +136,9 @@ void ChatMessageReceiver::Process(const QString data)
 				{
 					emit PlayVideo(command.path);
 				}
+				break;
+			case CommandType::DISPATCH:
+				DispatchCommand(command);
 				break;
 			};
 		}
