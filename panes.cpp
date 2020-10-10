@@ -2,7 +2,6 @@
 
 #include <QVBoxLayout>
 #include <QLabel>
-#include <QDebug>
 
 StatusPane::StatusPane(QWidget *parent) : Pane(parent)
 {
@@ -59,7 +58,6 @@ void ChatPane::Print(const QString text)
 	chat->insertHtml(text);
 	chat->insertPlainText("\n");
 	chat->moveCursor(QTextCursor::End);
-	qDebug() << chat->document()->toHtml();
 }
 
 EphemeralPane::EphemeralPane(QWidget *parent) : Pane(parent)
