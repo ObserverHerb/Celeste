@@ -36,9 +36,6 @@ Window::Window() : QWidget(nullptr),
 	layout()->addWidget(background);
 
 	SwapPane(new StatusPane(this));
-
-	vocalizer=new QTextToSpeech();
-	vocalizer->setLocale(QLocale(QLocale::English,QLocale::LatinScript,QLocale::UnitedStates));
 }
 
 Window::~Window()

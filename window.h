@@ -4,7 +4,6 @@
 #include <QTcpSocket>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
-#include <QTextToSpeech>
 #include <queue>
 #include "settings.h"
 #include "panes.h"
@@ -29,7 +28,6 @@ protected:
 	QWidget *background;
 	QMediaPlayer *vibeKeeper;
 	QMediaPlaylist vibeSources;
-	QTextToSpeech *vocalizer;
 	Setting settingVibePlaylist;
 	Setting settingAdministrator;
 	Setting settingOAuthToken;
