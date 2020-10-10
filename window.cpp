@@ -2,7 +2,9 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
+#include <QtWin>
 #include <chrono>
+#include <stdexcept>
 #include "window.h"
 #include "receivers.h"
 
@@ -18,6 +20,7 @@ Window::Window() : QWidget(nullptr),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
+	QtWin::enableBlurBehindWindow(this);
 	setFixedSize(537,467);
 
 	setLayout(new QGridLayout(this));

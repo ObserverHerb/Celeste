@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QRandomGenerator>
+#include <stdexcept>
 #include "globals.h"
 #include "receivers.h"
 
