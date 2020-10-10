@@ -20,8 +20,11 @@ Window::Window() : QWidget(nullptr),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
-	QtWin::enableBlurBehindWindow(this);
 	setFixedSize(537,467);
+
+#ifdef Q_OS_WIN
+	QtWin::enableBlurBehindWindow(this);
+#endif
 
 	setLayout(new QGridLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
