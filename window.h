@@ -16,13 +16,16 @@ const QString SETTINGS_CATEGORY_WINDOW="Window";
 
 enum class BuiltInCommands
 {
+	PING,
 	SONG,
 	VIBE
 };
-const Command VibeCommand({"vibe",CommandType::DISPATCH});
+const Command PingCommand({"ping",CommandType::DISPATCH});
 const Command SongCommand({"song",CommandType::DISPATCH});
+const Command VibeCommand({"vibe",CommandType::DISPATCH});
 using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
 const BuiltInCommandLookup BUILT_IN_COMMANDS={
+	{PingCommand.Name(),BuiltInCommands::PING},
 	{SongCommand.Name(),BuiltInCommands::SONG},
 	{VibeCommand.Name(),BuiltInCommands::VIBE}
 };

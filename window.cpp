@@ -80,6 +80,11 @@ void Window::Disconnected()
 void Window::DataAvailable()
 {
 	QString data=ircSocket->readAll();
+	if (data.size() > 4 && data.left(4) == "PING")
+	{
+		ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
+		return;
+	}
 	emit Dispatch(data);
 }
 
@@ -125,11 +130,15 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 		StageEphemeralPane(new VideoPane(path));
 	});
 
+	chatMessageReceiver->AttachCommand(PingCommand);
 	chatMessageReceiver->AttachCommand(SongCommand);
 	chatMessageReceiver->AttachCommand(VibeCommand);
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
 		switch (BUILT_IN_COMMANDS.at(command.Name()))
 		{
+		case BuiltInCommands::PING:
+			ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
+			break;
 		case BuiltInCommands::SONG:
 			StageEphemeralPane(new AnnouncePane(CurrentSong()));
 			break;
