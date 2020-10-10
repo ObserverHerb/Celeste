@@ -45,7 +45,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	chat->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
 	chat->setFontFamily("Copperplate Gothic Bold");
 	chat->setFontPointSize(16);
-	chat->document()->setDefaultStyleSheet("div.user { font-family: 'Copperplate Gothic Bold'; text-align: center; font-size: 16pt; } div.message { font-family: 'Copperplate Gothic Bold'; font-size: 12pt; }");
+	chat->document()->setDefaultStyleSheet("div.user { font-family: 'Copperplate Gothic Bold'; font-size: 16pt; } div.message { font-family: 'Copperplate Gothic Bold'; font-size: 12pt; }");
 	chat->document()->setDocumentMargin(16);
 	chat->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
