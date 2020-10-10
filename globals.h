@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QString>
+#include <chrono>
+#include <stdexcept>
 
 const QString ORGANIZATION_NAME("Sky-Meyg");
 const QString APPLICATION_NAME("Celeste");
@@ -13,3 +15,27 @@ const QString IRC_VALIDATION_AUTHENTICATION("You are in a maze of twisty passage
 const QString IRC_VALIDATION_JOIN("End of /NAMES list");
 const QString COMMANDS_LIST_FILENAME("commands.json");
 
+namespace StringConvert
+{
+	inline QByteArray ByteArray(const QString &value) { return value.toLocal8Bit(); } // TODO: how do I report that this failed?
+	inline QString Integer(const int &value)
+	{
+		QString result=QString::number(value);
+		if (result.isEmpty()) throw std::range_error("Unable to convert number to string");
+		return result;
+	}
+	inline int Integer(const QString &value)
+	{
+		bool succeeded=false;
+		int result=value.toInt(&succeeded);
+		if (!succeeded) throw std::range_error("Unable to convert string to number");
+		return result;
+	}
+}
+
+namespace TimeConvert
+{
+	constexpr std::chrono::seconds Seconds(const std::chrono::milliseconds &value) { return std::chrono::duration_cast<std::chrono::seconds>(value); }
+	constexpr int Interval(const std::chrono::seconds &value) { return value.count(); }
+	constexpr int Interval(const std::chrono::milliseconds &value) { return value.count(); }
+}

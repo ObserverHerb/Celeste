@@ -1,32 +1,24 @@
 #pragma once
 
 #include <QSettings>
+#include <QColor>
 #include "globals.h"
 
 class Setting
 {
 public:
-	Setting(const QString name,const QVariant value) : name(name), defaultValue(value) { }
+	Setting(const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(QSettings::IniFormat,QSettings::UserScope,ORGANIZATION_NAME,APPLICATION_NAME) { }
 	const QString Name() const { return name; }
-	const QVariant Value() const { return defaultValue; }
+	const QVariant Value() const { return source.value(name,defaultValue); }
+	void Set(const QVariant &value) { source.setValue(name,value); }
+	operator bool() const { return source.contains(name); }
+	operator QString() const { return Value().toString(); }
+	operator unsigned int() const { return Value().toUInt(); }
+	operator std::chrono::milliseconds() const { return std::chrono::milliseconds(Value().toUInt()); }
+	operator QColor() const { return source.value(name,defaultValue).value<QColor>(); }
+	operator QByteArray() const { return Value().toString().toLocal8Bit(); }
 protected:
 	const QString name;
 	const QVariant defaultValue;
+	QSettings source;
 };
-
-class SettingCategory
-{
-public:
-	SettingCategory(const QString name) : name(name) { }
-	const QString Path(const QString &settingName) const { return QString("%1/%2").arg(name,settingName); }
-protected:
-	const QString name;
-};
-
-class Settings : public QSettings
-{
-public:
-	Settings(QObject *parent=nullptr) : QSettings(ORGANIZATION_NAME,APPLICATION_NAME,parent) { }
-	QVariant Value(const Setting &setting) const { return value(setting.Name(),setting.Value()); }
-};
-

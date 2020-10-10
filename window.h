@@ -2,10 +2,16 @@
 
 #include <QMainWindow>
 #include <QTcpSocket>
+#include <QMediaPlayer>
+#include <QMediaPlaylist>
 #include <QTextToSpeech>
 #include <queue>
 #include "settings.h"
 #include "panes.h"
+
+const QString SETTINGS_CATEGORY_VIBE="Vibe";
+const QString SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
+const QString SETTINGS_CATEGORY_WINDOW="Window";
 
 class Window : public QWidget
 {
@@ -21,14 +27,14 @@ protected:
 	QTcpSocket *ircSocket;
 	Pane *visiblePane;
 	QWidget *background;
+	QMediaPlayer *vibeKeeper;
+	QMediaPlaylist vibeSources;
 	QTextToSpeech *vocalizer;
-	SettingCategory categoryAuthorization; // TODO: these are good candidates for constexpr std::string (C++20)
+	Setting settingVibePlaylist;
 	Setting settingAdministrator;
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
-	SettingCategory categoryWindow;
 	Setting settingBackgroundColor;
-	Settings settings;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	void SwapPane(Pane *pane);
 	void Authenticate();

@@ -10,13 +10,12 @@ Window::Window() : QWidget(nullptr),
 	ircSocket(nullptr),
 	visiblePane(nullptr),
 	background(new QWidget(this)),
-	categoryAuthorization("Authorization"),
-	settingAdministrator(categoryAuthorization.Path("Administrator"),""),
-	settingOAuthToken(categoryAuthorization.Path("Token"),""),
-	settingJoinDelay(categoryAuthorization.Path("JoinDelay"),5),
-	categoryWindow("Window"),
-	settingBackgroundColor(categoryWindow.Path("BackgroundColor"),"#ff000000"),
-	settings(this)
+	vibeKeeper(new QMediaPlayer(this)),
+	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
+	settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator"),
+	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
+	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
+	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(537,467);
@@ -25,12 +24,12 @@ Window::Window() : QWidget(nullptr),
 	layout()->setContentsMargins(0,0,0,0);
 	background->setLayout(new QGridLayout(background)); // for translucency to work, there has to be a widget covering the window, otherwise the entire thing is clear
 	background->layout()->setContentsMargins(0,0,0,0);
-	QColor backgroundColor(settings.Value(settingBackgroundColor).value<QColor>());
+	QColor backgroundColor=settingBackgroundColor;
 	background->setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4);").arg(
-		QString::number(backgroundColor.red()),
-		QString::number(backgroundColor.green()),
-		QString::number(backgroundColor.blue()),
-		QString::number(backgroundColor.alpha())));
+		StringConvert::Integer(backgroundColor.red()),
+		StringConvert::Integer(backgroundColor.green()),
+		StringConvert::Integer(backgroundColor.blue()),
+		StringConvert::Integer(backgroundColor.alpha())));
 	layout()->addWidget(background);
 
 	SwapPane(new StatusPane(this));
@@ -60,9 +59,10 @@ bool Window::event(QEvent *event)
 void Window::Connected()
 {
 	emit Print("Connected!");
+	Print(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)));
 	emit Print("Sending credentials...");
-	ircSocket->write(QString(IRC_COMMAND_PASSWORD).arg(settings.Value(settingOAuthToken).toString()).toLocal8Bit());
-	ircSocket->write(QString(IRC_COMMAND_USER).arg(settings.Value(settingAdministrator).toString()).toLocal8Bit());
+	ircSocket->write(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken)).toLocal8Bit());
+	ircSocket->write(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)).toLocal8Bit());
 }
 
 void Window::Disconnected()
@@ -90,9 +90,8 @@ void Window::Authenticate()
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&Pane::Print);
 	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
-		std::chrono::milliseconds joinDelay(settings.Value(settingJoinDelay).toUInt());
-		Print(QString("Joining stream in %1 seconds...").arg(std::chrono::duration_cast<std::chrono::seconds>(joinDelay).count()));
-		QTimer::singleShot(joinDelay,this,&Window::JoinStream);
+		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
+		QTimer::singleShot(TimeConvert::Interval(settingJoinDelay),this,&Window::JoinStream);
 	});
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");
@@ -104,7 +103,7 @@ void Window::JoinStream()
 	connect(this,&Window::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&Pane::Print);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Succeeded,this,&Window::FollowChat);
-	ircSocket->write(IRC_COMMAND_JOIN.arg(settings.Value(settingAdministrator).toString()).toLocal8Bit());
+	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
 }
 
 void Window::FollowChat()
