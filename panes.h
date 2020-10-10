@@ -29,8 +29,6 @@ public slots:
 	void Print(const QString text) override;
 };
 
-const QString SETTINGS_CATEGORY_CHAT_PANE="ChatPane";
-
 class ChatPane : public Pane
 {
 	Q_OBJECT
@@ -43,6 +41,7 @@ protected:
 	std::queue<QString> statuses;
 	QTimer statusClock;
 	Setting settingStatusInterval;
+	static const QString SETTINGS_CATEGORY;
 public slots:
 	void Print(const QString text) override;
 	void Alert(const QString &text);
@@ -50,7 +49,7 @@ protected slots:
 	void DismissAlert();
 };
 
-class EphemeralPane : public Pane
+class EphemeralPane : public QWidget
 {
 	Q_OBJECT
 public:
@@ -69,6 +68,17 @@ public:
 protected:
 	QMediaPlayer *mediaPlayer;
 	QVideoWidget *viewport;
-public slots:
-	void Print(const QString text) override { } // right now this does nothing but might be useful for giving context to the video
+};
+
+class AnnouncePane : public EphemeralPane
+{
+	Q_OBJECT
+public:
+	AnnouncePane(const QString &text,QWidget *parent=nullptr);
+	void Show() override;
+protected:
+	QLabel *output;
+	QTimer clock;
+	Setting settingDuration;
+	static const QString SETTINGS_CATEGORY;
 };

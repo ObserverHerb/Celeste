@@ -125,10 +125,14 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 		StageEphemeralPane(new VideoPane(path));
 	});
 
-	chatMessageReceiver->AttachCommand({"vibe",CommandType::DISPATCH,false,QString()});
+	chatMessageReceiver->AttachCommand(SongCommand);
+	chatMessageReceiver->AttachCommand(VibeCommand);
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
-		switch (BUILT_IN_COMMANDS.at(command.name))
+		switch (BUILT_IN_COMMANDS.at(command.Name()))
 		{
+		case BuiltInCommands::SONG:
+			StageEphemeralPane(new AnnouncePane(CurrentSong()));
+			break;
 		case BuiltInCommands::VIBE:
 			if (vibeKeeper->state() == QMediaPlayer::PlayingState)
 				vibeKeeper->pause();
@@ -156,11 +160,7 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
 			if (state == QMediaPlayer::PlayingState)
 			{
-				chatPane->Alert(QString("Now playing %1 by %2\n\nfrom the ablum %3").arg(
-					vibeKeeper->metaData("Title").toString(),
-					vibeKeeper->metaData("AlbumArtist").toString(),
-					vibeKeeper->metaData("AlbumTitle").toString()
-				));
+				chatPane->Alert(CurrentSong());
 			}
 		});
 	}
@@ -188,4 +188,13 @@ void Window::ReleaseLiveEphemeralPane()
 	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them");
 	ephemeralPanes.pop();
 	if (ephemeralPanes.empty()) visiblePane->show();
+}
+
+const QString Window::CurrentSong() const
+{
+	return QString("Now playing %1 by %2\n\nfrom the ablum %3").arg(
+		vibeKeeper->metaData("Title").toString(),
+		vibeKeeper->metaData("AlbumArtist").toString(),
+		vibeKeeper->metaData("AlbumTitle").toString()
+	);
 }

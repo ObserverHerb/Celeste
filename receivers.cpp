@@ -89,7 +89,7 @@ ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(pare
 
 void ChatMessageReceiver::AttachCommand(const Command &command)
 {
-	commands[command.name]=command;
+	commands[command.Name()]=command;
 }
 
 void ChatMessageReceiver::Process(const QString data)
@@ -118,12 +118,12 @@ void ChatMessageReceiver::Process(const QString data)
 		if (commands.find(commandName) != commands.end())
 		{
 			Command command=commands.at(commandName);
-			switch (command.type)
+			switch (command.Type())
 			{
 			case CommandType::VIDEO:
-				if (command.random)
+				if (command.Random())
 				{
-					QDir directory(command.path);
+					QDir directory(command.Path());
 					QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
 					if (videos.size() < 1)
 					{
@@ -134,7 +134,7 @@ void ChatMessageReceiver::Process(const QString data)
 				}
 				else
 				{
-					emit PlayVideo(command.path);
+					emit PlayVideo(command.Path());
 				}
 				break;
 			case CommandType::DISPATCH:

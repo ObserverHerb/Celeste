@@ -25,7 +25,8 @@ void StatusPane::Print(const QString text)
 	output->moveCursor(QTextCursor::End);
 }
 
-ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullptr), status(nullptr), settingStatusInterval(SETTINGS_CATEGORY_CHAT_PANE,"StatusInterval",5000)
+const QString ChatPane::SETTINGS_CATEGORY="ChatPane";
+ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullptr), status(nullptr), settingStatusInterval(SETTINGS_CATEGORY,"StatusInterval",5000)
 {
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
@@ -94,7 +95,7 @@ void ChatPane::DismissAlert()
 	status->setText(statuses.front());
 }
 
-EphemeralPane::EphemeralPane(QWidget *parent) : Pane(parent)
+EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent)
 {
 	setVisible(false);
 	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::deleteLater);
@@ -119,4 +120,30 @@ void VideoPane::Show()
 {
 	show();
 	mediaPlayer->play();
+}
+
+const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
+AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(parent), output(new QLabel(text,this)), settingDuration(SETTINGS_CATEGORY,"Duration",5000)
+{
+	setLayout(new QVBoxLayout(this));
+	layout()->setContentsMargins(0,0,0,0);
+	layout()->setSpacing(0);
+
+	output->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
+	output->setFont(QFont("Copperplate Gothic Bold",20,QFont::Bold));
+	output->setMargin(16);
+	output->setAlignment(Qt::AlignCenter);
+	output->setWordWrap(true);
+	output->setTextFormat(Qt::MarkdownText);
+	layout()->addWidget(output);
+
+	clock.setSingleShot(true);
+	clock.setInterval(TimeConvert::Interval(settingDuration));
+	connect(&clock,&QTimer::timeout,this,&AnnouncePane::Finished);
+}
+
+void AnnouncePane::Show()
+{
+	show();
+	clock.start();
 }

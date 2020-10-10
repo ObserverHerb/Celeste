@@ -14,8 +14,17 @@ const CommandTypeLookup COMMAND_TYPES={
 	{"video",CommandType::VIDEO}
 };
 
-struct Command
+class Command
 {
+public:
+	Command() : Command(QString(),CommandType::DISPATCH,false,QString()) { }
+	Command(const QString &name,const CommandType &type) : Command(name,type,false,QString()) { }
+	Command(const QString &name,const CommandType &type,bool random,const QString &path) : name(name), type(type), random(random), path(path) { }
+	const QString& Name() const { return name; }
+	CommandType Type() const { return type; }
+	bool Random() const { return random; }
+	const QString& Path() { return path; }
+protected:
 	QString name;
 	CommandType type;
 	bool random;
