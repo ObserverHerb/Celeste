@@ -8,6 +8,10 @@
 #include "window.h"
 #include "receivers.h"
 
+#ifdef Q_OS_WIN
+#include <QtWin>
+#endif
+
 Window::Window() : QWidget(nullptr),
 	ircSocket(nullptr),
 	visiblePane(nullptr),

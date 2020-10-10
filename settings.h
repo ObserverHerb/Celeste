@@ -7,7 +7,7 @@
 class Setting
 {
 public:
-	Setting(const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(QSettings::IniFormat,QSettings::UserScope,ORGANIZATION_NAME,APPLICATION_NAME) { }
+	Setting(const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,ORGANIZATION_NAME,APPLICATION_NAME) { }
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source.value(name,defaultValue); }
 	void Set(const QVariant &value) { source.setValue(name,value); }

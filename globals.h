@@ -39,3 +39,15 @@ namespace TimeConvert
 	constexpr int Interval(const std::chrono::seconds &value) { return value.count(); }
 	constexpr int Interval(const std::chrono::milliseconds &value) { return value.count(); }
 }
+
+namespace Platform
+{
+	constexpr bool Windows()
+	{
+	#ifdef Q_OS_WIN
+		return true;
+	#else
+		return false;
+	#endif
+	}
+}
