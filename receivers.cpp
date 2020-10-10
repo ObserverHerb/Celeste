@@ -120,6 +120,11 @@ void ChatMessageReceiver::Process(const QString data)
 				{
 					QDir directory(command.path);
 					QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
+					if (videos.size() < 1)
+					{
+						Print("No videos found");
+						break;
+					}
 					emit PlayVideo(directory.absoluteFilePath(videos[QRandomGenerator::global()->bounded(0,videos.size())]));
 				}
 				else
