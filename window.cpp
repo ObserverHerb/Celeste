@@ -26,7 +26,8 @@ Window::Window() : QWidget(nullptr),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
-	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival","")
+	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival",""),
+	settingThinkingSound(SETTINGS_CATEGORY_EVENTS,"Thinking","")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(537,467);
@@ -134,7 +135,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,SongCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,SongCommand,ThinkCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 	}
 	catch (const std::runtime_error &exception)
@@ -174,6 +175,9 @@ void Window::FollowChat()
 				break;
 			case BuiltInCommands::SONG:
 				StageEphemeralPane(new AnnouncePane(CurrentSong()));
+				break;
+			case BuiltInCommands::THINK:
+				StageEphemeralPane(new AudioAnnouncePane("Shh... Herb is thinking...",settingThinkingSound));
 				break;
 			case BuiltInCommands::UPTIME:
 			{
