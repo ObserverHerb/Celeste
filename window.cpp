@@ -91,7 +91,7 @@ void Window::DataAvailable()
 	QString data=ircSocket->readAll();
 	if (data.size() > 4 && data.left(4) == "PING")
 	{
-		Pong();
+		emit Ponging();
 		return;
 	}
 	emit Dispatch(data);
