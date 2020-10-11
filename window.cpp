@@ -125,12 +125,22 @@ void Window::JoinStream()
 
 void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup)
 {
+	ChatMessageReceiver *chatMessageReceiver=nullptr;
+	try
+	{
+		chatMessageReceiver=new ChatMessageReceiver({
+			AgendaCommand,PingCommand,SongCommand,VibeCommand,VolumeCommand
+		},this);
+	}
+	catch (const std::runtime_error &exception)
+	{
+		visiblePane->Print(QString("There was a problem starting chat\n%1").arg(exception.what()));
+		return;
+	}
+
 	ChatPane *chatPane=new ChatPane(this);
 	SwapPane(chatPane);
 
-	ChatMessageReceiver *chatMessageReceiver=new ChatMessageReceiver({
-		AgendaCommand,PingCommand,SongCommand,VibeCommand,VolumeCommand
-	},this);
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
