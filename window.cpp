@@ -25,7 +25,8 @@ Window::Window() : QWidget(nullptr),
 	settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
-	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000")
+	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
+	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival","")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(537,467);
@@ -150,6 +151,9 @@ void Window::FollowChat()
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
+	connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
+		StageEphemeralPane(new AudioAnnouncePane(QString("Please welcome %1 to the chat.").arg(viewer.Name()),settingArrivalSound));
+	});
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
 	});

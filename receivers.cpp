@@ -124,6 +124,7 @@ void ChatMessageReceiver::Process(const QString data)
 		return;
 	}
 	QString user=hostmaskSegments.front();
+	IdentifyViewer(user);
 	if (messageSegments.at(0).at(0) == "!")
 	{
 		QStringList commandSegments=messageSegments.at(0).trimmed().split(" ");
@@ -162,4 +163,11 @@ void ChatMessageReceiver::Process(const QString data)
 		}
 	}
 	emit Print(QString("<div class='user'>%1</div><div class='message'>%2</div><br>").arg(user,messageSegments.join(":")));
+}
+
+void ChatMessageReceiver::IdentifyViewer(const QString &name)
+{
+	Viewer viewer(name);
+	if (viewers.find(name) == viewers.end()) emit ArrivalConfirmed(name);
+	viewers.emplace(name,viewer);
 }

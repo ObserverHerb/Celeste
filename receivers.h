@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <vector>
 #include "command.h"
+#include "viewers.h"
 
 class MessageReceiver : public QObject
 {
@@ -61,7 +62,10 @@ public:
 protected:
 	std::unordered_map<QString,Command> commands;
 	std::vector<Command> userCommands;
+	Viewers viewers;
+	void IdentifyViewer(const QString &name);
 signals:
+	void ArrivalConfirmed(const Viewer &viewer);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &user,const QString &message,const QString &path);
 	void Speak(const QString sentence);

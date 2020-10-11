@@ -7,6 +7,7 @@
 #include <QVideoWidget>
 #include <QTimer>
 #include <queue>
+#include <unordered_map>
 #include "relay.h"
 #include "settings.h"
 

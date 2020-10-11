@@ -24,6 +24,7 @@ add_executable(Celeste
 	command.h
 	volume.h
 	relay.h
+	viewers.h
 	receivers.h
 	receivers.cpp
 	panes.h

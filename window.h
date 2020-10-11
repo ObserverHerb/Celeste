@@ -13,6 +13,7 @@
 const QString SETTINGS_CATEGORY_VIBE="Vibe";
 const QString SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
 const QString SETTINGS_CATEGORY_WINDOW="Window";
+const QString SETTINGS_CATEGORY_EVENTS="Events";
 
 enum class BuiltInCommands
 {
@@ -62,6 +63,7 @@ protected:
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
 	Setting settingBackgroundColor;
+	Setting settingArrivalSound;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	static std::chrono::milliseconds uptime;
 	void SwapPane(Pane *pane);
