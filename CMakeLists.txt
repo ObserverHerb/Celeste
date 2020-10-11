@@ -21,6 +21,7 @@ add_executable(Celeste
 	globals.h
 	settings.h
 	command.h
+	volume.h
 	receivers.h
 	receivers.cpp
 	panes.h

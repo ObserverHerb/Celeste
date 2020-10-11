@@ -6,6 +6,7 @@
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
+#include "volume.h"
 #include "receivers.h"
 
 #ifdef Q_OS_WIN
@@ -45,7 +46,7 @@ Window::Window() : QWidget(nullptr),
 
 	SwapPane(new StatusPane(this));
 
-	helpClock.setInterval(TimeConvert::Interval(settingHelpCooldown));
+	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
 }
 
 Window::~Window()
@@ -106,7 +107,7 @@ void Window::Authenticate()
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&Pane::Print);
 	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
-		QTimer::singleShot(TimeConvert::Interval(settingJoinDelay),this,&Window::JoinStream);
+		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
 	});
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");
@@ -127,7 +128,7 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 	SwapPane(chatPane);
 
 	ChatMessageReceiver *chatMessageReceiver=new ChatMessageReceiver({
-		AgendaCommand,PingCommand,SongCommand,VibeCommand
+		AgendaCommand,PingCommand,SongCommand,VibeCommand,VolumeCommand
 	},this);
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
@@ -155,6 +156,18 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 				vibeKeeper->pause();
 			else
 				vibeKeeper->play();
+			break;
+		case BuiltInCommands::VOLUME:
+			try
+			{
+				Volume::Fader *fader=new Volume::Fader(vibeKeeper,command.Message(),this);
+				connect(fader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
+				fader->Start();
+			}
+			catch (const std::range_error &exception)
+			{
+				chatPane->Alert(QString("%1\n\n%2").arg("Failed to adjust volume!",exception.what()));
+			}
 			break;
 		}
 	});
