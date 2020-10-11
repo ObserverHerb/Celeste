@@ -156,7 +156,7 @@ void ChatMessageReceiver::Process(const QString data)
 				emit PlayAudio(user,command.Message(),command.Path());
 				break;
 			case CommandType::DISPATCH:
-				DispatchCommand(command);
+				DispatchCommand({command,parameter});
 				break;
 			};
 		}

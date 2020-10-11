@@ -22,13 +22,14 @@ public:
 	Command() : Command(QString(),QString(),CommandType::DISPATCH,false,QString(),QString()) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), path(path), message(message), protect(protect) { }
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), path(command.path), message(message), protect(command.protect) { }
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
 	bool Random() const { return random; }
 	bool Protect() const { return protect; }
-	const QString& Path() { return path; }
-	const QString& Message() { return message; }
+	const QString& Path() const { return path; }
+	const QString& Message() const { return message; }
 protected:
 	QString name;
 	QString description;

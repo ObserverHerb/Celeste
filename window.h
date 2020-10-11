@@ -16,15 +16,18 @@ const QString SETTINGS_CATEGORY_WINDOW="Window";
 
 enum class BuiltInCommands
 {
+	AGENDA,
 	PING,
 	SONG,
 	VIBE
 };
+const Command AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::DISPATCH);
 const Command PingCommand("ping","Let the Twitch servers know I'm still alive",CommandType::DISPATCH,true);
 const Command SongCommand("song","Show the title, album, and artist of the song that is currently playing.",CommandType::DISPATCH);
 const Command VibeCommand("vibe","Start the playlist of music for the stream",CommandType::DISPATCH,true);
 using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
 const BuiltInCommandLookup BUILT_IN_COMMANDS={
+	{AgendaCommand.Name(),BuiltInCommands::AGENDA},
 	{PingCommand.Name(),BuiltInCommands::PING},
 	{SongCommand.Name(),BuiltInCommands::SONG},
 	{VibeCommand.Name(),BuiltInCommands::VIBE}

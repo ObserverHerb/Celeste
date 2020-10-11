@@ -36,7 +36,6 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	agenda->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
 	agenda->setFont(QFont("Copperplate Gothic Bold",20,QFont::Bold));
 	agenda->setMargin(16);
-	agenda->setText("Initial Implementation of Celeste Twitch Bot");
 	agenda->setAlignment(Qt::AlignCenter);
 	agenda->setWordWrap(true);
 	layout()->addWidget(agenda);
@@ -64,6 +63,11 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 
 	statusClock.setInterval(TimeConvert::Interval(settingStatusInterval));
 	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissAlert);
+}
+
+void ChatPane::SetAgenda(const QString &text)
+{
+	agenda->setText(text);
 }
 
 void ChatPane::Print(const QString text)

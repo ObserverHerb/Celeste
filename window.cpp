@@ -127,7 +127,7 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 	SwapPane(chatPane);
 
 	ChatMessageReceiver *chatMessageReceiver=new ChatMessageReceiver({
-		PingCommand,SongCommand,VibeCommand
+		AgendaCommand,PingCommand,SongCommand,VibeCommand
 	},this);
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
@@ -138,9 +138,12 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 		StageEphemeralPane(new AudioAnnouncePane(QString("**%1**\n\n%2").arg(user,message),path));
 	});
 
-	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this](const Command &command) {
+	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane](const Command &command) {
 		switch (BUILT_IN_COMMANDS.at(command.Name()))
 		{
+		case BuiltInCommands::AGENDA:
+			chatPane->SetAgenda(command.Message());
+			break;
 		case BuiltInCommands::PING:
 			ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
 			break;

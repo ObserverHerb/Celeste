@@ -34,6 +34,7 @@ class ChatPane : public Pane
 	Q_OBJECT
 public:
 	ChatPane(QWidget *parent);
+	void SetAgenda(const QString &text);
 protected:
 	QLabel *agenda;
 	QTextEdit *chat;
