@@ -123,7 +123,7 @@ void Window::JoinStream()
 	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
 }
 
-void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup)
+void Window::FollowChat()
 {
 	ChatMessageReceiver *chatMessageReceiver=nullptr;
 	try
@@ -151,38 +151,45 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 	});
 
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane](const Command &command) {
-		switch (BUILT_IN_COMMANDS.at(command.Name()))
+		try
 		{
-		case BuiltInCommands::AGENDA:
-			chatPane->SetAgenda(command.Message());
-			break;
-		case BuiltInCommands::PING:
-			ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
-			break;
-		case BuiltInCommands::SONG:
-			StageEphemeralPane(new AnnouncePane(CurrentSong()));
-			break;
-		case BuiltInCommands::VIBE:
-			if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+			switch (BUILT_IN_COMMANDS.at(command.Name()))
 			{
-				chatPane->Alert("Pausing the vibes...");
-				vibeKeeper->pause();
+			case BuiltInCommands::AGENDA:
+				chatPane->SetAgenda(command.Message());
+				break;
+			case BuiltInCommands::PING:
+				ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
+				break;
+			case BuiltInCommands::SONG:
+				StageEphemeralPane(new AnnouncePane(CurrentSong()));
+				break;
+			case BuiltInCommands::VIBE:
+				if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+				{
+					chatPane->Alert("Pausing the vibes...");
+					vibeKeeper->pause();
+					break;
+				}
+				vibeKeeper->play();
+				break;
+			case BuiltInCommands::VOLUME:
+				try
+				{
+					Volume::Fader *fader=new Volume::Fader(vibeKeeper,command.Message(),this);
+					connect(fader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
+					fader->Start();
+				}
+				catch (const std::range_error &exception)
+				{
+					chatPane->Alert(QString("%1\n\n%2").arg("Failed to adjust volume!",exception.what()));
+				}
 				break;
 			}
-			vibeKeeper->play();
-			break;
-		case BuiltInCommands::VOLUME:
-			try
-			{
-				Volume::Fader *fader=new Volume::Fader(vibeKeeper,command.Message(),this);
-				connect(fader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
-				fader->Start();
-			}
-			catch (const std::range_error &exception)
-			{
-				chatPane->Alert(QString("%1\n\n%2").arg("Failed to adjust volume!",exception.what()));
-			}
-			break;
+		}
+		catch (const std::out_of_range &exception)
+		{
+			chatPane->Alert(QString(R"(Command "%1" not fully implemented!)").arg(command.Name()));
 		}
 	});
 
