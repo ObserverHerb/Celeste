@@ -160,11 +160,7 @@ void ChatMessageReceiver::Process(const QString data)
 				break;
 			};
 		}
-		/*if (commands.front() == "!lurk")
-		{
-			emit PlayVideo("short.mp4");
-		}
-		if (commands.front() == "!progress")
+		/*if (commands.front() == "!progress")
 		{
 			emit PlayVideo("progress.mp4");
 		}
