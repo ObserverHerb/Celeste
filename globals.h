@@ -23,21 +23,21 @@ namespace StringConvert
 	inline QString Integer(const int &value)
 	{
 		QString result=QString::number(value);
-		if (result.isEmpty()) throw std::range_error("Unable to convert number to string");
+		if (result.isEmpty()) throw std::range_error("Unable to convert number to text");
 		return result;
 	}
 	inline int Integer(const QString &value)
 	{
 		bool succeeded=false;
 		int result=value.toInt(&succeeded);
-		if (!succeeded) throw std::range_error("Unable to convert string to number");
+		if (!succeeded) throw std::range_error("Unable to convert text to number");
 		return result;
 	}
 	inline unsigned int PositiveInteger(const QString &value)
 	{
 		bool succeeded=false;
 		unsigned int result=value.toUInt(&succeeded);
-		if (!succeeded) throw std::range_error("Unable to convert string to positive number");
+		if (!succeeded) throw std::range_error("Unable to convert text to positive number");
 		return result;
 	}
 }
