@@ -52,6 +52,8 @@ namespace Volume
 		std::chrono::milliseconds duration;
 		double Step(const double &secondsPassed)
 		{
+			// uses x^4 method described here: https://www.dr-lex.be/info-stuff/volumecontrols.html#ideal3
+			// no need to find an ideal curve, this is a bot, not a DAW
 			double totalSeconds=static_cast<double>(duration.count())/TimeConvert::Milliseconds(TimeConvert::OneSecond()).count();
 			int volumeDifference=targetVolume-initialVolume;
 			return std::pow(secondsPassed/totalSeconds,4)*(volumeDifference)+initialVolume;
