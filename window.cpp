@@ -47,6 +47,7 @@ Window::Window() : QWidget(nullptr),
 	SwapPane(new StatusPane(this));
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
+	vibeKeeper->setVolume(0);
 }
 
 Window::~Window()
