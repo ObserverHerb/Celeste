@@ -160,19 +160,6 @@ void ChatMessageReceiver::Process(const QString data)
 				break;
 			};
 		}
-		/*if (commands.front() == "!progress")
-		{
-			emit PlayVideo("progress.mp4");
-		}
-		if (commands.front() == "!tts")
-		{
-			commands.pop_front();
-			emit Speak(commands.join(" "));
-		}
-		if (commands.front() == "!voices")
-		{
-			emit ShowVoices();
-		}*/
 	}
 	emit Print(QString("<div class='user'>%1</div><div class='message'>%2</div><br>").arg(user,messageSegments.join(":")));
 }
