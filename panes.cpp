@@ -77,26 +77,29 @@ void ChatPane::Print(const QString text)
 	chat->moveCursor(QTextCursor::End);
 }
 
-void ChatPane::Alert(const QString &text)
+Relay::Status::Context* ChatPane::Alert(const QString &text)
 {
-	statuses.push(text);
-	if (statuses.size() == 1)
+	Relay::Status::Context *statusUpdate=new Relay::Status::Context(text,this);
+	connect(statusUpdate,&Relay::Status::Context::Updated,status,&QLabel::setText);
+	statusUpdates.push(Relay::Status::Package(statusUpdate,&Relay::Status::Dismiss));
+	if (statusUpdates.size() == 1)
 	{
 		statusClock.start();
-		status->setText(statuses.front());
+		statusUpdate->Trigger();
 	}
+	return statusUpdate;
 }
 
 void ChatPane::DismissAlert()
 {
-	statuses.pop();
-	if (statuses.empty())
+	statusUpdates.pop();
+	if (statusUpdates.empty())
 	{
 		status->clear();
 		statusClock.stop();
 		return;
 	}
-	status->setText(statuses.front());
+	statusUpdates.front()->Trigger();
 }
 
 EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent)

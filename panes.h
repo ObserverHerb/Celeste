@@ -7,6 +7,7 @@
 #include <QVideoWidget>
 #include <QTimer>
 #include <queue>
+#include "relay.h"
 #include "settings.h"
 
 class Pane : public QWidget
@@ -39,13 +40,13 @@ protected:
 	QLabel *agenda;
 	QTextEdit *chat;
 	QLabel *status;
-	std::queue<QString> statuses;
+	std::queue<Relay::Status::Package> statusUpdates;
 	QTimer statusClock;
 	Setting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
 public slots:
 	void Print(const QString text) override;
-	void Alert(const QString &text);
+	Relay::Status::Context* Alert(const QString &text);
 protected slots:
 	void DismissAlert();
 };

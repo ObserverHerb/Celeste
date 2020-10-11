@@ -13,6 +13,8 @@
 #include <QtWin>
 #endif
 
+std::chrono::milliseconds Window::uptime=TimeConvert::Now();
+
 Window::Window() : QWidget(nullptr),
 	ircSocket(nullptr),
 	visiblePane(nullptr),
@@ -48,6 +50,8 @@ Window::Window() : QWidget(nullptr),
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
 	vibeKeeper->setVolume(0);
+
+	connect(this,&Window::Ponging,this,&Window::Pong);
 }
 
 Window::~Window()
@@ -87,7 +91,7 @@ void Window::DataAvailable()
 	QString data=ircSocket->readAll();
 	if (data.size() > 4 && data.left(4) == "PING")
 	{
-		ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
+		Pong();
 		return;
 	}
 	emit Dispatch(data);
@@ -129,7 +133,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,SongCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,SongCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 	}
 	catch (const std::runtime_error &exception)
@@ -139,6 +143,9 @@ void Window::FollowChat()
 	}
 
 	ChatPane *chatPane=new ChatPane(this);
+	connect(this,&Window::Ponging,[chatPane]() {
+		chatPane->Alert("Received PING, sending PONG");
+	});
 	SwapPane(chatPane);
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
@@ -164,6 +171,14 @@ void Window::FollowChat()
 			case BuiltInCommands::SONG:
 				StageEphemeralPane(new AnnouncePane(CurrentSong()));
 				break;
+			case BuiltInCommands::UPTIME:
+			{
+				Relay::Status::Context *statusContext=chatPane->Alert(Uptime());
+				connect(statusContext,&Relay::Status::Context::UpdateRequested,[this,statusContext]() {
+					emit statusContext->Updated(Uptime());
+				});
+				break;
+			}
 			case BuiltInCommands::VIBE:
 				if (vibeKeeper->state() == QMediaPlayer::PlayingState)
 				{
@@ -255,4 +270,18 @@ const QString Window::CurrentSong() const
 		vibeKeeper->metaData("AlbumArtist").toString(),
 		vibeKeeper->metaData("AlbumTitle").toString()
 	);
+}
+
+void Window::Pong() const
+{
+	ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
+}
+
+const QString Window::Uptime() const
+{
+	std::chrono::milliseconds duration=TimeConvert::Now()-uptime;
+	std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
+	std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
+	std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-minutes);
+	return QString("Connection to Twitch has been live for %1 hours, %2 minutes, and %3 seconds").arg(StringConvert::Integer(hours.count()),StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count()));
 }
