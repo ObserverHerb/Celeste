@@ -243,7 +243,7 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 
 void Window::ReleaseLiveEphemeralPane()
 {
-	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them");
+	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
 	ephemeralPanes.pop();
 	if (ephemeralPanes.empty()) visiblePane->show();
 }
