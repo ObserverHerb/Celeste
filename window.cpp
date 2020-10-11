@@ -154,9 +154,12 @@ void Window::FollowChat() // FIXME: this can throw now (BUILT_IN_COMMANDS lookup
 			break;
 		case BuiltInCommands::VIBE:
 			if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+			{
+				chatPane->Alert("Pausing the vibes...");
 				vibeKeeper->pause();
-			else
-				vibeKeeper->play();
+				break;
+			}
+			vibeKeeper->play();
 			break;
 		case BuiltInCommands::VOLUME:
 			try
