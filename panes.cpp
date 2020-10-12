@@ -1,6 +1,7 @@
 #include "panes.h"
 
 #include <QVBoxLayout>
+#include <QStackedLayout>
 #include <QLabel>
 
 StatusPane::StatusPane(QWidget *parent) : Pane(parent)
@@ -140,7 +141,6 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 	output->setAlignment(Qt::AlignCenter);
 	output->setWordWrap(true);
 	output->setTextFormat(Qt::MarkdownText);
-	layout()->addWidget(output);
 
 	clock.setSingleShot(true);
 	clock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingDuration)));
@@ -149,8 +149,14 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 
 void AnnouncePane::Show()
 {
+	Polish();
 	show();
 	clock.start();
+}
+
+void AnnouncePane::Polish()
+{
+	layout()->addWidget(output);
 }
 
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
@@ -163,6 +169,33 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 
 void AudioAnnouncePane::Show()
 {
+	Polish();
 	show();
 	audioPlayer->play(); // FIXME: catch errors above and don't play if the file failed to load
+}
+
+ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent),  view(nullptr), stack(nullptr), shadow(nullptr), image(image)
+{
+	stack=new QStackedWidget(this);
+	dynamic_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
+
+	scene=new QGraphicsScene(this);
+	int coverSize=std::max(size().width(),size().height());
+	scene->addPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
+	view=new QGraphicsView(scene);
+	view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+	shadow=new QGraphicsDropShadowEffect();
+	shadow->setBlurRadius(10);
+	shadow->setOffset(0,0);
+	output->setGraphicsEffect(shadow);
+}
+
+void ImageAnnouncePane::Polish()
+{
+	shadow->setColor(accentColor);
+	stack->addWidget(output);
+	stack->addWidget(view);
+	layout()->addWidget(stack);
 }

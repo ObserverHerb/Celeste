@@ -26,6 +26,7 @@ Window::Window() : QWidget(nullptr),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
+	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival",""),
 	settingThinkingSound(SETTINGS_CATEGORY_EVENTS,"Thinking","")
 {
@@ -174,8 +175,12 @@ void Window::FollowChat()
 				ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
 				break;
 			case BuiltInCommands::SONG:
-				StageEphemeralPane(new AnnouncePane(CurrentSong()));
+			{
+				ImageAnnouncePane *pane=Tuple::New<ImageAnnouncePane,QString,QImage>(CurrentSong());
+				pane->AccentColor(settingAccentColor);
+				StageEphemeralPane(pane);
 				break;
+			}
 			case BuiltInCommands::THINK:
 				StageEphemeralPane(new AudioAnnouncePane("Shh... Herb is thinking...",settingThinkingSound));
 				break;
@@ -232,7 +237,7 @@ void Window::FollowChat()
 			chatPane->Alert(QString("**Vibe Keeper failed to start**\n\n%2").arg(vibeKeeper->errorString()));
 		});
 		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
-			if (state == QMediaPlayer::PlayingState) chatPane->Alert(CurrentSong());
+			if (state == QMediaPlayer::PlayingState) chatPane->Alert(std::get<QString>(CurrentSong()));
 		});
 	}
 
@@ -271,13 +276,16 @@ void Window::ReleaseLiveEphemeralPane()
 	if (ephemeralPanes.empty()) visiblePane->show();
 }
 
-const QString Window::CurrentSong() const
+std::tuple<QString,QImage> Window::CurrentSong() const
 {
-	return QString("Now playing %1 by %2\n\nfrom the ablum %3").arg(
-		vibeKeeper->metaData("Title").toString(),
-		vibeKeeper->metaData("AlbumArtist").toString(),
-		vibeKeeper->metaData("AlbumTitle").toString()
-	);
+	return {
+		QString("Now playing %1 by %2\n\nfrom the ablum %3").arg(
+			vibeKeeper->metaData("Title").toString(),
+			vibeKeeper->metaData("AlbumArtist").toString(),
+			vibeKeeper->metaData("AlbumTitle").toString()
+		),
+		vibeKeeper->metaData("CoverArtImage").value<QImage>()
+	};
 }
 
 void Window::Pong() const

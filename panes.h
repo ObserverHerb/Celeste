@@ -3,6 +3,10 @@
 #include <QWidget>
 #include <QLabel>
 #include <QTextEdit>
+#include <QStackedWidget>
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsDropShadowEffect>
 #include <QMediaPlayer>
 #include <QVideoWidget>
 #include <QTimer>
@@ -79,7 +83,10 @@ class AnnouncePane : public EphemeralPane
 public:
 	AnnouncePane(const QString &text,QWidget *parent=nullptr);
 	void Show() override;
+	virtual void Polish();
+	void AccentColor(const QColor &color) { accentColor=color; }
 protected:
+	QColor accentColor;
 	QLabel *output;
 	QTimer clock;
 	Setting settingDuration;
@@ -94,4 +101,18 @@ public:
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
+};
+
+class ImageAnnouncePane : public AnnouncePane
+{
+	Q_OBJECT
+public:
+	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent=nullptr);
+	void Polish() override;
+protected:
+	QGraphicsScene *scene;
+	QGraphicsView *view;
+	QStackedWidget *stack;
+	QGraphicsDropShadowEffect *shadow;
+	QImage image;
 };

@@ -66,15 +66,17 @@ protected:
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
 	Setting settingBackgroundColor;
+	Setting settingAccentColor;
 	Setting settingArrivalSound;
 	Setting settingThinkingSound;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	static std::chrono::milliseconds uptime;
 	void SwapPane(Pane *pane);
 	void Authenticate();
+	void StageEmpeheralPane(EphemeralPane &&pane) { StageEphemeralPane(&pane); }
 	void StageEphemeralPane(EphemeralPane *pane);
 	void ReleaseLiveEphemeralPane();
-	const QString CurrentSong() const;
+	std::tuple<QString,QImage> CurrentSong() const;
 	const QString Uptime() const;
 signals:
 	void Print(const QString text);

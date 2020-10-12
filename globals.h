@@ -52,6 +52,17 @@ namespace TimeConvert
 	inline const std::chrono::milliseconds Now() { return std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch(); }
 }
 
+namespace Tuple
+{
+	template<typename Type,typename... Arguments>
+	Type* New(std::tuple<Arguments...> tuple)
+	{
+		return std::apply([](Arguments... arguments)->Type* {
+			return new Type(arguments...);
+		},tuple);
+	}
+}
+
 namespace Platform
 {
 	constexpr bool Windows()
