@@ -2,6 +2,7 @@
 
 #include <QMediaPlayer>
 #include <cmath>
+#include <algorithm>
 #include "globals.h"
 #include "settings.h"
 
@@ -21,7 +22,7 @@ namespace Volume
 			settingDefaultDuration(SETTINGS_CATEGORY_VOLUME,"DefaultFadeSeconds",5),
 			player(player),
 			initialVolume(static_cast<unsigned int>(player->volume())),
-			targetVolume(volume),
+			targetVolume(std::clamp<int>(volume,0,100)),
 			startTime(TimeConvert::Now()),
 			duration(TimeConvert::Milliseconds(duration))
 		{
