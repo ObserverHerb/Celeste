@@ -22,7 +22,6 @@ Window::Window() : QWidget(nullptr),
 	vibeKeeper(new QMediaPlayer(this)),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
-	settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
@@ -149,6 +148,7 @@ void Window::FollowChat()
 	connect(this,&Window::Ponging,[chatPane]() {
 		chatPane->Alert("Received PING, sending PONG");
 	});
+	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
 	SwapPane(chatPane);
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);

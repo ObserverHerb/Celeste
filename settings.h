@@ -23,3 +23,6 @@ protected:
 	const QVariant defaultValue;
 	QSettings source;
 };
+
+const QString SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
+inline Setting settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator");

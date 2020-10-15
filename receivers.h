@@ -65,6 +65,7 @@ protected:
 	Viewers viewers;
 	void IdentifyViewer(const QString &name);
 signals:
+	void Alert(const QString &text);
 	void ArrivalConfirmed(const Viewer &viewer);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &user,const QString &message,const QString &path);

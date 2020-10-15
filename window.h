@@ -11,7 +11,6 @@
 #include "panes.h"
 
 const QString SETTINGS_CATEGORY_VIBE="Vibe";
-const QString SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
 const QString SETTINGS_CATEGORY_WINDOW="Window";
 const QString SETTINGS_CATEGORY_EVENTS="Events";
 
@@ -62,7 +61,6 @@ protected:
 	QTimer helpClock;
 	Setting settingHelpCooldown;
 	Setting settingVibePlaylist;
-	Setting settingAdministrator;
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
 	Setting settingBackgroundColor;

@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdexcept>
 #include "globals.h"
+#include "settings.h"
 #include "receivers.h"
 
 MessageReceiver::MessageReceiver(QObject *parent) noexcept : QObject(parent)
@@ -134,6 +135,11 @@ void ChatMessageReceiver::Process(const QString data)
 		if (commands.find(commandName) != commands.end())
 		{
 			Command command=commands.at(commandName);
+			if (command.Protect() && settingAdministrator != user)
+			{
+				emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command.Name(),user));
+				return;
+			}
 			switch (command.Type())
 			{
 			case CommandType::VIDEO:
