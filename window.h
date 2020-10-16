@@ -86,3 +86,15 @@ protected slots:
 	void Pong() const;
 };
 
+#ifdef Q_OS_WIN
+#include <QtWin>
+class Win32Window : public Window
+{
+	Q_OBJECT
+public:
+	Win32Window()
+	{
+		QtWin::enableBlurBehindWindow(this);
+	}
+};
+#endif

@@ -9,10 +9,6 @@
 #include "volume.h"
 #include "receivers.h"
 
-#ifdef Q_OS_WIN
-#include <QtWin>
-#endif
-
 std::chrono::milliseconds Window::uptime=TimeConvert::Now();
 
 Window::Window() : QWidget(nullptr),
@@ -31,10 +27,6 @@ Window::Window() : QWidget(nullptr),
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(537,467);
-
-#ifdef Q_OS_WIN
-	QtWin::enableBlurBehindWindow(this);
-#endif
 
 	setLayout(new QGridLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
