@@ -3,6 +3,7 @@
 #include <QString>
 #include <chrono>
 #include <random>
+#include <functional>
 #include <stdexcept>
 
 const QString ORGANIZATION_NAME("Sky-Meyg");
@@ -85,3 +86,14 @@ namespace Random
 		return distribution(generator);
 	}
 }
+
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
+template<>
+struct std::hash<QString>
+{
+	std::size_t operator()(const QString &string) const noexcept
+	{
+		return qHash(string);
+	}
+};
+#endif

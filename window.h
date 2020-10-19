@@ -6,6 +6,7 @@
 #include <QMediaPlaylist>
 #include <queue>
 #include <unordered_map>
+#include "globals.h"
 #include "command.h"
 #include "settings.h"
 #include "panes.h"
