@@ -3,7 +3,6 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QRandomGenerator>
 #include <vector>
 #include <stdexcept>
 #include "globals.h"
@@ -105,7 +104,7 @@ void ChatMessageReceiver::AttachCommand(const Command &command)
 
 const Command ChatMessageReceiver::RandomCommand() const
 {
-	return userCommands[QRandomGenerator::global()->bounded(0,userCommands.size())];
+	return userCommands[Random::Bounded(0,userCommands.size())];
 }
 
 void ChatMessageReceiver::Process(const QString data)
@@ -152,7 +151,7 @@ void ChatMessageReceiver::Process(const QString data)
 						Print("No videos found");
 						break;
 					}
-					emit PlayVideo(directory.absoluteFilePath(videos[QRandomGenerator::global()->bounded(0,videos.size())]));
+					emit PlayVideo(directory.absoluteFilePath(videos[Random::Bounded(0,videos.size())]));
 				}
 				else
 				{

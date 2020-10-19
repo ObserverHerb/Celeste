@@ -2,6 +2,7 @@
 
 #include <QString>
 #include <chrono>
+#include <random>
 #include <stdexcept>
 
 const QString ORGANIZATION_NAME("Sky-Meyg");
@@ -72,5 +73,15 @@ namespace Platform
 	#else
 		return false;
 	#endif
+	}
+}
+
+namespace Random
+{
+	inline std::default_random_engine generator;
+	inline int Bounded(int lower,int upper)
+	{
+		std::uniform_int_distribution<int> distribution(lower,upper);
+		return distribution(generator);
 	}
 }

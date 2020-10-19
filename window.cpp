@@ -2,7 +2,6 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
-#include <QRandomGenerator>
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
@@ -220,7 +219,7 @@ void Window::FollowChat()
 		});
 		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane]() {
 			vibeSources.shuffle();
-			vibeSources.setCurrentIndex(QRandomGenerator::global()->bounded(0,vibeSources.mediaCount()));
+			vibeSources.setCurrentIndex(Random::Bounded(0,vibeSources.mediaCount()));
 			vibeKeeper->setPlaylist(&vibeSources);
 			chatPane->Alert("Vibe playlist loaded!");
 		});
