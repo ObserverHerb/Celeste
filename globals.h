@@ -42,6 +42,25 @@ namespace StringConvert
 		if (!succeeded) throw std::range_error("Unable to convert text to positive number");
 		return result;
 	}
+
+	namespace Split
+	{
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
+		enum class Behaviors
+		{
+			KEEP_EMPTY_PARTS=QString::SplitBehavior::KeepEmptyParts,
+			SKIP_EMPTY_PARTS=QString::SplitBehavior::SkipEmptyParts
+		};
+		inline QString::SplitBehavior Behavior(Behaviors behaviors) { return static_cast<QString::SplitBehavior>(behaviors); }
+#else
+		enum class SplitBahaviors
+		{
+			KEEP_EMPTY_PARTS=Qt::SplitBehavior::KeepEmptyParts,
+			SKIP_EMPTY_PARTS=Qt::SplitBehavior::SkipEmptyParts
+		};
+		inline Qt::SplitBehavior Behavior(Behaviors behaviors) { return static_cast<Qt::SplitBehavior>(behaviors); }
+#endif
+	}
 }
 
 namespace TimeConvert

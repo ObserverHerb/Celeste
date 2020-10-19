@@ -109,7 +109,7 @@ const Command ChatMessageReceiver::RandomCommand() const
 
 void ChatMessageReceiver::Process(const QString data)
 {
-	QStringList messageSegments=data.split(":",Qt::SkipEmptyParts);
+	QStringList messageSegments=data.split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
 	if (messageSegments.size() < 2)
 	{
 		emit Failed();
@@ -117,7 +117,7 @@ void ChatMessageReceiver::Process(const QString data)
 	}
 	QString hostmask=QString(messageSegments.front());
 	messageSegments.pop_front();
-	QStringList hostmaskSegments=hostmask.split("!",Qt::SkipEmptyParts);
+	QStringList hostmaskSegments=hostmask.split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
 	if (hostmaskSegments.size() < 1)
 	{
 		emit Failed();
