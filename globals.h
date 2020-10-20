@@ -53,12 +53,12 @@ namespace StringConvert
 		};
 		inline QString::SplitBehavior Behavior(Behaviors behaviors) { return static_cast<QString::SplitBehavior>(behaviors); }
 #else
-		enum class SplitBahaviors
+		enum class Behaviors
 		{
-			KEEP_EMPTY_PARTS=Qt::SplitBehavior::KeepEmptyParts,
-			SKIP_EMPTY_PARTS=Qt::SplitBehavior::SkipEmptyParts
+			KEEP_EMPTY_PARTS=Qt::KeepEmptyParts,
+			SKIP_EMPTY_PARTS=Qt::SkipEmptyParts
 		};
-		inline Qt::SplitBehavior Behavior(Behaviors behaviors) { return static_cast<Qt::SplitBehavior>(behaviors); }
+		inline Qt::SplitBehaviorFlags Behavior(Behaviors behaviors) { return static_cast<Qt::SplitBehaviorFlags>(behaviors); }
 #endif
 	}
 }
