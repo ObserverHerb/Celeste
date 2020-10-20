@@ -59,7 +59,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	status->setMargin(16);
 	status->setAlignment(Qt::AlignCenter);
 	status->setWordWrap(true);
-	status->setTextFormat(Qt::MarkdownText);
+	status->setTextFormat(Qt::RichText);
 	layout()->addWidget(status);
 
 	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
@@ -140,7 +140,7 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 	output->setMargin(16);
 	output->setAlignment(Qt::AlignCenter);
 	output->setWordWrap(true);
-	output->setTextFormat(Qt::MarkdownText);
+	output->setTextFormat(Qt::RichText);
 
 	clock.setSingleShot(true);
 	clock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingDuration)));
