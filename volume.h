@@ -30,7 +30,7 @@ namespace Volume
 		}
 		void Parse(const QString &text)
 		{
-			QStringList values=text.split(" ",Qt::SkipEmptyParts);
+			QStringList values=text.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
 			if (values.size() < 1) throw std::range_error("No volume specified");
 			targetVolume=StringConvert::PositiveInteger(values[0]);
 			duration=values.size() > 1 ? static_cast<std::chrono::seconds>(StringConvert::PositiveInteger(values[1])) : settingDefaultDuration;

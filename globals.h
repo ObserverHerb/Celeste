@@ -3,6 +3,7 @@
 #include <QString>
 #include <chrono>
 #include <random>
+#include <functional>
 #include <stdexcept>
 
 const QString ORGANIZATION_NAME("Sky-Meyg");
@@ -40,6 +41,25 @@ namespace StringConvert
 		unsigned int result=value.toUInt(&succeeded);
 		if (!succeeded) throw std::range_error("Unable to convert text to positive number");
 		return result;
+	}
+
+	namespace Split
+	{
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
+		enum class Behaviors
+		{
+			KEEP_EMPTY_PARTS=QString::SplitBehavior::KeepEmptyParts,
+			SKIP_EMPTY_PARTS=QString::SplitBehavior::SkipEmptyParts
+		};
+		inline QString::SplitBehavior Behavior(Behaviors behaviors) { return static_cast<QString::SplitBehavior>(behaviors); }
+#else
+		enum class Behaviors
+		{
+			KEEP_EMPTY_PARTS=Qt::KeepEmptyParts,
+			SKIP_EMPTY_PARTS=Qt::SkipEmptyParts
+		};
+		inline Qt::SplitBehaviorFlags Behavior(Behaviors behaviors) { return static_cast<Qt::SplitBehaviorFlags>(behaviors); }
+#endif
 	}
 }
 
@@ -85,3 +105,14 @@ namespace Random
 		return distribution(generator);
 	}
 }
+
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
+template<>
+struct std::hash<QString>
+{
+	std::size_t operator()(const QString &string) const noexcept
+	{
+		return qHash(string);
+	}
+};
+#endif
