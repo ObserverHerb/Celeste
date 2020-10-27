@@ -1,2 +1,4 @@
-CMakeLists.txt.user
+CMakeLists.txt.user*
 build/
+html/
+latex/
