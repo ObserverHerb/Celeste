@@ -25,12 +25,14 @@ add_executable(Celeste
 	volume.h
 	relay.h
 	viewers.h
+	widgets.h
+	widgets.cpp
 	receivers.h
 	receivers.cpp
 	panes.h
 	panes.cpp
-	window.cpp
 	window.h
+	window.cpp
 	main.cpp
 )
 

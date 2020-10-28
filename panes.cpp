@@ -121,7 +121,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	agenda->setWordWrap(true);
 	layout()->addWidget(agenda);
 
-	chat=new QTextEdit(this);
+	chat=new ScrollingTextEdit(this);
 	chat->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
 	chat->setFontFamily("Copperplate Gothic Bold");
 	chat->setFontPointSize(16);
@@ -140,6 +140,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	status->setAlignment(Qt::AlignCenter);
 	status->setWordWrap(true);
 	status->setTextFormat(Qt::RichText);
+	status->hide();
 	layout()->addWidget(status);
 
 	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
@@ -166,7 +167,6 @@ void ChatPane::Print(const QString text)
 {
 	chat->insertHtml(text);
 	chat->insertPlainText("\n");
-	chat->moveCursor(QTextCursor::End);
 }
 
 /*!
@@ -185,6 +185,7 @@ void ChatPane::Print(const QString text)
  */
 Relay::Status::Context* ChatPane::Alert(const QString &text)
 {
+	status->show();
 	Relay::Status::Context *statusUpdate=new Relay::Status::Context(text,this);
 	connect(statusUpdate,&Relay::Status::Context::Updated,status,&QLabel::setText);
 	statusUpdates.push(Relay::Status::Package(statusUpdate,&Relay::Status::Dismiss));
@@ -207,6 +208,7 @@ void ChatPane::DismissAlert()
 	if (statusUpdates.empty())
 	{
 		status->clear();
+		status->hide();
 		statusClock.stop();
 		return;
 	}

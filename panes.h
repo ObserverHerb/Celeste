@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include "relay.h"
 #include "settings.h"
+#include "widgets.h"
 
 class Pane : public QWidget
 {
@@ -43,7 +44,7 @@ public:
 	void SetAgenda(const QString &text);
 protected:
 	QLabel *agenda;
-	QTextEdit *chat;
+	ScrollingTextEdit *chat;
 	QLabel *status;
 	std::queue<Relay::Status::Package> statusUpdates;
 	QTimer statusClock;
