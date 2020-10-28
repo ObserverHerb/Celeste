@@ -376,7 +376,11 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 	audioPlayer->setMedia(QUrl::fromLocalFile(path));
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
-	}); // TODO: report loading failures to status section of chat pane
+	});
+	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
+		if (error != QMediaPlayer::NoError) emit Error(QString("Audio announcement error: %1").arg(audioPlayer->errorString()));
+		emit Finished();
+	});
 }
 
 /*!
@@ -385,6 +389,7 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
  */
 void AudioAnnouncePane::Show()
 {
+	if (audioPlayer->error() != QMediaPlayer::NoError) return;
 	Polish();
 	show();
 	audioPlayer->play(); // FIXME: catch errors above and don't play if the file failed to load

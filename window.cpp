@@ -226,8 +226,10 @@ void Window::FollowChat()
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
-	connect(chatMessageReceiver,&ChatMessageReceiver::PlayAudio,[this](const QString &user,const QString &message,const QString &path) {
-		StageEphemeralPane(new AudioAnnouncePane(QString("**%1**\n\n%2").arg(user,message),path));
+	connect(chatMessageReceiver,&ChatMessageReceiver::PlayAudio,[this,chatPane](const QString &user,const QString &message,const QString &path) {
+		AudioAnnouncePane *audioAnnouncePane=new AudioAnnouncePane(QString("<h2>%1</h2><br><br>%2").arg(user,message),path);
+		connect(audioAnnouncePane,&AudioAnnouncePane::Error,chatPane,&ChatPane::Alert);
+		StageEphemeralPane(audioAnnouncePane);
 	});
 
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane](const Command &command) {

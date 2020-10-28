@@ -101,6 +101,8 @@ public:
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
+signals:
+	void Error(const QString &error);
 };
 
 class ImageAnnouncePane : public AnnouncePane
