@@ -10,6 +10,19 @@
 
 std::chrono::milliseconds Window::uptime=TimeConvert::Now();
 
+/*!
+ * \class Window
+ * \brief The top most and only window of the application.
+ *
+ * This isn't meant to contain any visible content other than a sequence
+ * of panes.
+ */
+
+/*!
+ * \fn Window::Window
+ * \brief Constructs the main window, initializing any settings, media players,
+ * and timers needed for built-in commands.
+ */
 Window::Window() : QWidget(nullptr),
 	ircSocket(nullptr),
 	visiblePane(nullptr),
@@ -47,11 +60,27 @@ Window::Window() : QWidget(nullptr),
 	connect(this,&Window::Ponging,this,&Window::Pong);
 }
 
+/*!
+ * \fn Window::~Window
+ * \brief Deallocate the main window.
+ *
+ * This will close the connection to IRC.
+ */
 Window::~Window()
 {
 	ircSocket->disconnectFromHost();
 }
 
+/*!
+ * \fn Window::event
+ * \brief Handles events the window receives from the operating system.
+ *
+ * This is where the process of connecting to IRC is started. Last minute
+ * initialization is also performed here.
+ *
+ * \param event Pointer to the QEvent that has been occurred
+ * \return bool Whether or not the event was successfully processed
+ */
 bool Window::event(QEvent *event)
 {
 	if (event->type() == QEvent::Polish)
@@ -65,6 +94,12 @@ bool Window::event(QEvent *event)
 	return QWidget::event(event);
 }
 
+/*!
+ * \fn Window::Connected
+ * \brief Slot that is called when a successful connection to IRC is made
+ *
+ * This will start the process of authenticating with Twitch.
+ */
 void Window::Connected()
 {
 	emit Print("Connected!");
@@ -74,11 +109,22 @@ void Window::Connected()
 	ircSocket->write(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)).toLocal8Bit());
 }
 
+/*!
+ * \fn Window::Disconnected
+ * \brief Slot that is called when the connection to IRC is dropped.
+ */
 void Window::Disconnected()
 {
 	emit Print("Disconnected");
 }
 
+/*!
+ * \fn Window::DataAvailable
+ * \brief Slot that is called when data is received from the IRC server.
+ *
+ * Messages that are to be processed by the bot are passed to the
+ * Window::Dispatch() function.
+ */
 void Window::DataAvailable()
 {
 	QString data=ircSocket->readAll();
@@ -90,6 +136,14 @@ void Window::DataAvailable()
 	emit Dispatch(data);
 }
 
+/*!
+ * \fn Window::SwapPane
+ * \brief Changes the visible pane to a new pane
+ *
+ * This will also deallocate the previously visible pane
+ *
+ * \param pane The pane to make visible
+ */
 void Window::SwapPane(Pane *pane)
 {
 	if (visiblePane) visiblePane->deleteLater();
@@ -98,6 +152,13 @@ void Window::SwapPane(Pane *pane)
 	connect(this,&Window::Print,visiblePane,&Pane::Print);
 }
 
+/*!
+ * \fn Window::Authenticate
+ * \brief Attempts to connect to the IRC server
+ *
+ * If authentication is successful, an attempt to join the administrator's
+ * channel is triggered after a short delay.
+ */
 void Window::Authenticate()
 {
 	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
@@ -111,6 +172,12 @@ void Window::Authenticate()
 	emit Print("Connecting to IRC...");
 }
 
+/*!
+ * \fn Window::JoinStream
+ * \brief Attempts to the administrator's IRC channel
+ *
+ * If successful, switch to watching for chat messages.
+ */
 void Window::JoinStream()
 {
 	ChannelJoinReceiver *channelJoinReceiver=new ChannelJoinReceiver(this);
@@ -120,6 +187,15 @@ void Window::JoinStream()
 	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
 }
 
+/*!
+ * \fn Window::FollowChat
+ * \brief Watch for and process chat messages
+ *
+ * This is where the bot will spend most of its time. When a message is
+ * received, it is processed and sent to the correct subsystem if
+ * recognized. This is also where any persistent operations, such as
+ * periodically displaying command hints, are started.
+ */
 void Window::FollowChat()
 {
 	ChatMessageReceiver *chatMessageReceiver=nullptr;
@@ -243,6 +319,16 @@ void Window::FollowChat()
 	helpClock.start();
 }
 
+/*!
+ * \fn Window::StageEphemeralPane
+ * \brief Add an ephemeral pane to the queue of panes to be displayed
+ *
+ * If this is the first ephemeral pane, it will be shown immediately, otherwise
+ * it will be shown when the pane before it is finished. The currently visible
+ * persistent pane is hidden while the queue contains ephemeral panes.
+ *
+ * \param pane The pane to be shown
+ */
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
 	connect(pane,&EphemeralPane::Finished,this,&Window::ReleaseLiveEphemeralPane);
@@ -260,6 +346,13 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 	}
 }
 
+/*!
+ * \fn Window::ReleaseLiveEphemeralPane
+ * \brief Removes visible emphemeral pane from the queue
+ *
+ * When the queue becomes empty, this will instead show the persistent pane that
+ * was visible before processing of the queue of ephemeral panes was started.
+ */
 void Window::ReleaseLiveEphemeralPane()
 {
 	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
@@ -279,11 +372,22 @@ std::tuple<QString,QImage> Window::CurrentSong() const
 	};
 }
 
+/*!
+ * \fn Window::Pong
+ * \brief Responds to a Twitch PING with a PONG
+ *
+ * This is transparent to viewers. It will not be displayed on a pane.
+ */
 void Window::Pong() const
 {
 	ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
 }
 
+/*!
+ * \fn Window::Uptime
+ * \brief Calculates the difference between now and when the bot was started
+ * \return A text representation of the difference
+ */
 const QString Window::Uptime() const
 {
 	std::chrono::milliseconds duration=TimeConvert::Now()-uptime;
