@@ -80,7 +80,7 @@ void StatusPane::Print(const QString text)
 {
 	output->insertPlainText(text);
 	output->insertPlainText("\n");
-	output->moveCursor(QTextCursor::End);
+	output->ensureCursorVisible();
 }
 
 /*!
