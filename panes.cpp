@@ -281,7 +281,7 @@ EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent)
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), viewport(new QVideoWidget(this)), videoPlayer(new QMediaPlayer(this))
+VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(new QMediaPlayer(this)), viewport(new QVideoWidget(this))
 {
 	videoPlayer->setVideoOutput(viewport);
 	videoPlayer->setMedia(QUrl::fromLocalFile(path));
