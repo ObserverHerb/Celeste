@@ -64,6 +64,7 @@ StatusPane::StatusPane(QWidget *parent) : Pane(parent)
 	output->document()->setDocumentMargin(16);
 	output->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	output->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	output->setFrameStyle(QFrame::NoFrame);
 
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
