@@ -310,11 +310,18 @@ void Window::FollowChat()
 
 	connect(&helpClock,&QTimer::timeout,[this,chatMessageReceiver]() {
 		if (!ephemeralPanes.empty()) return;
-		const Command &command=chatMessageReceiver->RandomCommand();
-		StageEphemeralPane(new AnnouncePane(QString("!%1\n\n%2").arg(
-			command.Name(),
-			command.Description()
-		)));
+		try
+		{
+			const Command &command=chatMessageReceiver->RandomCommand();
+			StageEphemeralPane(new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
+				command.Name(),
+				command.Description()
+			)));
+		}
+		catch (const std::range_error &exception)
+		{
+			chatMessageReceiver->Alert(QString("Failed to show hint for random command<br>%1").arg(exception.what()));
+		}
 	});
 	helpClock.start();
 }

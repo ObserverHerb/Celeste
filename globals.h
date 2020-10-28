@@ -104,6 +104,12 @@ namespace Random
 		std::uniform_int_distribution<int> distribution(lower,upper);
 		return distribution(generator);
 	}
+	template<typename T>
+	inline int Bounded(const std::vector<T> &container) // TODO: good candidate for concepts/constraints here when they land, so we can use any type of container with a size
+	{
+		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
+		return Bounded(0,container.size()-1);
+	}
 }
 
 #if QT_VERSION < QT_VERSION_CHECK(5,14,0)

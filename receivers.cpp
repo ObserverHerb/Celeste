@@ -104,7 +104,7 @@ void ChatMessageReceiver::AttachCommand(const Command &command)
 
 const Command ChatMessageReceiver::RandomCommand() const
 {
-	return userCommands[Random::Bounded(0,userCommands.size())];
+	return userCommands[Random::Bounded(userCommands)];
 }
 
 void ChatMessageReceiver::Process(const QString data)
