@@ -291,7 +291,7 @@ void Window::FollowChat()
 	if (settingVibePlaylist)
 	{
 		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
-			chatPane->Alert(QString("**Failed to load vibe playlist**\n\n%2").arg(vibeSources.errorString()));
+			chatPane->Alert(QString("<b>Failed to load vibe playlist</b><br>%2").arg(vibeSources.errorString()));
 		});
 		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane]() {
 			vibeSources.shuffle();
@@ -301,7 +301,7 @@ void Window::FollowChat()
 		});
 		vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
 		connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
-			chatPane->Alert(QString("**Vibe Keeper failed to start**\n\n%2").arg(vibeKeeper->errorString()));
+			chatPane->Alert(QString("<b>Vibe Keeper failed to start</b><br>%2").arg(vibeKeeper->errorString()));
 		});
 		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
 			if (state == QMediaPlayer::PlayingState) chatPane->Alert(std::get<QString>(CurrentSong()));
