@@ -119,6 +119,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	agenda->setMargin(16);
 	agenda->setAlignment(Qt::AlignCenter);
 	agenda->setWordWrap(true);
+	agenda->hide();
 	layout()->addWidget(agenda);
 
 	chat=new ScrollingTextEdit(this);
@@ -154,7 +155,16 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
  */
 void ChatPane::SetAgenda(const QString &text)
 {
-	agenda->setText(text);
+	if (text.isEmpty())
+	{
+		agenda->clear();
+		agenda->hide();
+	}
+	else
+	{
+		agenda->setText(text);
+		agenda->show();
+	}
 }
 
 /*!
