@@ -213,7 +213,7 @@ void Window::FollowChat()
 
 	ChatPane *chatPane=new ChatPane(this);
 	connect(this,&Window::Ponging,[chatPane]() {
-		chatPane->Alert("Received PING, sending PONG");
+		chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 	});
 	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
 	SwapPane(chatPane);
