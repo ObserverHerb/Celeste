@@ -49,7 +49,6 @@ class Window : public QWidget
 public:
 	Window();
 	~Window();
-	bool event(QEvent *event) override;
 	void Connected();
 	void Disconnected();
 	void DataAvailable();
@@ -77,6 +76,9 @@ protected:
 	void ReleaseLiveEphemeralPane();
 	std::tuple<QString,QImage> CurrentSong() const;
 	const QString Uptime() const;
+	bool event(QEvent *event) override;
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
 signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);

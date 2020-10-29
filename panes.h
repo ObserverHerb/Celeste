@@ -22,7 +22,7 @@ class Pane : public QWidget
 public:
 	Pane(QWidget *parent=nullptr) : QWidget(parent) { }
 public slots:
-	virtual void Print(const QString text)=0;
+	virtual void Print(const QString &text)=0;
 };
 
 class StatusPane : public Pane
@@ -33,7 +33,7 @@ public:
 protected:
 	QTextEdit *output;
 public slots:
-	void Print(const QString text) override;
+	void Print(const QString &text) override;
 };
 
 class ChatPane : public Pane
@@ -51,7 +51,8 @@ protected:
 	Setting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
 public slots:
-	void Print(const QString text) override;
+	void Message(const QString &text);
+	void Print(const QString &text) override;
 	Relay::Status::Context* Alert(const QString &text);
 protected slots:
 	void DismissAlert();

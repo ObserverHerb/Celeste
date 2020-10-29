@@ -76,7 +76,7 @@ StatusPane::StatusPane(QWidget *parent) : Pane(parent)
  * \brief Adds a string of text to the end of the text currently being displayed
  * \param text The text to add
  */
-void StatusPane::Print(const QString text)
+void StatusPane::Print(const QString &text)
 {
 	output->insertPlainText(text);
 	output->insertPlainText("\n");
@@ -133,6 +133,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	chat->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setFrameStyle(QFrame::NoFrame);
 	chat->setCursorWidth(0);
+	chat->setAcceptDrops(false);
 	layout()->addWidget(chat);
 
 	status=new QLabel(this);
@@ -169,15 +170,20 @@ void ChatPane::SetAgenda(const QString &text)
 }
 
 /*!
- * \fn ChatPane::Print
+ * \fn ChatPane::Message
  * \brief Adds a message to the end of the messages in the middle section of
  * the ChatPane
  * \param text The message to add
  */
-void ChatPane::Print(const QString text)
+void ChatPane::Message(const QString &text)
 {
 	chat->insertHtml(text);
 	chat->insertPlainText("\n");
+}
+
+void ChatPane::Print(const QString &text)
+{
+	Alert(text);
 }
 
 /*!

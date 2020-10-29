@@ -2,6 +2,9 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
+#include <QDragEnterEvent>
+#include <QMimeData>
+#include <QMimeDatabase>
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
@@ -39,6 +42,7 @@ Window::Window() : QWidget(nullptr),
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(537,467);
+	setAcceptDrops(true);
 
 	setLayout(new QGridLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
@@ -85,6 +89,23 @@ bool Window::event(QEvent *event)
 {
 	if (event->type() == QEvent::Polish)
 	{
+		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this]() {
+			Print(QString("<b>Failed to load vibe playlist</b><br>%2").arg(vibeSources.errorString()));
+		});
+		connect(&vibeSources,&QMediaPlaylist::loaded,[this]() {
+			vibeSources.shuffle();
+			vibeSources.setCurrentIndex(Random::Bounded(0,vibeSources.mediaCount()));
+			vibeKeeper->setPlaylist(&vibeSources);
+			Print("Vibe playlist loaded!");
+		});
+		connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
+			Print(QString("<b>Vibe Keeper failed to start</b><br>%2").arg(vibeKeeper->errorString()));
+		});
+		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+			if (state == QMediaPlayer::PlayingState) Print(std::get<QString>(CurrentSong()));
+		});
+		if (settingVibePlaylist) vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
+
 		ircSocket=new QTcpSocket(this);
 		connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
 		connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
@@ -92,6 +113,33 @@ bool Window::event(QEvent *event)
 	}
 
 	return QWidget::event(event);
+}
+
+/*!
+ * \fn Window::dragEnterEvent
+ * \brief Accepts playlist files and passes them event on to dropEvent()
+ * \param event A QDragEnterEvent used to determine MIME type of file being dropped
+ */
+void Window::dragEnterEvent(QDragEnterEvent *event)
+{
+	try
+	{
+		if (QMimeDatabase().mimeTypeForFile(Extract::First(event->mimeData()->urls()).toString()).name() == "application/vnd.apple.mpegurl") event->acceptProposedAction();
+	}
+	catch (const std::range_error &exception)
+	{
+		Print(exception.what());
+	}
+}
+
+/*!
+ * \fn Window::dropEvent
+ * \brief Loads a playlist file into the Vibe Keeper when one has been dropped onto the Window
+ * \param event A QDropEvent used to extract the file location from the MIME data
+ */
+void Window::dropEvent(QDropEvent *event)
+{
+	vibeSources.load(Extract::First(event->mimeData()->urls()));
 }
 
 /*!
@@ -219,7 +267,7 @@ void Window::FollowChat()
 	SwapPane(chatPane);
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
-	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
+	connect(chatMessageReceiver,&ChatMessageReceiver::Print,chatPane,&ChatPane::Message);
 	connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
 		if (settingAdministrator != viewer.Name()) StageEphemeralPane(new AudioAnnouncePane(QString("Please welcome %1 to the chat.").arg(viewer.Name()),settingArrivalSound));
 	});
@@ -287,26 +335,6 @@ void Window::FollowChat()
 			chatPane->Alert(QString(R"(Command "%1" not fully implemented!)").arg(command.Name()));
 		}
 	});
-
-	if (settingVibePlaylist)
-	{
-		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
-			chatPane->Alert(QString("<b>Failed to load vibe playlist</b><br>%2").arg(vibeSources.errorString()));
-		});
-		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane]() {
-			vibeSources.shuffle();
-			vibeSources.setCurrentIndex(Random::Bounded(0,vibeSources.mediaCount()));
-			vibeKeeper->setPlaylist(&vibeSources);
-			chatPane->Alert("Vibe playlist loaded!");
-		});
-		vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
-		connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
-			chatPane->Alert(QString("<b>Vibe Keeper failed to start</b><br>%2").arg(vibeKeeper->errorString()));
-		});
-		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
-			if (state == QMediaPlayer::PlayingState) chatPane->Alert(std::get<QString>(CurrentSong()));
-		});
-	}
 
 	connect(&helpClock,&QTimer::timeout,[this,chatMessageReceiver]() {
 		if (!ephemeralPanes.empty()) return;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QList>
 #include <chrono>
 #include <random>
 #include <functional>
@@ -109,6 +110,16 @@ namespace Random
 	{
 		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
 		return Bounded(0,container.size()-1);
+	}
+}
+
+namespace Extract
+{
+	template<typename T>
+	inline const T& First(const QList<T> &list)
+	{
+		if (list.isEmpty()) throw std::range_error("No items available");
+		return list.front();
 	}
 }
 
