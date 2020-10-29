@@ -14,6 +14,7 @@ public:
 	operator bool() const { return source.contains(name); }
 	operator QString() const { return Value().toString(); }
 	operator unsigned int() const { return Value().toUInt(); }
+	operator qreal() const { return Value().toReal(); }
 	operator std::chrono::milliseconds() const { return std::chrono::milliseconds(Value().toUInt()); }
 	operator std::chrono::seconds() const { return std::chrono::seconds(Value().toUInt()); }
 	operator QColor() const { return source.value(name,defaultValue).value<QColor>(); }

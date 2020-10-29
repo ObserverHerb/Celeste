@@ -45,6 +45,9 @@
  * in realtime.
  */
 
+//! QSettings category for any settings pertaining to the ChatPane
+const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
+
 /*!
  * \fn StatusPane::StatusPane
  * \brief Default constructor
@@ -55,12 +58,25 @@
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-StatusPane::StatusPane(QWidget *parent) : Pane(parent)
+StatusPane::StatusPane(QWidget *parent) : Pane(parent),
+	settingFont(SETTINGS_CATEGORY,"Font","Droid Sans Mono"),
+	settingFontSize(SETTINGS_CATEGORY,"FontSize","10"),
+	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
+	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#000000")
 {
 	output=new QTextEdit(this);
-	output->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
-	output->setFontFamily("Droid Sans Mono");
-	output->setFontPointSize(10);
+	output->setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4); color: rgba(%5,%6,%7,%8);").arg(
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).red()),
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).green()),
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).blue()),
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).alpha()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).red()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).green()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).blue()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).alpha())
+	));
+	output->setFontFamily(settingFont);
+	output->setFontPointSize(settingFontSize);
 	output->document()->setDocumentMargin(16);
 	output->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	output->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

@@ -32,6 +32,11 @@ public:
 	StatusPane(QWidget *parent);
 protected:
 	QTextEdit *output;
+	Setting settingFont;
+	Setting settingFontSize;
+	Setting settingForegroundColor;
+	Setting settingBackgroundColor;
+	static const QString SETTINGS_CATEGORY;
 public slots:
 	void Print(const QString text) override;
 };
