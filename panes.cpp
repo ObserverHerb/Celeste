@@ -60,9 +60,9 @@ const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
  */
 StatusPane::StatusPane(QWidget *parent) : Pane(parent),
 	settingFont(SETTINGS_CATEGORY,"Font","Droid Sans Mono"),
-	settingFontSize(SETTINGS_CATEGORY,"FontSize","10"),
+	settingFontSize(SETTINGS_CATEGORY,"FontSize",10),
 	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
-	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#000000")
+	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
 {
 	output=new QTextEdit(this);
 	output->setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4); color: rgba(%5,%6,%7,%8);").arg(
@@ -124,15 +124,34 @@ const QString ChatPane::SETTINGS_CATEGORY="ChatPane";
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullptr), status(nullptr), settingStatusInterval(SETTINGS_CATEGORY,"StatusInterval",5000)
+ChatPane::ChatPane(QWidget *parent) : Pane(parent),
+	agenda(nullptr),
+	chat(nullptr),
+	status(nullptr),
+	settingFont(SETTINGS_CATEGORY,"Font","Copperplate Gothic Bold"),
+	settingFontSize(SETTINGS_CATEGORY,"FontSize",16),
+	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
+	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000"),
+	settingStatusInterval(SETTINGS_CATEGORY,"StatusInterval",5000)
 {
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
 	layout()->setSpacing(0);
 
+	const QString colorStyleSheet=QString("background-color: rgba(%1,%2,%3,%4); color: rgba(%5,%6,%7,%8);").arg(
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).red()),
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).green()),
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).blue()),
+		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).alpha()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).red()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).green()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).blue()),
+		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).alpha())
+	);
+
 	agenda=new QLabel(this);
-	agenda->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
-	agenda->setFont(QFont("Copperplate Gothic Bold",20,QFont::Bold));
+	agenda->setStyleSheet(colorStyleSheet);
+	agenda->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*1.25,QFont::Bold));
 	agenda->setMargin(16);
 	agenda->setAlignment(Qt::AlignCenter);
 	agenda->setWordWrap(true);
@@ -140,9 +159,9 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	layout()->addWidget(agenda);
 
 	chat=new ScrollingTextEdit(this);
-	chat->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
-	chat->setFontFamily("Copperplate Gothic Bold");
-	chat->setFontPointSize(16);
+	chat->setStyleSheet(colorStyleSheet);
+	chat->setFontFamily(settingFont);
+	chat->setFontPointSize(settingFontSize);
 	chat->document()->setDefaultStyleSheet("div.user { font-family: 'Copperplate Gothic Bold'; font-size: 16pt; } div.message { font-family: 'Copperplate Gothic Bold'; font-size: 12pt; }");
 	chat->document()->setDocumentMargin(16);
 	chat->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -152,8 +171,8 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent), agenda(nullptr), chat(nullpt
 	layout()->addWidget(chat);
 
 	status=new QLabel(this);
-	status->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
-	status->setFont(QFont("Copperplate Gothic Bold",10));
+	status->setStyleSheet(colorStyleSheet);
+	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.625)); // QLabel doesn't have setFontFamily()
 	status->setMargin(16);
 	status->setAlignment(Qt::AlignCenter);
 	status->setWordWrap(true);

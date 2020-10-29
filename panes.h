@@ -53,6 +53,10 @@ protected:
 	QLabel *status;
 	std::queue<Relay::Status::Package> statusUpdates;
 	QTimer statusClock;
+	Setting settingFont;
+	Setting settingFontSize;
+	Setting settingForegroundColor;
+	Setting settingBackgroundColor;
 	Setting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
 public slots:
