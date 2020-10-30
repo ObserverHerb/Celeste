@@ -26,14 +26,27 @@ enum class BuiltInCommands
 	VIBE,
 	VOLUME
 };
-const Command AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::DISPATCH,true);
-const Command PingCommand("ping","Let the Twitch servers know I'm still alive",CommandType::DISPATCH,true);
-const Command SongCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::DISPATCH);
-const Command ThinkCommand("think","Play some thinking music for when Herb is thinking (too hard)",CommandType::DISPATCH);
-const Command TimezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::DISPATCH);
-const Command UptimeCommand("uptime","Show how long the bot has been connected",CommandType::DISPATCH);
-const Command VibeCommand("vibe","Start the playlist of music for the stream",CommandType::DISPATCH,true);
-const Command VolumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::DISPATCH,true);
+
+class BuiltInCommand : public Command
+{
+public:
+	BuiltInCommand(const QString &name,const QString &description) : Command(name,description,CommandType::DISPATCH,false) { }
+};
+class ProtectedBuiltInCommand : public Command
+{
+public:
+	ProtectedBuiltInCommand(const QString &name,const QString &description) : Command(name,description,CommandType::DISPATCH,true) { }
+};
+
+const ProtectedBuiltInCommand AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window");
+const ProtectedBuiltInCommand PingCommand("ping","Let the Twitch servers know I'm still alive");
+const BuiltInCommand SongCommand("song","Show the title, album, and artist of the song that is currently playing");
+const BuiltInCommand ThinkCommand("think","Play some thinking music for when Herb is thinking (too hard)");
+const BuiltInCommand TimezoneCommand("timezone","Display the timezone of the system the bot is running on");
+const BuiltInCommand UptimeCommand("uptime","Show how long the bot has been connected");
+const ProtectedBuiltInCommand VibeCommand("vibe","Start the playlist of music for the stream");
+const ProtectedBuiltInCommand VolumeCommand("volume","Adjust the volume of the vibe keeper");
+
 using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
 const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{AgendaCommand.Name(),BuiltInCommands::AGENDA},
