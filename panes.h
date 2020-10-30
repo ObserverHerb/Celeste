@@ -100,6 +100,10 @@ protected:
 	QLabel *output;
 	QTimer clock;
 	Setting settingDuration;
+	Setting settingFont;
+	Setting settingFontSize;
+	Setting settingForegroundColor;
+	Setting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
 };
 

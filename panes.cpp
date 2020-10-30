@@ -339,14 +339,20 @@ const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(parent), output(new QLabel(text,this)), settingDuration(SETTINGS_CATEGORY,"Duration",5000)
+AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(parent),
+	output(new QLabel(text,this)),
+	settingDuration(SETTINGS_CATEGORY,"Duration",5000),
+	settingFont(SETTINGS_CATEGORY,"Font","Copperplate Gothic Bold"),
+	settingFontSize(SETTINGS_CATEGORY,"FontSize",20),
+	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
+	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
 {
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
 	layout()->setSpacing(0);
 
-	output->setStyleSheet("background-color: rgba(0,0,0,0); color: white;");
-	output->setFont(QFont("Copperplate Gothic Bold",20,QFont::Bold));
+	output->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	output->setFont(QFont(settingFont,settingFontSize,QFont::Bold));
 	output->setMargin(16);
 	output->setAlignment(Qt::AlignCenter);
 	output->setWordWrap(true);
