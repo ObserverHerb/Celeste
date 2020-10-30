@@ -2,6 +2,11 @@
 
 #include <QTextEdit>
 
+namespace StyleSheet
+{
+	const QString Colors(const QColor &foreground,const QColor &background);
+}
+
 class ScrollingTextEdit : public QTextEdit
 {
 public:

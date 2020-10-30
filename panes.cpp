@@ -65,16 +65,7 @@ StatusPane::StatusPane(QWidget *parent) : Pane(parent),
 	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
 {
 	output=new QTextEdit(this);
-	output->setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4); color: rgba(%5,%6,%7,%8);").arg(
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).red()),
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).green()),
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).blue()),
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).alpha()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).red()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).green()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).blue()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).alpha())
-	));
+	output->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	output->setFontFamily(settingFont);
 	output->setFontPointSize(settingFontSize);
 	output->document()->setDocumentMargin(16);
@@ -138,19 +129,8 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent),
 	layout()->setContentsMargins(0,0,0,0);
 	layout()->setSpacing(0);
 
-	const QString colorStyleSheet=QString("background-color: rgba(%1,%2,%3,%4); color: rgba(%5,%6,%7,%8);").arg(
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).red()),
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).green()),
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).blue()),
-		StringConvert::Integer(static_cast<QColor>(settingBackgroundColor).alpha()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).red()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).green()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).blue()),
-		StringConvert::Integer(static_cast<QColor>(settingForegroundColor).alpha())
-	);
-
 	agenda=new QLabel(this);
-	agenda->setStyleSheet(colorStyleSheet);
+	agenda->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	agenda->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*1.25,QFont::Bold));
 	agenda->setMargin(16);
 	agenda->setAlignment(Qt::AlignCenter);
@@ -159,7 +139,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent),
 	layout()->addWidget(agenda);
 
 	chat=new ScrollingTextEdit(this);
-	chat->setStyleSheet(colorStyleSheet);
+	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	chat->setFontFamily(settingFont);
 	chat->setFontPointSize(settingFontSize);
 	chat->document()->setDefaultStyleSheet("div.user { font-family: 'Copperplate Gothic Bold'; font-size: 16pt; } div.message { font-family: 'Copperplate Gothic Bold'; font-size: 12pt; }");
@@ -171,7 +151,7 @@ ChatPane::ChatPane(QWidget *parent) : Pane(parent),
 	layout()->addWidget(chat);
 
 	status=new QLabel(this);
-	status->setStyleSheet(colorStyleSheet);
+	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.625)); // QLabel doesn't have setFontFamily()
 	status->setMargin(16);
 	status->setAlignment(Qt::AlignCenter);
