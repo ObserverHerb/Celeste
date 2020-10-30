@@ -2,6 +2,8 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
+#include <QDateTime>
+#include <QTimeZone>
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
@@ -202,7 +204,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,SongCommand,ThinkCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 	}
 	catch (const std::runtime_error &exception)
@@ -250,6 +252,9 @@ void Window::FollowChat()
 			}
 			case BuiltInCommands::THINK:
 				StageEphemeralPane(new AudioAnnouncePane("Shh... Herb is thinking...",settingThinkingSound));
+				break;
+			case BuiltInCommands::TIMEZONE:
+				chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 				break;
 			case BuiltInCommands::UPTIME:
 			{

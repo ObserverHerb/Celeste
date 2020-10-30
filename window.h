@@ -21,6 +21,7 @@ enum class BuiltInCommands
 	PING,
 	SONG,
 	THINK,
+	TIMEZONE,
 	UPTIME,
 	VIBE,
 	VOLUME
@@ -29,6 +30,7 @@ const Command AgendaCommand("agenda","Set the agenda of the stream, displayed in
 const Command PingCommand("ping","Let the Twitch servers know I'm still alive",CommandType::DISPATCH,true);
 const Command SongCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::DISPATCH);
 const Command ThinkCommand("think","Play some thinking music for when Herb is thinking (too hard)",CommandType::DISPATCH);
+const Command TimezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::DISPATCH);
 const Command UptimeCommand("uptime","Show how long the bot has been connected",CommandType::DISPATCH);
 const Command VibeCommand("vibe","Start the playlist of music for the stream",CommandType::DISPATCH,true);
 const Command VolumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::DISPATCH,true);
@@ -38,6 +40,7 @@ const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{PingCommand.Name(),BuiltInCommands::PING},
 	{SongCommand.Name(),BuiltInCommands::SONG},
 	{ThinkCommand.Name(),BuiltInCommands::THINK},
+	{TimezoneCommand.Name(),BuiltInCommands::TIMEZONE},
 	{UptimeCommand.Name(),BuiltInCommands::UPTIME},
 	{VibeCommand.Name(),BuiltInCommands::VIBE},
 	{VolumeCommand.Name(),BuiltInCommands::VOLUME}
