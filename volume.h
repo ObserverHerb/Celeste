@@ -44,6 +44,16 @@ namespace Volume
 			));
 			emit AdjustmentNeeded();
 		}
+		void Stop()
+		{
+			disconnect(this,&Fader::AdjustmentNeeded,this,&Fader::Adjust);
+			deleteLater();
+		}
+		void Abort()
+		{
+			Stop();
+			player->setVolume(initialVolume); // FIXME: volume doesn't return to initial value
+		}
 	protected:
 		Setting settingDefaultDuration;
 		QMediaPlayer *player;

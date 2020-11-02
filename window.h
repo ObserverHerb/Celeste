@@ -9,6 +9,7 @@
 #include "globals.h"
 #include "command.h"
 #include "settings.h"
+#include "volume.h"
 #include "panes.h"
 
 const QString SETTINGS_CATEGORY_VIBE="Vibe";
@@ -72,6 +73,7 @@ public:
 protected:
 	QTcpSocket *ircSocket;
 	Pane *visiblePane;
+	Volume::Fader *vibeFader;
 	QWidget *background;
 	QMediaPlayer *vibeKeeper;
 	QMediaPlaylist vibeSources;

@@ -7,7 +7,6 @@
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
-#include "volume.h"
 #include "receivers.h"
 
 std::chrono::milliseconds Window::uptime=TimeConvert::Now();
@@ -28,6 +27,7 @@ std::chrono::milliseconds Window::uptime=TimeConvert::Now();
 Window::Window() : QWidget(nullptr),
 	ircSocket(nullptr),
 	visiblePane(nullptr),
+	vibeFader(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
@@ -274,11 +274,20 @@ void Window::FollowChat()
 				vibeKeeper->play();
 				break;
 			case BuiltInCommands::VOLUME:
+				if (command.Message().isEmpty())
+				{
+					if (vibeFader)
+					{
+						vibeFader->Abort();
+						chatPane->Alert("Aborting volume change...");
+					}
+					break;
+				}
 				try
 				{
-					Volume::Fader *fader=new Volume::Fader(vibeKeeper,command.Message(),this);
-					connect(fader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
-					fader->Start();
+					vibeFader=new Volume::Fader(vibeKeeper,command.Message(),this);
+					connect(vibeFader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
+					vibeFader->Start();
 				}
 				catch (const std::range_error &exception)
 				{
