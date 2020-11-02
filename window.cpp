@@ -146,12 +146,12 @@ void Window::DataAvailable()
  *
  * \param pane The pane to make visible
  */
-void Window::SwapPane(Pane *pane)
+void Window::SwapPane(PersistentPane *pane)
 {
 	if (visiblePane) visiblePane->deleteLater();
 	visiblePane=pane;
 	background->layout()->addWidget(visiblePane);
-	connect(this,&Window::Print,visiblePane,&Pane::Print);
+	connect(this,&Window::Print,visiblePane,&PersistentPane::Print);
 }
 
 /*!
@@ -165,7 +165,7 @@ void Window::Authenticate()
 {
 	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
-	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&Pane::Print);
+	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
@@ -184,7 +184,7 @@ void Window::JoinStream()
 {
 	ChannelJoinReceiver *channelJoinReceiver=new ChannelJoinReceiver(this);
 	connect(this,&Window::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
-	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&Pane::Print);
+	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Succeeded,this,&Window::FollowChat);
 	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
 }
@@ -221,7 +221,7 @@ void Window::FollowChat()
 	SwapPane(chatPane);
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
-	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&Pane::Print);
+	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
 		if (settingAdministrator != viewer.Name()) StageEphemeralPane(new AudioAnnouncePane(QString("Please welcome %1 to the chat.").arg(viewer.Name()),settingArrivalSound));
 	});

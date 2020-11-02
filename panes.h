@@ -16,16 +16,16 @@
 #include "settings.h"
 #include "widgets.h"
 
-class Pane : public QWidget
+class PersistentPane : public QWidget
 {
 	Q_OBJECT
 public:
-	Pane(QWidget *parent=nullptr) : QWidget(parent) { }
+	PersistentPane(QWidget *parent=nullptr) : QWidget(parent) { }
 public slots:
 	virtual void Print(const QString text)=0;
 };
 
-class StatusPane : public Pane
+class StatusPane : public PersistentPane
 {
 	Q_OBJECT
 public:
@@ -41,7 +41,7 @@ public slots:
 	void Print(const QString text) override;
 };
 
-class ChatPane : public Pane
+class ChatPane : public PersistentPane
 {
 	Q_OBJECT
 public:

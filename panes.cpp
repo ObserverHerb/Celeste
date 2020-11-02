@@ -5,8 +5,9 @@
 #include <QLabel>
 
 /*!
- * \class Pane
- * \brief Abstract base class that forms the foundation of all panes in the system
+ * \class PersistentPane
+ * \brief Abstract base class that forms the foundation of long lived panes in
+ * the system
  *
  * A pane fills the primary viewing area with a group of related content,
  * similar to the way a fullscreen window does on a desktop system or an
@@ -18,7 +19,7 @@
  */
 
 /*!
- * \fn Pane::Pane
+ * \fn PersistentPane::PersistentPane
  * \brief Default constructor
  *
  * You won't be able to manually construct a pane. It serves solely as an
@@ -29,7 +30,7 @@
  */
 
 /*!
- * \fn Pane::Print
+ * \fn PersistentPane::Print
  * \brief Default text output for a pane
  *
  * Most panes will use this to display text on screen in some manner.
@@ -58,7 +59,7 @@ const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-StatusPane::StatusPane(QWidget *parent) : Pane(parent),
+StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
 	settingFont(SETTINGS_CATEGORY,"Font","Droid Sans Mono"),
 	settingFontSize(SETTINGS_CATEGORY,"FontSize",10),
 	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
@@ -115,7 +116,7 @@ const QString ChatPane::SETTINGS_CATEGORY="ChatPane";
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-ChatPane::ChatPane(QWidget *parent) : Pane(parent),
+ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	agenda(nullptr),
 	chat(nullptr),
 	status(nullptr),

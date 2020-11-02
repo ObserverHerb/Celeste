@@ -72,7 +72,7 @@ public:
 	void DataAvailable();
 protected:
 	QTcpSocket *ircSocket;
-	Pane *visiblePane;
+	PersistentPane *visiblePane;
 	Volume::Fader *vibeFader;
 	QWidget *background;
 	QMediaPlayer *vibeKeeper;
@@ -88,7 +88,7 @@ protected:
 	Setting settingThinkingSound;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	static std::chrono::milliseconds uptime;
-	void SwapPane(Pane *pane);
+	void SwapPane(PersistentPane *pane);
 	void Authenticate();
 	void StageEmpeheralPane(EphemeralPane &&pane) { StageEphemeralPane(&pane); }
 	void StageEphemeralPane(EphemeralPane *pane);
