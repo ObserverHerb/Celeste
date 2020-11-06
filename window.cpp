@@ -39,8 +39,8 @@ Window::Window() : QWidget(nullptr),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
-	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival",""),
-	settingThinkingSound(SETTINGS_CATEGORY_EVENTS,"Thinking","")
+	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
+	settingThinkingSound(SETTINGS_CATEGORY_EVENTS,"Thinking")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
