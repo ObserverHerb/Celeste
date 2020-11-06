@@ -111,6 +111,11 @@ bool Window::event(QEvent *event)
 void Window::Connected()
 {
 	emit Print("Connected!");
+	if (!settingAdministrator)
+	{
+		Print("Please set the Administrator under the Authorization section in your settings file");
+		return;
+	}
 	Print(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)));
 	emit Print("Sending credentials...");
 	ircSocket->write(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken)).toLocal8Bit());
