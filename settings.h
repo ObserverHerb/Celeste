@@ -22,8 +22,8 @@ public:
 	operator QSize() const { return source.value(name,defaultValue).toSize(); }
 	operator QByteArray() const { return Value().toString().toLocal8Bit(); }
 protected:
-	const QString name;
-	const QVariant defaultValue;
+	QString name;
+	QVariant defaultValue;
 	QSettings source;
 };
 
