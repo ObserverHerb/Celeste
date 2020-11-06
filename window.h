@@ -78,6 +78,7 @@ protected:
 	QMediaPlayer *vibeKeeper;
 	QMediaPlaylist vibeSources;
 	QTimer helpClock;
+	Setting settingWindowSize;
 	Setting settingHelpCooldown;
 	Setting settingVibePlaylist;
 	Setting settingOAuthToken;
@@ -95,6 +96,7 @@ protected:
 	void ReleaseLiveEphemeralPane();
 	std::tuple<QString,QImage> CurrentSong() const;
 	const QString Uptime() const;
+	const QSize ScreenThird();
 signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);

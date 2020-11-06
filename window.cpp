@@ -1,3 +1,5 @@
+#include <QGuiApplication>
+#include <QScreen>
 #include <QEvent>
 #include <QTimer>
 #include <QLayout>
@@ -30,6 +32,7 @@ Window::Window() : QWidget(nullptr),
 	vibeFader(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
+	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
@@ -40,7 +43,10 @@ Window::Window() : QWidget(nullptr),
 	settingThinkingSound(SETTINGS_CATEGORY_EVENTS,"Thinking","")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
-	setFixedSize(537,467);
+	if (settingWindowSize)
+		setFixedSize(settingWindowSize);
+	else
+		setFixedSize(ScreenThird());
 
 	setLayout(new QGridLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
@@ -416,4 +422,16 @@ const QString Window::Uptime() const
 	std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
 	std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-minutes);
 	return QString("Connection to Twitch has been live for %1 hours, %2 minutes, and %3 seconds").arg(StringConvert::Integer(hours.count()),StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count()));
+}
+
+/*!
+ * \fn Window::ScreenThird
+ * \brief Calculates a third of the user's screen size
+ * \return A square QSize the size of 1/3 the shortes side of the screen
+ */
+const QSize Window::ScreenThird()
+{
+	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
+	int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
+	return {shortestSide,shortestSide};
 }

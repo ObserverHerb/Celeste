@@ -2,6 +2,7 @@
 
 #include <QSettings>
 #include <QColor>
+#include <QSize>
 #include "globals.h"
 
 class Setting
@@ -18,6 +19,7 @@ public:
 	operator std::chrono::milliseconds() const { return std::chrono::milliseconds(Value().toUInt()); }
 	operator std::chrono::seconds() const { return std::chrono::seconds(Value().toUInt()); }
 	operator QColor() const { return source.value(name,defaultValue).value<QColor>(); }
+	operator QSize() const { return source.value(name,defaultValue).toSize(); }
 	operator QByteArray() const { return Value().toString().toLocal8Bit(); }
 protected:
 	const QString name;
