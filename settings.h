@@ -20,6 +20,7 @@ public:
 	operator std::chrono::seconds() const { return std::chrono::seconds(Value().toUInt()); }
 	operator QColor() const { return source.value(name,defaultValue).value<QColor>(); }
 	operator QSize() const { return source.value(name,defaultValue).toSize(); }
+	void operator=(const QSize &size) { source.setValue(name,size); }
 	operator QByteArray() const { return Value().toString().toLocal8Bit(); }
 protected:
 	QString name;
