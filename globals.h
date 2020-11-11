@@ -6,18 +6,18 @@
 #include <functional>
 #include <stdexcept>
 
-const QString ORGANIZATION_NAME("Sky-Meyg");
-const QString APPLICATION_NAME("Celeste");
-const QString TWITCH_HOST("irc.chat.twitch.tv");
-const unsigned int TWITCH_PORT=6667;
-const QString TWITCH_PING("PING :tmi.twitch.tv\n");
-const QString TWITCH_PONG("PONG :tmi.twitch.tv\n");
-const QString IRC_COMMAND_USER("NICK %1\n");
-const QString IRC_COMMAND_PASSWORD("PASS oauth:%1\n");
-const QString IRC_COMMAND_JOIN("JOIN #%1\n");
-const QString IRC_VALIDATION_AUTHENTICATION("You are in a maze of twisty passages, all alike.");
-const QString IRC_VALIDATION_JOIN("End of /NAMES list");
-const QString COMMANDS_LIST_FILENAME("commands.json");
+inline const char *ORGANIZATION_NAME="Sky-Meyg";
+inline const char *APPLICATION_NAME="Celeste";
+inline const char *TWITCH_HOST="irc.chat.twitch.tv";
+inline const unsigned int TWITCH_PORT=6667;
+inline const char *TWITCH_PING="PING :tmi.twitch.tv\n";
+inline const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
+inline const char *IRC_COMMAND_USER="NICK %1\n";
+inline const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
+inline const char *IRC_COMMAND_JOIN="JOIN #%1\n";
+inline const char *IRC_VALIDATION_AUTHENTICATION="You are in a maze of twisty passages, all alike.";
+inline const char *IRC_VALIDATION_JOIN="End of /NAMES list";
+inline const char *COMMANDS_LIST_FILENAME="commands.json";
 
 namespace StringConvert
 {

@@ -28,5 +28,5 @@ protected:
 	QSettings source;
 };
 
-const QString SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
+inline const char *SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
 inline Setting settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator");

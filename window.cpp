@@ -197,7 +197,7 @@ void Window::JoinStream()
 	connect(this,&Window::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Succeeded,this,&Window::FollowChat);
-	ircSocket->write(StringConvert::ByteArray(IRC_COMMAND_JOIN.arg(static_cast<QString>(settingAdministrator))));
+	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(static_cast<QString>(settingAdministrator))));
 }
 
 /*!

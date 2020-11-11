@@ -12,9 +12,9 @@
 #include "volume.h"
 #include "panes.h"
 
-const QString SETTINGS_CATEGORY_VIBE="Vibe";
-const QString SETTINGS_CATEGORY_WINDOW="Window";
-const QString SETTINGS_CATEGORY_EVENTS="Events";
+inline const char *SETTINGS_CATEGORY_VIBE="Vibe";
+inline const char *SETTINGS_CATEGORY_WINDOW="Window";
+inline const char *SETTINGS_CATEGORY_EVENTS="Events";
 
 enum class BuiltInCommands
 {
