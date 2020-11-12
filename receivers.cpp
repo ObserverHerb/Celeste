@@ -135,8 +135,7 @@ void ChatMessageReceiver::Process(const QString data)
 		QString commandName=commandSegments.at(0).mid(1);
 		commandSegments.pop_front();
 		QString parameter=commandSegments.join(" ");
-		Command *command=(commands.find(commandName) != commands.end() ? &commands.at(commandName) : (commandAliases.find(commandName) != commandAliases.end() ? &commandAliases.at(commandName).get() : nullptr));
-		if (command)
+		if (Command *command=FindCommand(commandName); command)
 		{
 			if (command->Protect() && settingAdministrator != user)
 			{
@@ -179,4 +178,11 @@ void ChatMessageReceiver::IdentifyViewer(const QString &name)
 	Viewer viewer(name);
 	if (viewers.find(name) == viewers.end()) emit ArrivalConfirmed(name);
 	viewers.emplace(name,viewer);
+}
+
+Command* ChatMessageReceiver::FindCommand(const QString &name)
+{
+	if (commands.find(name) != commands.end()) return &commands.at(name);
+	if (commandAliases.find(name) != commandAliases.end()) return &commandAliases.at(name).get();
+	return nullptr;
 }

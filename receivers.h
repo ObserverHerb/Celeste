@@ -65,6 +65,7 @@ protected:
 	std::vector<Command> userCommands;
 	Viewers viewers;
 	void IdentifyViewer(const QString &name);
+	Command* FindCommand(const QString &name);
 signals:
 	void Alert(const QString &text);
 	void ArrivalConfirmed(const Viewer &viewer);
