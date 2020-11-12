@@ -84,7 +84,7 @@ StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
  * \brief Adds a string of text to the end of the text currently being displayed
  * \param text The text to add
  */
-void StatusPane::Print(const QString text)
+void StatusPane::Print(const QString &text)
 {
 	output->insertPlainText(text);
 	output->insertPlainText("\n");
@@ -190,7 +190,7 @@ void ChatPane::SetAgenda(const QString &text)
  * the ChatPane
  * \param text The message to add
  */
-void ChatPane::Print(const QString text)
+void ChatPane::Print(const QString &text)
 {
 	chat->insertHtml(text);
 	chat->insertPlainText("\n");
