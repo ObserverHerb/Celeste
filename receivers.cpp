@@ -89,6 +89,10 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 			jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
 			jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
 		};
+		if (jsonObject.contains(JSON_KEY_COMMAND_ALIASES))
+		{
+			for (const QJsonValue &value : jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray()) commandAliases.insert_or_assign(value.toString(),commands.at(name));
+		}
 	}
 	for (const Command &command : builtInCommands) commands[command.Name()]=command;
 	for (const std::pair<QString,Command> command : commands)
@@ -131,20 +135,20 @@ void ChatMessageReceiver::Process(const QString data)
 		QString commandName=commandSegments.at(0).mid(1);
 		commandSegments.pop_front();
 		QString parameter=commandSegments.join(" ");
-		if (commands.find(commandName) != commands.end())
+		Command *command=(commands.find(commandName) != commands.end() ? &commands.at(commandName) : (commandAliases.find(commandName) != commandAliases.end() ? &commandAliases.at(commandName).get() : nullptr));
+		if (command)
 		{
-			Command command=commands.at(commandName);
-			if (command.Protect() && settingAdministrator != user)
+			if (command->Protect() && settingAdministrator != user)
 			{
-				emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command.Name(),user));
+				emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
 				return;
 			}
-			switch (command.Type())
+			switch (command->Type())
 			{
 			case CommandType::VIDEO:
-				if (command.Random())
+				if (command->Random())
 				{
-					QDir directory(command.Path());
+					QDir directory(command->Path());
 					QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
 					if (videos.size() < 1)
 					{
@@ -155,14 +159,14 @@ void ChatMessageReceiver::Process(const QString data)
 				}
 				else
 				{
-					emit PlayVideo(command.Path());
+					emit PlayVideo(command->Path());
 				}
 				break;
 			case CommandType::AUDIO:
-				emit PlayAudio(user,command.Message(),command.Path());
+				emit PlayAudio(user,command->Message(),command->Path());
 				break;
 			case CommandType::DISPATCH:
-				DispatchCommand({command,parameter});
+				DispatchCommand({*command,parameter});
 				break;
 			};
 		}

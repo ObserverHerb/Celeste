@@ -41,6 +41,7 @@ protected:
 };
 
 inline const char *JSON_KEY_COMMAND_NAME="command";
+inline const char *JSON_KEY_COMMAND_ALIASES="aliases";
 inline const char *JSON_KEY_COMMAND_DESCRIPTION="description";
 inline const char *JSON_KEY_COMMAND_TYPE="type";
 inline const char *JSON_KEY_COMMAND_RANDOM_PATH="random";

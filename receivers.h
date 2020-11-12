@@ -61,6 +61,7 @@ public:
 	const Command RandomCommand() const;
 protected:
 	std::unordered_map<QString,Command> commands;
+	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;
 	std::vector<Command> userCommands;
 	Viewers viewers;
 	void IdentifyViewer(const QString &name);
