@@ -40,9 +40,9 @@ protected:
 	QString message;
 };
 
-const QString JSON_KEY_COMMAND_NAME("command");
-const QString JSON_KEY_COMMAND_DESCRIPTION("description");
-const QString JSON_KEY_COMMAND_TYPE("type");
-const QString JSON_KEY_COMMAND_RANDOM_PATH("random");
-const QString JSON_KEY_COMMAND_PATH("path");
-const QString JSON_KEY_COMMAND_MESSAGE("message");
+inline const char *JSON_KEY_COMMAND_NAME="command";
+inline const char *JSON_KEY_COMMAND_DESCRIPTION="description";
+inline const char *JSON_KEY_COMMAND_TYPE="type";
+inline const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
+inline const char *JSON_KEY_COMMAND_PATH="path";
+inline const char *JSON_KEY_COMMAND_MESSAGE="message";
