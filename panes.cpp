@@ -364,6 +364,12 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 	connect(&clock,&QTimer::timeout,this,&AnnouncePane::Finished);
 }
 
+AnnouncePane::AnnouncePane(const std::vector<std::pair<QString,double>> &lines,QWidget *parent) : AnnouncePane("",parent)
+{
+	output->setText(BuildParagraph(lines));
+}
+
+
 /*!
  * \fn AnnouncePane::Show
  * \brief Displays the pane
@@ -391,6 +397,19 @@ void AnnouncePane::Polish()
 	layout()->addWidget(output);
 }
 
+const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,double>> &lines)
+{
+	QString paragraph;
+	for (const std::pair<QString,double> &line : lines)
+	{
+		if (line.second == 1)
+			paragraph.append(QString("%1").arg(line.first));
+		else
+			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.first,StringConvert::Integer(static_cast<int>(settingFontSize)*line.second)));
+	}
+	return paragraph;
+}
+
 /*!
  * \class AudioAnnouncePane
  * \brief Similar to an AnnouncePane, but plays audio along with the message
@@ -412,6 +431,11 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	}); // TODO: report loading failures to status section of chat pane
+}
+
+AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
+{
+	output->setText(BuildParagraph(lines));
 }
 
 /*!

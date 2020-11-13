@@ -92,9 +92,11 @@ class AnnouncePane : public EphemeralPane
 	Q_OBJECT
 public:
 	AnnouncePane(const QString &text,QWidget *parent=nullptr);
+	AnnouncePane(const std::vector<std::pair<QString,double>> &lines,QWidget *parent=nullptr);
 	void Show() override;
 	virtual void Polish();
 	void AccentColor(const QColor &color) { accentColor=color; }
+	const QString BuildParagraph(const std::vector<std::pair<QString,double>> &lines);
 protected:
 	QColor accentColor;
 	QLabel *output;
@@ -112,6 +114,7 @@ class AudioAnnouncePane : public AnnouncePane
 	Q_OBJECT
 public:
 	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent=nullptr);
+	AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent=nullptr);
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
