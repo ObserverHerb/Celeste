@@ -6,6 +6,11 @@
 #include <QGridLayout>
 #include <QDateTime>
 #include <QTimeZone>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
@@ -35,6 +40,7 @@ Window::Window() : QWidget(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
+	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
@@ -215,7 +221,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 	}
 	catch (const std::runtime_error &exception)
@@ -271,6 +277,34 @@ void Window::FollowChat()
 			case BuiltInCommands::TIMEZONE:
 				chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 				break;
+			case BuiltInCommands::UPDATE:
+			{
+				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+				QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane](QNetworkReply *reply) {
+					if (reply->error())
+					{
+						chatPane->Alert(QString("Network call failed: %1").arg(reply->errorString()));
+						return;
+					}
+					QJsonParseError jsonError;
+					QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+					if (json.isNull()) chatPane->Alert(QString("Unregonized reponse from Twitch: %1").arg(jsonError.errorString()));
+					std::map<QString,QUrl> emotes;
+					int x=0;
+					for (const QJsonValue &emote : json.object().value("emoticons").toObject())
+					{
+						if (x++ > 10) break;
+						Print(emote.toObject()["regex"].toString());
+						//emotes[emote.toObject().value("regex").toString()]=emote.toObject().value("images").toArray().at(0).toObject().value("url").toString();
+					}
+					manager->deleteLater();
+				});
+				QNetworkRequest request({TWITCH_API_ENDPOINT_EMOTE_LIST});
+				request.setRawHeader("Accept",TWITCH_API_VERSION_5);
+				request.setRawHeader("Client-ID",settingClientID);
+				manager->get(request);
+				break;
+			}
 			case BuiltInCommands::UPTIME:
 			{
 				Relay::Status::Context *statusContext=chatPane->Alert(Uptime());
@@ -406,6 +440,23 @@ std::tuple<QString,QImage> Window::CurrentSong() const
 		),
 		vibeKeeper->metaData("CoverArtImage").value<QImage>()
 	};
+}
+
+void Window::RefreshEmoteDatabase()
+{
+	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+	QObject::connect(manager,&QNetworkAccessManager::finished,[](QNetworkReply *reply) {
+		if (reply->error())
+		{
+			qDebug() << reply->errorString();
+			return;
+		}
+
+				QString answer = reply->readAll();
+
+				qDebug() << answer;
+			}
+		);
 }
 
 /*!

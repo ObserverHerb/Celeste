@@ -18,6 +18,8 @@ inline const char *IRC_COMMAND_JOIN="JOIN #%1\n";
 inline const char *IRC_VALIDATION_AUTHENTICATION="You are in a maze of twisty passages, all alike.";
 inline const char *IRC_VALIDATION_JOIN="End of /NAMES list";
 inline const char *COMMANDS_LIST_FILENAME="commands.json";
+inline const char *TWITCH_API_ENDPOINT_EMOTE_LIST="https://api.twitch.tv/kraken/chat/emoticons";
+inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
 
 namespace StringConvert
 {
