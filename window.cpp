@@ -119,8 +119,8 @@ void Window::Connected()
 	}
 	Print(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)));
 	emit Print("Sending credentials...");
-	ircSocket->write(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken)).toLocal8Bit());
-	ircSocket->write(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)).toLocal8Bit());
+	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken))));
+	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
 }
 
 /*!
