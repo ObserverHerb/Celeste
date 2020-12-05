@@ -83,6 +83,7 @@ protected:
 	Setting settingVibePlaylist;
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
+	Setting settingChannel;
 	Setting settingBackgroundColor;
 	Setting settingAccentColor;
 	Setting settingArrivalSound;

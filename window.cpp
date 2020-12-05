@@ -37,6 +37,7 @@ Window::Window() : QWidget(nullptr),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
+	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
@@ -197,7 +198,7 @@ void Window::JoinStream()
 	connect(this,&Window::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Succeeded,this,&Window::FollowChat);
-	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(static_cast<QString>(settingAdministrator))));
+	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel) : static_cast<QString>(settingAdministrator))));
 }
 
 /*!
