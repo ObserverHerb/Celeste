@@ -113,64 +113,86 @@ const Command ChatMessageReceiver::RandomCommand() const
 
 void ChatMessageReceiver::Process(const QString data)
 {
-	QStringList messageSegments=data.split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	if (messageSegments.size() < 2)
+	try
 	{
-		emit Failed();
-		return;
-	}
-	QString hostmask=QString(messageSegments.front());
-	messageSegments.pop_front();
-	QStringList hostmaskSegments=hostmask.split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	if (hostmaskSegments.size() < 1)
-	{
-		emit Failed();
-		return;
-	}
-	QString user=hostmaskSegments.front();
-	IdentifyViewer(user);
-	if (messageSegments.at(0).at(0) == "!")
-	{
-		QStringList commandSegments=messageSegments.at(0).trimmed().split(" ");
-		QString commandName=commandSegments.at(0).mid(1);
-		commandSegments.pop_front();
-		QString parameter=commandSegments.join(" ");
-		if (Command *command=FindCommand(commandName); command)
+		QStringList messageSegments;
+		if (messageSegments=data.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid payload");
+		TagMap tags=ParseTags(messageSegments.takeFirst());
+		if (messageSegments=messageSegments.join("\n").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid number of message segments");
+		QString user=ParseHostmask(messageSegments.takeFirst());
+		IdentifyViewer(user);
+		if (messageSegments.at(0).at(0) == "!")
 		{
-			if (command->Protect() && settingAdministrator != user)
+			auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
+			if (Command *command=FindCommand(commandName); command)
 			{
-				emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
-				return;
-			}
-			switch (command->Type())
-			{
-			case CommandType::VIDEO:
-				if (command->Random())
+				if (command->Protect() && settingAdministrator != user)
 				{
-					QDir directory(command->Path());
-					QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
-					if (videos.size() < 1)
+					emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
+					return;
+				}
+				switch (command->Type())
+				{
+				case CommandType::VIDEO:
+					if (command->Random())
 					{
-						Print("No videos found");
-						break;
+						QDir directory(command->Path());
+						QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
+						if (videos.size() < 1)
+						{
+							Print("No videos found");
+							break;
+						}
+						emit PlayVideo(directory.absoluteFilePath(videos[Random::Bounded(0,videos.size())]));
 					}
-					emit PlayVideo(directory.absoluteFilePath(videos[Random::Bounded(0,videos.size())]));
-				}
-				else
-				{
-					emit PlayVideo(command->Path());
-				}
-				break;
-			case CommandType::AUDIO:
-				emit PlayAudio(user,command->Message(),command->Path());
-				break;
-			case CommandType::DISPATCH:
-				DispatchCommand({*command,parameter});
-				break;
-			};
+					else
+					{
+						emit PlayVideo(command->Path());
+					}
+					break;
+				case CommandType::AUDIO:
+					emit PlayAudio(user,command->Message(),command->Path());
+					break;
+				case CommandType::DISPATCH:
+					DispatchCommand({*command,parameter});
+					break;
+				};
+			}
 		}
+		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2</div><br>").arg(user,messageSegments.join(":"),tags.at("color")));
 	}
-	emit Print(QString("<div class='user'>%1</div><div class='message'>%2</div><br>").arg(user,messageSegments.join(":")));
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Alert(exception.what());
+		emit Failed();
+	}
+}
+
+ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
+{
+	TagMap result;
+	for (const QString &pair : tags.split(";",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)))
+	{
+		QStringList components=pair.split("=",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
+		result[components.at(KEY)]=components.at(VALUE);
+	}
+	return result;
+}
+
+QString ChatMessageReceiver::ParseHostmask(const QString &mask)
+{
+	QStringList hostmaskSegments=mask.split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+	if (hostmaskSegments.size() < 1) throw std::runtime_error("Invalid hostmask");
+	return hostmaskSegments.front();
+}
+
+std::tuple<QString,QString> ChatMessageReceiver::ParseCommand(const QString &message)
+{
+	QStringList commandSegments=message.trimmed().split(" ");
+	QString commandName=commandSegments.takeFirst().mid(1);
+	QString parameter=commandSegments.join(" ");
+	return std::make_tuple(commandName,parameter);
 }
 
 void ChatMessageReceiver::IdentifyViewer(const QString &name)
