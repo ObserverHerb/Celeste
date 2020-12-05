@@ -234,13 +234,16 @@ void Window::FollowChat()
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
-	connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
-		if (settingAdministrator != viewer.Name()) StageEphemeralPane(new AudioAnnouncePane({
-			{"Please welcome<br>",1},
-			{QString("%1<br>").arg(viewer.Name()),1.5},
-			{"to the chat",1}
-		},settingArrivalSound));
-	});
+	if (settingArrivalSound)
+	{
+		connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
+			if (settingAdministrator != viewer.Name()) StageEphemeralPane(new AudioAnnouncePane({
+				{"Please welcome<br>",1},
+				{QString("%1<br>").arg(viewer.Name()),1.5},
+				{"to the chat",1}
+			},settingArrivalSound));
+		});
+	}
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
