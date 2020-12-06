@@ -121,7 +121,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	chat(nullptr),
 	status(nullptr),
 	settingFont(SETTINGS_CATEGORY,"Font","Copperplate Gothic Bold"),
-	settingFontSize(SETTINGS_CATEGORY,"FontSize",16),
+	settingFontSize(SETTINGS_CATEGORY,"FontSize",12),
 	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
 	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000"),
 	settingStatusInterval(SETTINGS_CATEGORY,"StatusInterval",5000)
@@ -132,7 +132,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 
 	agenda=new QLabel(this);
 	agenda->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
-	agenda->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*1.25,QFont::Bold));
+	agenda->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*1.666,QFont::Bold));
 	agenda->setMargin(16);
 	agenda->setAlignment(Qt::AlignCenter);
 	agenda->setWordWrap(true);
@@ -143,8 +143,8 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	chat->setFontFamily(settingFont);
 	chat->setFontPointSize(settingFontSize);
-	chat->document()->setDefaultStyleSheet("div.user { font-family: 'Copperplate Gothic Bold'; font-size: 16pt; } div.message { font-family: 'Copperplate Gothic Bold'; font-size: 12pt; }");
-	chat->document()->setDocumentMargin(16);
+	chat->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize)))); // FIXME: this isn't caught in the main window
+	chat->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
 	chat->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setFrameStyle(QFrame::NoFrame);
@@ -153,7 +153,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 
 	status=new QLabel(this);
 	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
-	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.625)); // QLabel doesn't have setFontFamily()
+	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.833)); // QLabel doesn't have setFontFamily()
 	status->setMargin(16);
 	status->setAlignment(Qt::AlignCenter);
 	status->setWordWrap(true);
