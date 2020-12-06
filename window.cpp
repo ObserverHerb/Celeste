@@ -214,19 +214,25 @@ void Window::JoinStream()
 void Window::FollowChat()
 {
 	ChatMessageReceiver *chatMessageReceiver=nullptr;
+	ChatPane *chatPane=nullptr;
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
 			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
+		chatPane=new ChatPane(this);
 	}
 	catch (const std::runtime_error &exception)
 	{
 		visiblePane->Print(QString("There was a problem starting chat\n%1").arg(exception.what()));
 		return;
 	}
+	catch (const std::range_error &exception)
+	{
+		visiblePane->Print(QString("There was a problem loading resources for chat\n%1").arg(exception.what()));
+		return;
+	}
 
-	ChatPane *chatPane=new ChatPane(this);
 	connect(this,&Window::Ponging,[chatPane]() {
 		chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 	});
