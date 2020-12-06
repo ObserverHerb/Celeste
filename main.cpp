@@ -8,6 +8,7 @@ int main(int argc,char *argv[])
 	QApplication application(argc,argv);
 	application.setOrganizationName(ORGANIZATION_NAME);
 	application.setApplicationName(APPLICATION_NAME);
+	application.setWindowIcon(QIcon(":/celeste_256.png"));
 #ifdef Q_OS_WIN
 	Win32Window window;
 #else

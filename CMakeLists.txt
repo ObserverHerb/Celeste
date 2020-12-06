@@ -34,6 +34,7 @@ add_executable(Celeste
 	window.h
 	window.cpp
 	main.cpp
+	resources/resources.qrc
 )
 
 if (WIN32)
