@@ -227,11 +227,6 @@ void Window::FollowChat()
 		visiblePane->Print(QString("There was a problem starting chat\n%1").arg(exception.what()));
 		return;
 	}
-	catch (const std::range_error &exception)
-	{
-		visiblePane->Print(QString("There was a problem loading resources for chat\n%1").arg(exception.what()));
-		return;
-	}
 
 	connect(this,&Window::Ponging,[chatPane]() {
 		chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
