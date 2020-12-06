@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QtConcurrent>
 #include <vector>
 #include "command.h"
 #include "viewers.h"
@@ -58,6 +59,7 @@ class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_er
 public:
 	ChatMessageReceiver(QObject *parent) : ChatMessageReceiver(std::vector<Command>(),parent) { }
 	ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent=nullptr);
+	~ChatMessageReceiver();
 	void AttachCommand(const Command &command);
 	const Command RandomCommand() const;
 protected:
@@ -71,6 +73,7 @@ protected:
 	TagMap ParseTags(const QString &tags);
 	QString ParseHostmask(const QString &mask);
 	std::tuple<QString,QString> ParseCommand(const QString &message);
+	QFuture<void> worker;
 signals:
 	void Refresh();
 	void Alert(const QString &text);

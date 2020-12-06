@@ -6,7 +6,6 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QStandardPaths>
-#include <QtConcurrent>
 #include <vector>
 #include <stdexcept>
 #include <execution>
@@ -105,7 +104,7 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 		if (!command.second.Protect()) userCommands.push_back(command.second);
 	}
 
-	QtConcurrent::run([this,dataPath]() {
+	worker=QtConcurrent::run([this,dataPath]() {
 		QFile emoteListFile(dataPath.filePath(EMOTE_FILENAME));
 		if (!emoteListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open emote list file: %1").arg(emoteListFile.fileName()).toStdString());
 		QJsonParseError jsonError;
@@ -119,6 +118,11 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 			emoticons[key]=object.value(key).toString();
 		});
 	});
+}
+
+ChatMessageReceiver::~ChatMessageReceiver()
+{
+	worker.waitForFinished();
 }
 
 void ChatMessageReceiver::AttachCommand(const Command &command)
