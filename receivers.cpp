@@ -189,19 +189,22 @@ void ChatMessageReceiver::Process(const QString data)
 			if (QString emoteName=word.trimmed(); emoticons.find(emoteName) != emoticons.end())
 			{
 				QString emotePath=QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(emoteName));
-				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-				QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,emoteName,emotePath](QNetworkReply *reply) {
-					if (reply->error())
-					{
-						emit Alert(QString("Failed to download %1 emote: %2").arg(emoteName,reply->errorString()));
-						return;
-					}
-					if (!QImage::fromData(reply->readAll()).save(emotePath)) Alert(QString("Failed to save emote: %1").arg(emotePath));
-					emit Refresh();
-					manager->deleteLater();
-				});
-				QNetworkRequest request(emoticons.at(emoteName));
-				manager->get(request);
+				if (!QFile(emotePath).exists())
+				{
+					QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+					QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,emoteName,emotePath](QNetworkReply *reply) {
+						if (reply->error())
+						{
+							emit Alert(QString("Failed to download %1 emote: %2").arg(emoteName,reply->errorString()));
+							return;
+						}
+						if (!QImage::fromData(reply->readAll()).save(emotePath)) Alert(QString("Failed to save emote: %1").arg(emotePath));
+						emit Refresh();
+						manager->deleteLater();
+					});
+					QNetworkRequest request(emoticons.at(emoteName));
+					manager->get(request);
+				}
 				word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));
 			}
 		}
