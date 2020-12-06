@@ -60,6 +60,7 @@ protected:
 	Setting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
 public slots:
+	void Refresh();
 	void Print(const QString &text) override;
 	Relay::Status::Context* Alert(const QString &text);
 protected slots:

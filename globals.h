@@ -5,6 +5,7 @@
 #include <random>
 #include <functional>
 #include <stdexcept>
+#include <tbb/concurrent_unordered_map.h>
 
 inline const char *ORGANIZATION_NAME="Sky-Meyg";
 inline const char *APPLICATION_NAME="Celeste";
@@ -18,6 +19,7 @@ inline const char *IRC_COMMAND_JOIN="JOIN #%1\n";
 inline const char *IRC_VALIDATION_AUTHENTICATION="You are in a maze of twisty passages, all alike.";
 inline const char *IRC_VALIDATION_JOIN="End of /NAMES list";
 inline const char *COMMANDS_LIST_FILENAME="commands.json";
+inline const char *EMOTE_FILENAME="emoticons.json";
 inline const short KEY=0;
 inline const short VALUE=1;
 
@@ -124,3 +126,12 @@ struct std::hash<QString>
 	}
 };
 #endif
+
+template<>
+struct tbb::tbb_hash<QString>
+{
+	std::size_t operator()(const QString &string) const
+	{
+		return tbb::tbb_hasher(string.toStdString());
+	}
+};

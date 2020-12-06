@@ -54,7 +54,7 @@ protected slots:
 class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_error and std::out_of_range
 {
 	Q_OBJECT
-	using TagMap=std::map<QString,QString>;
+	using TagMap=std::unordered_map<QString,QString>;
 public:
 	ChatMessageReceiver(QObject *parent) : ChatMessageReceiver(std::vector<Command>(),parent) { }
 	ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent=nullptr);
@@ -64,6 +64,7 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;
 	std::vector<Command> userCommands;
+	tbb::concurrent_unordered_map<QString,QUrl> emoticons;
 	Viewers viewers;
 	void IdentifyViewer(const QString &name);
 	Command* FindCommand(const QString &name);
@@ -71,6 +72,7 @@ protected:
 	QString ParseHostmask(const QString &mask);
 	std::tuple<QString,QString> ParseCommand(const QString &message);
 signals:
+	void Refresh();
 	void Alert(const QString &text);
 	void ArrivalConfirmed(const Viewer &viewer);
 	void PlayVideo(const QString &path);

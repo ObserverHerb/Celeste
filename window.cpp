@@ -230,6 +230,7 @@ void Window::FollowChat()
 	connect(this,&Window::Ponging,[chatPane]() {
 		chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 	});
+	connect(chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
 	SwapPane(chatPane);
 

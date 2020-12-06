@@ -1,10 +1,15 @@
 #include <QDir>
-#include <QStandardPaths>
+#include <QImage>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QStandardPaths>
+#include <QtConcurrent>
 #include <vector>
 #include <stdexcept>
+#include <execution>
 #include "globals.h"
 #include "settings.h"
 #include "receivers.h"
@@ -67,9 +72,9 @@ void ChannelJoinReceiver::Fail()
 
 ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent) : MessageReceiver(parent)
 {
-	QDir commandListPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-	if (!commandListPath.mkpath(commandListPath.absolutePath())) throw std::runtime_error(QString("Failed to create command list path: %1").arg(commandListPath.absolutePath()).toStdString());
-	QFile commandListFile(commandListPath.filePath(COMMANDS_LIST_FILENAME));
+	QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
+	if (!dataPath.mkpath(dataPath.absolutePath())) throw std::runtime_error(QString("Failed to create command list path: %1").arg(dataPath.absolutePath()).toStdString());
+	QFile commandListFile(dataPath.filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open command list file: %1").arg(commandListFile.fileName()).toStdString());
 
 	QJsonParseError jsonError;
@@ -99,6 +104,21 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 	{
 		if (!command.second.Protect()) userCommands.push_back(command.second);
 	}
+
+	QtConcurrent::run([this,dataPath]() {
+		QFile emoteListFile(dataPath.filePath(EMOTE_FILENAME));
+		if (!emoteListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open emote list file: %1").arg(emoteListFile.fileName()).toStdString());
+		QJsonParseError jsonError;
+		QByteArray data=emoteListFile.readAll();
+		if (data.isEmpty()) data="{}";
+		QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
+		if (json.isNull()) throw std::runtime_error(jsonError.errorString().toStdString());
+		QJsonObject object=json.object();
+		QStringList keys=object.keys();
+		std::for_each(std::execution::par_unseq,keys.begin(),keys.end(),[this,&object](const QString &key) {
+			emoticons[key]=object.value(key).toString();
+		});
+	});
 }
 
 void ChatMessageReceiver::AttachCommand(const Command &command)
@@ -118,7 +138,7 @@ void ChatMessageReceiver::Process(const QString data)
 		QStringList messageSegments;
 		if (messageSegments=data.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid payload");
 		TagMap tags=ParseTags(messageSegments.takeFirst());
-		if (messageSegments=messageSegments.join("\n").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid number of message segments");
+		if (messageSegments=messageSegments.join(" ").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid number of message segments");
 		QString user=ParseHostmask(messageSegments.takeFirst());
 		IdentifyViewer(user);
 		if (messageSegments.at(0).at(0) == "!")
@@ -159,7 +179,29 @@ void ChatMessageReceiver::Process(const QString data)
 				};
 			}
 		}
-		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2</div><br>").arg(user,messageSegments.join(":"),tags.at("color")));
+		messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+		for (QString &word : messageSegments)
+		{
+			if (QString emoteName=word.trimmed(); emoticons.find(emoteName) != emoticons.end())
+			{
+				QString emotePath=QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(emoteName));
+				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+				QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,emoteName,emotePath](QNetworkReply *reply) {
+					if (reply->error())
+					{
+						emit Alert(QString("Failed to download %1 emote: %2").arg(emoteName,reply->errorString()));
+						return;
+					}
+					if (!QImage::fromData(reply->readAll()).save(emotePath)) Alert(QString("Failed to save emote: %1").arg(emotePath));
+					emit Refresh();
+					manager->deleteLater();
+				});
+				QNetworkRequest request(emoticons.at(emoteName));
+				manager->get(request);
+				word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));
+			}
+		}
+		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message' style='line-height: %4;'>%2</div><br>").arg(user,messageSegments.join(" "),tags.at("color")));
 	}
 
 	catch (const std::runtime_error &exception)

@@ -184,6 +184,11 @@ void ChatPane::SetAgenda(const QString &text)
 	}
 }
 
+void ChatPane::Refresh()
+{
+	chat->viewport()->update();
+}
+
 /*!
  * \fn ChatPane::Print
  * \brief Adds a message to the end of the messages in the middle section of
