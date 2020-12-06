@@ -181,6 +181,7 @@ void ChatMessageReceiver::Process(const QString data)
 					DispatchCommand({*command,parameter});
 					break;
 				};
+				return;
 			}
 		}
 		messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
