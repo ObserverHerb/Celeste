@@ -102,7 +102,7 @@ namespace Platform
 
 namespace Random
 {
-	inline std::default_random_engine generator;
+	inline std::random_device generator;
 	inline int Bounded(int lower,int upper)
 	{
 		std::uniform_int_distribution<int> distribution(lower,upper);

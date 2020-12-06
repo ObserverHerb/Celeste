@@ -167,7 +167,7 @@ void ChatMessageReceiver::Process(const QString data)
 							Print("No videos found");
 							break;
 						}
-						emit PlayVideo(directory.absoluteFilePath(videos[Random::Bounded(0,videos.size())]));
+						emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(0,videos.size()))));
 					}
 					else
 					{
