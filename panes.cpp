@@ -143,7 +143,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	chat->setFontFamily(settingFont);
 	chat->setFontPointSize(settingFontSize);
-	chat->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize))));
+	chat->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message, span.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize))));
 	chat->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
 	chat->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

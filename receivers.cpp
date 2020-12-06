@@ -208,7 +208,16 @@ void ChatMessageReceiver::Process(const QString data)
 				word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));
 			}
 		}
-		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message' style='line-height: %4;'>%2</div><br>").arg(user,messageSegments.join(" "),tags.at("color")));
+		if (messageSegments.front() == "\001ACTION")
+		{
+			messageSegments.pop_front();
+			messageSegments.back().remove('\001');
+			emit Print(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
+		}
+		else
+		{
+			emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
+		}
 	}
 
 	catch (const std::runtime_error &exception)
