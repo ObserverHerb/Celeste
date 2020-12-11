@@ -114,6 +114,7 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 		if (json.isNull()) throw std::runtime_error(jsonError.errorString().toStdString());
 		QJsonObject object=json.object();
 		QStringList keys=object.keys();
+		emoticons.reserve(keys.size());
 		std::for_each(std::execution::par_unseq,keys.begin(),keys.end(),[this,&object](const QString &key) {
 			emoticons[key]=object.value(key).toString();
 		});
