@@ -66,7 +66,7 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;
 	std::vector<Command> userCommands;
-	std::unordered_map<QString,QUrl> emoticons;
+	std::unordered_map<QString,QString> emoticons;
 	Viewers viewers;
 	void IdentifyViewer(const QString &name);
 	Command* FindCommand(const QString &name);

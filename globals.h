@@ -4,6 +4,7 @@
 #include <chrono>
 #include <random>
 #include <functional>
+#include <thread>
 #include <stdexcept>
 
 inline const char *ORGANIZATION_NAME="Sky-Meyg";
@@ -12,6 +13,9 @@ inline const char *TWITCH_HOST="irc.chat.twitch.tv";
 inline const unsigned int TWITCH_PORT=6667;
 inline const char *TWITCH_PING="PING :tmi.twitch.tv\n";
 inline const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
+inline const char *TWITCH_API_ENDPOINT_EMOTE_LIST="https://api.twitch.tv/kraken/chat/emoticons";
+inline const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
+inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
 inline const char *IRC_COMMAND_USER="NICK %1\n";
 inline const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
 inline const char *IRC_COMMAND_JOIN="JOIN #%1\n";
@@ -21,6 +25,7 @@ inline const char *COMMANDS_LIST_FILENAME="commands.json";
 inline const char *EMOTE_FILENAME="emoticons.json";
 inline const short KEY=0;
 inline const short VALUE=1;
+inline const unsigned short THREADS=std::max(static_cast<unsigned short>(std::thread::hardware_concurrency()),static_cast<unsigned short>(1));
 
 namespace StringConvert
 {

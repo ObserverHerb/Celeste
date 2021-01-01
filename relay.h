@@ -31,6 +31,7 @@ namespace Relay
 			QTimer timer;
 			QString text;
 		signals:
+			void ResetClock();
 			void Updated(const QString &text);
 			void UpdateRequested();
 		};

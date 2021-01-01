@@ -59,6 +59,7 @@ protected:
 	Setting settingBackgroundColor;
 	Setting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
+	void ResetStatusClock();
 public slots:
 	void Refresh();
 	void Print(const QString &text) override;
