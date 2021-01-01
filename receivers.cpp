@@ -6,6 +6,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QStandardPaths>
+#include <QFutureSynchronizer>
 #include <vector>
 #include <stdexcept>
 #include <execution>
@@ -114,10 +115,34 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 		if (json.isNull()) throw std::runtime_error(jsonError.errorString().toStdString());
 		QJsonObject object=json.object();
 		QStringList keys=object.keys();
+
+		int threads=std::max(QThread::idealThreadCount()-QThreadPool::globalInstance()->activeThreadCount(),1);
+		std::vector<std::list<std::pair<QString,QString>>> segments(threads);
+		std::div_t segmentSize=std::div(object.size(),threads);
+		QFutureSynchronizer<void> futures;
+		for (int threadID=0; threadID < threads; threadID++)
+		{
+			futures.addFuture(QtConcurrent::run([&object,&keys,size=segmentSize.quot,threadID,&segments]() {
+				int segmentStartIndex=threadID*size;
+				int segmentEndIndex=segmentStartIndex+size;
+				for (int index=segmentStartIndex; index < segmentEndIndex; index++) segments[threadID].push_back(std::make_pair(keys.at(index),object.value(keys.at(index)).toString()));
+			}));
+		}
+		futures.waitForFinished();
+
 		emoticons.reserve(keys.size());
-		std::for_each(std::execution::par_unseq,keys.begin(),keys.end(),[this,&object](const QString &key) {
-			emoticons[key]=object.value(key).toString();
-		});
+		int objectSize=object.size();
+		for (int index=objectSize-segmentSize.rem; index < objectSize; index++) emoticons[keys.at(index)]=object.take(keys.at(index)).toString();
+		object=QJsonObject();
+		for (int threadID=0; threadID < threads; threadID++)
+		{
+			std::list<std::pair<QString,QString>> &segment=segments.at(threadID);
+			while (segment.size() > 0)
+			{
+				emoticons.insert(segment.back());
+				segment.pop_back();
+			}
+		}
 	});
 }
 
@@ -204,7 +229,7 @@ void ChatMessageReceiver::Process(const QString data)
 						emit Refresh();
 						manager->deleteLater();
 					});
-					QNetworkRequest request(emoticons.at(emoteName));
+					QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emoticons.at(emoteName)));
 					manager->get(request);
 				}
 				word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));

@@ -4,6 +4,7 @@
 #include <QTcpSocket>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
+#include <QtConcurrent>
 #include <queue>
 #include <unordered_map>
 #include "globals.h"
@@ -23,6 +24,7 @@ enum class BuiltInCommands
 	SONG,
 	THINK,
 	TIMEZONE,
+	UPDATE,
 	UPTIME,
 	VIBE,
 	VOLUME
@@ -44,6 +46,7 @@ const ProtectedBuiltInCommand PingCommand("ping","Let the Twitch servers know I'
 const BuiltInCommand SongCommand("song","Show the title, album, and artist of the song that is currently playing");
 const BuiltInCommand ThinkCommand("think","Play some thinking music for when Herb is thinking (too hard)");
 const BuiltInCommand TimezoneCommand("timezone","Display the timezone of the system the bot is running on");
+const ProtectedBuiltInCommand UpdateCommand("update","Refresh database of content such as emotes");
 const BuiltInCommand UptimeCommand("uptime","Show how long the bot has been connected");
 const ProtectedBuiltInCommand VibeCommand("vibe","Start the playlist of music for the stream");
 const ProtectedBuiltInCommand VolumeCommand("volume","Adjust the volume of the vibe keeper");
@@ -55,6 +58,7 @@ const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{SongCommand.Name(),BuiltInCommands::SONG},
 	{ThinkCommand.Name(),BuiltInCommands::THINK},
 	{TimezoneCommand.Name(),BuiltInCommands::TIMEZONE},
+	{UpdateCommand.Name(),BuiltInCommands::UPDATE},
 	{UptimeCommand.Name(),BuiltInCommands::UPTIME},
 	{VibeCommand.Name(),BuiltInCommands::VIBE},
 	{VolumeCommand.Name(),BuiltInCommands::VOLUME}
@@ -81,6 +85,7 @@ protected:
 	Setting settingWindowSize;
 	Setting settingHelpCooldown;
 	Setting settingVibePlaylist;
+	Setting settingClientID;
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
 	Setting settingChannel;
@@ -89,6 +94,7 @@ protected:
 	Setting settingArrivalSound;
 	Setting settingThinkingSound;
 	std::queue<EphemeralPane*> ephemeralPanes;
+	QFuture<void> worker;
 	static std::chrono::milliseconds uptime;
 	void SwapPane(PersistentPane *pane);
 	void Authenticate();

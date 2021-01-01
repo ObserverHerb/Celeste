@@ -6,6 +6,11 @@
 #include <QGridLayout>
 #include <QDateTime>
 #include <QTimeZone>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <chrono>
 #include <stdexcept>
 #include "window.h"
@@ -35,6 +40,7 @@ Window::Window() : QWidget(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
+	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
@@ -218,7 +224,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 		chatPane=new ChatPane(this);
 	}
@@ -278,6 +284,55 @@ void Window::FollowChat()
 			case BuiltInCommands::TIMEZONE:
 				chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 				break;
+			case BuiltInCommands::UPDATE:
+			{
+				if (worker.isRunning())
+				{
+					chatPane->Alert("Another job is already running.");
+					break;
+				}
+				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+				connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane](QNetworkReply *reply) {
+					worker=QtConcurrent::run([manager,chatPane,reply]() {
+						if (reply->error())
+						{
+							chatPane->Alert(QString("Network call failed: %1").arg(reply->errorString()));
+							return;
+						}
+						chatPane->Alert("Parsing emote list...");
+						QJsonParseError jsonError;
+						QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+						if (json.isNull()) chatPane->Alert(QString("Unregonized reponse from Twitch: %1").arg(jsonError.errorString()));
+						chatPane->Alert("Rebuilding data structure...");
+
+						QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
+						if (!dataPath.mkpath(dataPath.absolutePath())) return;
+						QFile commandListFile(dataPath.filePath(EMOTE_FILENAME));
+						if (!commandListFile.open(QIODevice::ReadWrite)) return;
+						commandListFile.write("{\n");
+						for (const QJsonValue &entry : json.object().value("emoticons").toArray())
+						{
+							QStringList fragments=entry.toObject().value("images").toObject().value("url").toString().split("/",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+							if (fragments.size() < 5) continue;
+							commandListFile.write(StringConvert::ByteArray(QString("\t\"%1\": \"%2\",\n").arg(entry.toObject().value("regex").toString(),fragments.at(4))));
+						}
+						commandListFile.seek(commandListFile.pos()-2);
+						commandListFile.write("\n}");
+						commandListFile.close();
+
+						manager->deleteLater();
+					});
+				});
+				QNetworkRequest request({TWITCH_API_ENDPOINT_EMOTE_LIST});
+				request.setRawHeader("Accept",TWITCH_API_VERSION_5);
+				request.setRawHeader("Client-ID",settingClientID);
+				Relay::Status::Context *statusContext=chatPane->Alert("Downloading emote list...");
+				connect(manager->get(request),&QNetworkReply::downloadProgress,[this,statusContext](qint64 received,qint64 total) {
+					statusContext->Updated(QLocale::system().formattedDataSize(received));
+					statusContext->ResetClock();
+				});
+				break;
+			}
 			case BuiltInCommands::UPTIME:
 			{
 				Relay::Status::Context *statusContext=chatPane->Alert(Uptime());

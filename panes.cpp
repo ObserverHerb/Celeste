@@ -161,8 +161,13 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	status->hide();
 	layout()->addWidget(status);
 
-	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
+	ResetStatusClock();
 	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissAlert);
+}
+
+void ChatPane::ResetStatusClock()
+{
+	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
 }
 
 /*!
@@ -219,10 +224,11 @@ Relay::Status::Context* ChatPane::Alert(const QString &text)
 {
 	status->show();
 	Relay::Status::Context *statusUpdate=new Relay::Status::Context(text,this);
-	connect(statusUpdate,&Relay::Status::Context::Updated,status,&QLabel::setText);
+	connect(statusUpdate,&Relay::Status::Context::ResetClock,this,&ChatPane::ResetStatusClock);
 	statusUpdates.push(Relay::Status::Package(statusUpdate,&Relay::Status::Dismiss));
 	if (statusUpdates.size() == 1)
 	{
+		connect(statusUpdate,&Relay::Status::Context::Updated,status,&QLabel::setText);
 		statusClock.start();
 		statusUpdate->Trigger();
 	}
@@ -244,6 +250,7 @@ void ChatPane::DismissAlert()
 		statusClock.stop();
 		return;
 	}
+	connect(statusUpdates.front().get(),&Relay::Status::Context::Updated,status,&QLabel::setText);
 	statusUpdates.front()->Trigger();
 }
 
