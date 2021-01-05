@@ -13,9 +13,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 if (WIN32)
-	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets WinExtras REQUIRED)
+	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent WinExtras REQUIRED)
 else()
-	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets TextToSpeech Concurrent REQUIRED)
+	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent TextToSpeech REQUIRED)
 endif()
 
 add_executable(Celeste
@@ -38,8 +38,7 @@ add_executable(Celeste
 )
 
 if (WIN32)
-	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::WinExtras)
+	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::WinExtras)
 else()
-	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::TextToSpeech Qt5::Concurrent)
-	target_link_libraries(Celeste PRIVATE tbb)
+	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
 endif()
