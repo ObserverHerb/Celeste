@@ -21,6 +21,7 @@ enum class BuiltInCommands
 {
 	AGENDA,
 	PING,
+	SHOUTOUT,
 	SONG,
 	THINK,
 	TIMEZONE,
@@ -43,6 +44,7 @@ public:
 
 const ProtectedBuiltInCommand AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window");
 const ProtectedBuiltInCommand PingCommand("ping","Let the Twitch servers know I'm still alive");
+const BuiltInCommand ShoutOutCommand("so","Call attention to another streamer's channel");
 const BuiltInCommand SongCommand("song","Show the title, album, and artist of the song that is currently playing");
 const BuiltInCommand ThinkCommand("think","Play some thinking music for when Herb is thinking (too hard)");
 const BuiltInCommand TimezoneCommand("timezone","Display the timezone of the system the bot is running on");
@@ -55,6 +57,7 @@ using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
 const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{AgendaCommand.Name(),BuiltInCommands::AGENDA},
 	{PingCommand.Name(),BuiltInCommands::PING},
+	{ShoutOutCommand.Name(),BuiltInCommands::SHOUTOUT},
 	{SongCommand.Name(),BuiltInCommands::SONG},
 	{ThinkCommand.Name(),BuiltInCommands::THINK},
 	{TimezoneCommand.Name(),BuiltInCommands::TIMEZONE},

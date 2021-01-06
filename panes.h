@@ -127,6 +127,7 @@ class ImageAnnouncePane : public AnnouncePane
 	Q_OBJECT
 public:
 	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent=nullptr);
+	ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent=nullptr);
 	void Polish() override;
 protected:
 	QGraphicsScene *scene;

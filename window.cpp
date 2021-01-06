@@ -224,7 +224,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,SongCommand,ThinkCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,ShoutOutCommand,SongCommand,ThinkCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 		chatPane=new ChatPane(this);
 	}
@@ -271,6 +271,42 @@ void Window::FollowChat()
 			case BuiltInCommands::PING:
 				ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
 				break;
+			case BuiltInCommands::SHOUTOUT:
+			{
+				QString user=command.Message();
+				user=user.remove("@");
+				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+				connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane,user](QNetworkReply *reply) {
+					manager->disconnect();
+					QJsonParseError jsonError;
+					QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+					if (json.isNull() || !json.object().contains("data")) chatPane->Alert(QString("Something went wrong asking Twitch for profile for %1's profile: %2").arg(user,jsonError.errorString()));
+					QJsonArray data=json.object().value("data").toArray();
+					if (data.size() < 1) chatPane->Alert(QString("%1 is not a valid Twitch user").arg(user));
+					QJsonObject entry=data.at(0).toObject();
+					connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane,user,description=entry.value("description").toString()](QNetworkReply *reply) {
+						QImage profileImage;
+						if (reply->error())
+							emit chatPane->Alert("Failed to download profile image");
+						else
+							profileImage=QImage::fromData(reply->readAll());
+						StageEphemeralPane(new ImageAnnouncePane({
+							{"Drop a follow on<br>",1},
+							{QString("%1<br>").arg(user),1.5},
+							{description,0.5}
+						},profileImage));
+						manager->deleteLater();
+					});
+					manager->get(QNetworkRequest(entry.value("profile_image_url").toString()));
+				});
+				QUrl query(TWITCH_API_ENDPOINT_USERS);
+				query.setQuery({{"login",user}});
+				QNetworkRequest request(query);
+				request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
+				request.setRawHeader("Client-ID",settingClientID);
+				manager->get(request);
+				break;
+			}
 			case BuiltInCommands::SONG:
 			{
 				ImageAnnouncePane *pane=Tuple::New<ImageAnnouncePane,QString,QImage>(CurrentSong());

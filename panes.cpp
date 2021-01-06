@@ -419,7 +419,7 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 		else
 			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.first,StringConvert::Integer(static_cast<int>(settingFontSize)*line.second)));
 	}
-	return paragraph;
+	return QString("<div style='line-height: 1.25;'>%1</div>").arg(paragraph);
 }
 
 /*!
@@ -490,6 +490,11 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 	shadow->setBlurRadius(10);
 	shadow->setOffset(0,0);
 	output->setGraphicsEffect(shadow);
+}
+
+ImageAnnouncePane::ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent) : ImageAnnouncePane("",image,parent)
+{
+	output->setText(BuildParagraph(lines));
 }
 
 /*!
