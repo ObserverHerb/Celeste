@@ -9,7 +9,6 @@
 #include <QFutureSynchronizer>
 #include <vector>
 #include <stdexcept>
-#include <execution>
 #include "globals.h"
 #include "settings.h"
 #include "receivers.h"
