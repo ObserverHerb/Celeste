@@ -71,9 +71,7 @@ void ChannelJoinReceiver::Fail()
 
 ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent) : MessageReceiver(parent)
 {
-	QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-	if (!dataPath.mkpath(dataPath.absolutePath())) throw std::runtime_error(QString("Failed to create command list path: %1").arg(dataPath.absolutePath()).toStdString());
-	QFile commandListFile(dataPath.filePath(COMMANDS_LIST_FILENAME));
+	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open command list file: %1").arg(commandListFile.fileName()).toStdString());
 
 	QJsonParseError jsonError;
@@ -104,8 +102,8 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 		if (!command.second.Protect()) userCommands.push_back(command.second);
 	}
 
-	worker=QtConcurrent::run([this,dataPath]() {
-		QFile emoteListFile(dataPath.filePath(EMOTE_FILENAME));
+	worker=QtConcurrent::run([this]() {
+		QFile emoteListFile(Filesystem::DataPath().filePath(EMOTE_FILENAME));
 		if (!emoteListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open emote list file: %1").arg(emoteListFile.fileName()).toStdString());
 		QJsonParseError jsonError;
 		QByteArray data=emoteListFile.readAll();

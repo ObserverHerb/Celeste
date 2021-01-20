@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QEvent>
+#include <QCloseEvent>
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
@@ -37,6 +38,7 @@ Window::Window() : QWidget(nullptr),
 	vibeFader(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
+	logFile(Filesystem::LogPath().absoluteFilePath("current")),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
@@ -72,6 +74,8 @@ Window::Window() : QWidget(nullptr),
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
 	vibeKeeper->setVolume(0);
 
+	ircSocket=new QTcpSocket(this);
+
 	connect(this,&Window::Ponging,this,&Window::Pong);
 }
 
@@ -83,7 +87,6 @@ Window::Window() : QWidget(nullptr),
  */
 Window::~Window()
 {
-	ircSocket->disconnectFromHost();
 }
 
 /*!
@@ -100,13 +103,52 @@ bool Window::event(QEvent *event)
 {
 	if (event->type() == QEvent::Polish)
 	{
-		ircSocket=new QTcpSocket(this);
-		connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
-		connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
-		Authenticate();
+		try
+		{
+			Print(QString("Creating data directory %1").arg(Filesystem::DataPath().absolutePath()));
+			if (!Filesystem::DataPath().exists() && !Filesystem::DataPath().mkpath(Filesystem::DataPath().absolutePath())) throw std::runtime_error("Failed to create data directory");
+			Print(QString("Creating log directory %1").arg(Filesystem::LogPath().absolutePath()));
+			if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
+			if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
+
+			connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
+			connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
+			Authenticate();
+		}
+
+		catch (std::runtime_error &exception)
+		{
+			Print("Aborting initialization!");
+			Print(exception.what());
+		}
 	}
 
 	return QWidget::event(event);
+}
+
+void Window::closeEvent(QCloseEvent *event)
+{
+	if (logFile.exists())
+	{
+		logFile.reset();
+		QFile datedFile(Filesystem::LogPath().absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
+		if (datedFile.exists())
+		{
+			if (datedFile.open(QIODevice::WriteOnly|QIODevice::Append))
+			{
+				while (!logFile.atEnd()) datedFile.write(logFile.read(4096));
+			}
+		}
+		else
+		{
+			logFile.rename(QFileInfo(datedFile).absoluteFilePath());
+		}
+		logFile.close();
+	}
+
+	ircSocket->disconnectFromHost();
+
+	event->accept();
 }
 
 /*!
@@ -148,6 +190,7 @@ void Window::Disconnected()
 void Window::DataAvailable()
 {
 	QString data=ircSocket->readAll();
+	logFile.write(StringConvert::ByteArray(data));
 	if (data.size() > 4 && data.left(4) == "PING")
 	{
 		emit Ponging();
@@ -341,9 +384,7 @@ void Window::FollowChat()
 						if (json.isNull()) chatPane->Alert(QString("Unregonized reponse from Twitch: %1").arg(jsonError.errorString()));
 						chatPane->Alert("Rebuilding data structure...");
 
-						QDir dataPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-						if (!dataPath.mkpath(dataPath.absolutePath())) return;
-						QFile commandListFile(dataPath.filePath(EMOTE_FILENAME));
+						QFile commandListFile(Filesystem::DataPath().filePath(EMOTE_FILENAME));
 						if (!commandListFile.open(QIODevice::ReadWrite)) return;
 						commandListFile.write("{\n");
 						for (const QJsonValue &entry : json.object().value("emoticons").toArray())

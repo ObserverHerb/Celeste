@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QString>
+#include <QStandardPaths>
+#include <QDir>
 #include <chrono>
 #include <random>
 #include <functional>
@@ -23,6 +25,7 @@ inline const char *IRC_VALIDATION_AUTHENTICATION="You are in a maze of twisty pa
 inline const char *IRC_VALIDATION_JOIN="End of /NAMES list";
 inline const char *COMMANDS_LIST_FILENAME="commands.json";
 inline const char *EMOTE_FILENAME="emoticons.json";
+inline const char *LOG_DIRECTORY="logs";
 inline const short KEY=0;
 inline const short VALUE=1;
 
@@ -100,6 +103,19 @@ namespace Platform
 	#else
 		return false;
 	#endif
+	}
+}
+
+namespace Filesystem
+{
+	inline const QDir DataPath()
+	{
+		return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+	}
+
+	inline const QDir LogPath()
+	{
+		return DataPath().absoluteFilePath(LOG_DIRECTORY);
 	}
 }
 
