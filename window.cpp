@@ -266,7 +266,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,ShoutOutCommand,SongCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PanicCommand,PingCommand,ShoutOutCommand,SongCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 		chatPane=new ChatPane(this);
 	}
@@ -313,6 +313,22 @@ void Window::FollowChat()
 			case BuiltInCommands::AGENDA:
 				chatPane->SetAgenda(command.Message());
 				break;
+			case BuiltInCommands::PANIC:
+			{
+				QFile outputFile(Filesystem::DataPath().absoluteFilePath("panic.txt"));
+				QString outputText;
+				if (outputFile.open(QIODevice::ReadOnly))
+				{
+					outputText=outputFile.readAll();
+					outputFile.close();
+				}
+				SwapPane(new StatusPane(this));
+				QString date=QDateTime::currentDateTime().toString("ddd d hh:mm:ss");
+				outputText=outputText.split("\n").join(QString("\n%1 ").arg(date));
+				Print(date+"\n"+outputText);
+				this->disconnect();
+				break;
+			}
 			case BuiltInCommands::PING:
 				ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
 				break;

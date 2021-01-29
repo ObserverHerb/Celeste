@@ -20,6 +20,7 @@ inline const char *SETTINGS_CATEGORY_EVENTS="Events";
 enum class BuiltInCommands
 {
 	AGENDA,
+	PANIC,
 	PING,
 	SHOUTOUT,
 	SONG,
@@ -42,6 +43,7 @@ public:
 };
 
 const ProtectedBuiltInCommand AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window");
+const ProtectedBuiltInCommand PanicCommand("panic","Crash Celeste");
 const ProtectedBuiltInCommand PingCommand("ping","Let the Twitch servers know I'm still alive");
 const BuiltInCommand ShoutOutCommand("so","Call attention to another streamer's channel");
 const BuiltInCommand SongCommand("song","Show the title, album, and artist of the song that is currently playing");
@@ -54,6 +56,7 @@ const ProtectedBuiltInCommand VolumeCommand("volume","Adjust the volume of the v
 using BuiltInCommandLookup=std::unordered_map<QString,BuiltInCommands>;
 const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{AgendaCommand.Name(),BuiltInCommands::AGENDA},
+	{PanicCommand.Name(),BuiltInCommands::PANIC},
 	{PingCommand.Name(),BuiltInCommands::PING},
 	{ShoutOutCommand.Name(),BuiltInCommands::SHOUTOUT},
 	{SongCommand.Name(),BuiltInCommands::SONG},
