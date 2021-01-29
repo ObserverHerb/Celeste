@@ -333,11 +333,14 @@ void Window::FollowChat()
 							emit chatPane->Alert("Failed to download profile image");
 						else
 							profileImage=QImage::fromData(reply->readAll());
-						StageEphemeralPane(new ImageAnnouncePane({
+						ImageAnnouncePane *pane=new ImageAnnouncePane({
 							{"Drop a follow on<br>",1},
 							{QString("%1<br>").arg(user),1.5},
 							{description,0.5}
-						},profileImage));
+						},profileImage);
+						pane->AccentColor(settingAccentColor);
+						pane->Duration(10000);
+						StageEphemeralPane(pane);
 						manager->deleteLater();
 					});
 					manager->get(QNetworkRequest(entry.value("profile_image_url").toString()));

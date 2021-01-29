@@ -98,6 +98,7 @@ public:
 	void Show() override;
 	virtual void Polish();
 	void AccentColor(const QColor &color) { accentColor=color; }
+	void Duration(const int duration) { clock.setInterval(duration); }
 	const QString BuildParagraph(const std::vector<std::pair<QString,double>> &lines);
 protected:
 	QColor accentColor;
