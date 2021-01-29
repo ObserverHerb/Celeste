@@ -487,7 +487,7 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 	view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
 	shadow=new QGraphicsDropShadowEffect();
-	shadow->setBlurRadius(10);
+	shadow->setBlurRadius(50); // TODO: abstract this out to a setting
 	shadow->setOffset(0,0);
 	output->setGraphicsEffect(shadow);
 }
