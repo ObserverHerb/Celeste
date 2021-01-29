@@ -136,3 +136,17 @@ protected:
 	QGraphicsDropShadowEffect *shadow;
 	QImage image;
 };
+
+class MultimediaAnnouncePane : public AnnouncePane
+{
+	Q_OBJECT
+public:
+	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent=nullptr);
+	MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent=nullptr);
+	void Polish() override;
+	void Show() override;
+protected:
+	MultimediaAnnouncePane(const QString &path,QWidget *parent=nullptr);
+	AudioAnnouncePane *audioPane;
+	ImageAnnouncePane *imagePane;
+};

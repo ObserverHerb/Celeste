@@ -512,3 +512,32 @@ void ImageAnnouncePane::Polish()
 	stack->addWidget(view);
 	layout()->addWidget(stack);
 }
+
+MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane("",parent)
+{
+	audioPane=new AudioAnnouncePane("",path,this);
+	connect(audioPane,&AudioAnnouncePane::Finished,this,&MultimediaAnnouncePane::Finished);
+}
+
+MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
+{
+	imagePane=new ImageAnnouncePane(text,image,output);
+}
+
+MultimediaAnnouncePane::MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
+{
+	imagePane=new ImageAnnouncePane(lines,image,this);
+}
+
+void MultimediaAnnouncePane::Polish()
+{
+	layout()->addWidget(imagePane);
+}
+
+void MultimediaAnnouncePane::Show()
+{
+	Polish();
+	imagePane->Show();
+	audioPane->Show();
+	show();
+}
