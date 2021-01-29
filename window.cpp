@@ -247,7 +247,7 @@ void Window::JoinStream()
 	connect(this,&Window::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(channelJoinReceiver,&ChannelJoinReceiver::Succeeded,this,&Window::FollowChat);
-	ircSocket->write("CAP REQ :twitch.tv/tags\n");
+	ircSocket->write("CAP REQ :twitch.tv/tags :twitch.tv/commands\n");
 	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel) : static_cast<QString>(settingAdministrator))));
 }
 
