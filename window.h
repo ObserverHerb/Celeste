@@ -23,7 +23,6 @@ enum class BuiltInCommands
 	PING,
 	SHOUTOUT,
 	SONG,
-	THINK,
 	TIMEZONE,
 	UPDATE,
 	UPTIME,
@@ -46,7 +45,6 @@ const ProtectedBuiltInCommand AgendaCommand("agenda","Set the agenda of the stre
 const ProtectedBuiltInCommand PingCommand("ping","Let the Twitch servers know I'm still alive");
 const BuiltInCommand ShoutOutCommand("so","Call attention to another streamer's channel");
 const BuiltInCommand SongCommand("song","Show the title, album, and artist of the song that is currently playing");
-const BuiltInCommand ThinkCommand("think","Play some thinking music for when Herb is thinking (too hard)");
 const BuiltInCommand TimezoneCommand("timezone","Display the timezone of the system the bot is running on");
 const ProtectedBuiltInCommand UpdateCommand("update","Refresh database of content such as emotes");
 const BuiltInCommand UptimeCommand("uptime","Show how long the bot has been connected");
@@ -59,7 +57,6 @@ const BuiltInCommandLookup BUILT_IN_COMMANDS={
 	{PingCommand.Name(),BuiltInCommands::PING},
 	{ShoutOutCommand.Name(),BuiltInCommands::SHOUTOUT},
 	{SongCommand.Name(),BuiltInCommands::SONG},
-	{ThinkCommand.Name(),BuiltInCommands::THINK},
 	{TimezoneCommand.Name(),BuiltInCommands::TIMEZONE},
 	{UpdateCommand.Name(),BuiltInCommands::UPDATE},
 	{UptimeCommand.Name(),BuiltInCommands::UPTIME},
@@ -97,7 +94,6 @@ protected:
 	Setting settingBackgroundColor;
 	Setting settingAccentColor;
 	Setting settingArrivalSound;
-	Setting settingThinkingSound;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	QFuture<void> worker;
 	static std::chrono::milliseconds uptime;

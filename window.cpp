@@ -48,8 +48,7 @@ Window::Window() : QWidget(nullptr),
 	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
-	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
-	settingThinkingSound(SETTINGS_CATEGORY_EVENTS,"Thinking")
+	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -267,7 +266,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PingCommand,ShoutOutCommand,SongCommand,ThinkCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,PingCommand,ShoutOutCommand,SongCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 		chatPane=new ChatPane(this);
 	}
@@ -300,7 +299,10 @@ void Window::FollowChat()
 		StageEphemeralPane(new VideoPane(path));
 	});
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayAudio,[this](const QString &user,const QString &message,const QString &path) {
-		StageEphemeralPane(new AudioAnnouncePane(QString("**%1**\n\n%2").arg(user,message),path));
+		StageEphemeralPane(new AudioAnnouncePane({
+			{QString("%1<br>").arg(user),1.5},
+			{message,1}
+		},path));
 	});
 
 	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane](const Command &command) {
@@ -360,9 +362,6 @@ void Window::FollowChat()
 				StageEphemeralPane(pane);
 				break;
 			}
-			case BuiltInCommands::THINK:
-				StageEphemeralPane(new AudioAnnouncePane("Shh... Herb is thinking...",settingThinkingSound));
-				break;
 			case BuiltInCommands::TIMEZONE:
 				chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 				break;
