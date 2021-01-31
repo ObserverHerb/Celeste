@@ -99,7 +99,7 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 	for (const Command &command : builtInCommands) commands[command.Name()]=command;
 	for (const std::pair<QString,Command> command : commands)
 	{
-		if (!command.second.Protect()) userCommands.push_back(command.second);
+		if (!command.second.Protected()) userCommands.push_back(command.second);
 	}
 
 	worker=QtConcurrent::run([this]() {
@@ -173,7 +173,7 @@ void ChatMessageReceiver::Process(const QString data)
 			auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
 			if (Command *command=FindCommand(commandName); command)
 			{
-				if (command->Protect() && settingAdministrator != user)
+				if (command->Protected() && settingAdministrator != user)
 				{
 					emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
 					return;

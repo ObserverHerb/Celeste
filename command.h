@@ -27,7 +27,7 @@ public:
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
 	bool Random() const { return random; }
-	bool Protect() const { return protect; }
+	bool Protected() const { return protect; }
 	const QString& Path() const { return path; }
 	const QString& Message() const { return message; }
 protected:

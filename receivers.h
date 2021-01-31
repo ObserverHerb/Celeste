@@ -62,6 +62,7 @@ public:
 	~ChatMessageReceiver();
 	void AttachCommand(const Command &command);
 	const Command RandomCommand() const;
+	const std::unordered_map<QString,Command>& Commands() { return commands; }
 protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;

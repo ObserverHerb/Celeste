@@ -266,7 +266,7 @@ void Window::FollowChat()
 	try
 	{
 		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,PanicCommand,PingCommand,ShoutOutCommand,SongCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
+			AgendaCommand,CommandsCommand,PanicCommand,PingCommand,ShoutOutCommand,SongCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
 		},this);
 		chatPane=new ChatPane(this);
 	}
@@ -305,7 +305,7 @@ void Window::FollowChat()
 		},path));
 	});
 
-	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane](const Command &command) {
+	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane,chatMessageReceiver](const Command &command) {
 		try
 		{
 			switch (BUILT_IN_COMMANDS.at(command.Name()))
@@ -313,6 +313,40 @@ void Window::FollowChat()
 			case BuiltInCommands::AGENDA:
 				chatPane->SetAgenda(command.Message());
 				break;
+			case BuiltInCommands::COMMANDS:
+			{
+				std::vector<std::pair<QString,double>> user;
+				std::vector<std::pair<QString,double>> admin;
+				for (const std::pair<QString,Command> &command : chatMessageReceiver->Commands())
+				{
+					if (command.second.Protected())
+					{
+						admin.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.second.Name()),0.6});
+						admin.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second.Description()),0.5});
+					}
+					else
+					{
+						user.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.second.Name()),0.6});
+						user.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second.Description()),0.5});
+					}
+				}
+				AnnouncePane *pane;
+				int duration=15000;
+				int count=8; // TODO: this should be calculated based on text line height vs pixel height of window
+				count=count*2; // a single command covers two lines
+				for (int page=0; page < std::ceil(static_cast<double>(user.size())/count); page++)
+				{
+					std::vector<std::pair<QString,double>>::size_type start=page*count;
+					std::vector<std::pair<QString,double>>::size_type end=start+count;
+					pane=new AnnouncePane({&user[start],&user[std::min(user.size(),end)]});
+					pane->Duration(duration);
+					StageEphemeralPane(pane);
+				}
+				pane=new AnnouncePane(admin);
+				pane->Duration(duration);
+				StageEphemeralPane(pane);
+				break;
+			}
 			case BuiltInCommands::PANIC:
 			{
 				QFile outputFile(Filesystem::DataPath().absoluteFilePath("panic.txt"));
