@@ -5,6 +5,8 @@
 
 int main(int argc,char *argv[])
 {
+	qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmediafoundation");
+
 	QApplication application(argc,argv);
 	application.setOrganizationName(ORGANIZATION_NAME);
 	application.setApplicationName(APPLICATION_NAME);
