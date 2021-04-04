@@ -235,11 +235,11 @@ void Window::Authenticate()
 	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
-	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
+	/*connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
 	});
-	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);
+	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);*/
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");
 }

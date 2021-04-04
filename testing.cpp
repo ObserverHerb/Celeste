@@ -94,8 +94,21 @@ private slots:
 
 	void badSubscriptionDataTest()
 	{
-		testWindow.EventSubscriber()->Data(DataFromFile("channel_follow.txt"));
-		testWindow.EventSubscriber()->TestDataAvailable();
+		try
+		{
+			testWindow.EventSubscriber()->Data(DataFromFile("channel_follow.txt"));
+			testWindow.EventSubscriber()->TestDataAvailable();
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			std::cout << "Critical error: " << exception.what() << std::endl;
+		}
+
+		catch (...)
+		{
+			std::cout << "Unknown critical error occurred!" << std::endl;
+		}
 	}
 
 	void verifyConnected()
@@ -120,11 +133,12 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	argc=1;
+	QApplication app(argc,argv);
+
 	Testing testing;
 	testing.DataPath(argv[1]);
 
-	argc=1;
-	QApplication app(argc,argv);
 	return QTest::qExec(&testing,argc,argv);
 }
 #include "testing.moc"

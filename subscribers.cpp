@@ -3,9 +3,14 @@
 #include <QNetworkInterface>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStringBuilder>
 #include <QUuid>
 #include "globals.h"
 #include "subscribers.h"
+
+const char *HEADER_DELIMITER=":";
+
+const char *HEADER_SUBSCRIPTION_TYPE="Twitch-Eventsub-Subscription-Type";
 
 const char *JSON_KEY_CHALLENGE="challenge";
 const char *JSON_KEY_EVENT="event";
@@ -18,12 +23,15 @@ const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
 const QString EventSubscriber::SUBSYSTEM_NAME="Event Subscriber";
+const QString EventSubscriber::LINE_BREAK="\r\n";
 
 EventSubscriber::EventSubscriber(QObject *parent) : QTcpServer(parent),
 	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"ServerToken"),
 	secret(QUuid::createUuid().toString())
 {
+	subscriptionTypes.insert({"channel.follow",SubscriptionType::CHANNEL_FOLLOW});
+
 	//connect(this,&EventSubscriber::acceptError,this,QOverload<QAbstractSocket::SocketError>::of(&EventSubscriber::)) // FIXME: handle error here?
 	connect(this,&EventSubscriber::newConnection,this,&EventSubscriber::ConnectionAvailable);
 }
@@ -49,11 +57,11 @@ void EventSubscriber::Listen()
 
 void EventSubscriber::Subscribe(const QString &type)
 {
-	Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Requesting subscription to %1").arg(type)));
+	emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Requesting subscription to %1").arg(type)));
 	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
 	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
 		// FIXME: check the validity of this reply!
-		Print(Console::GenerateMessage(SUBSYSTEM_NAME,reply->readAll()));
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,reply->readAll()));
 		manager->disconnect();
 	});
 	QUrl query(TWITCH_API_ENDPOINT_EVENTSUB);
@@ -77,7 +85,7 @@ void EventSubscriber::Subscribe(const QString &type)
 			})
 		}
 	}));
-	Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Sending subscription request: %1").arg(QString(payload.toJson(QJsonDocument::Indented)))));
+	emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Sending subscription request: %1").arg(QString(payload.toJson(QJsonDocument::Indented)))));
 	manager->post(request,payload.toJson(QJsonDocument::Compact));
 }
 
@@ -85,22 +93,45 @@ void EventSubscriber::DataAvailable()
 {
 	QTcpSocket *socket=SocketFromSignalSender();
 	buffer.append(ReadFromSocket(socket));
-	QStringList data=buffer.split("\r\n\r\n",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); // TODO: can I do a splitref here?
-	buffer.clear();
+	QStringList data=buffer.split(LINE_BREAK % LINE_BREAK,StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); // TODO: can I do a splitref here?
+	buffer.clear(); // FIXME: there's a dsync potential here where buffer always has the end of the previous message and the beginning of the next one
 	if (data.size() < 2)
 	{
-		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Incomplete notification received"));
-		Print(Console::GenerateMessage(SUBSYSTEM_NAME,data.join("\n")));
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Incomplete notification received"));
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,data.join("\n")));
 		return;
 	}
 
-	const QString &request=data.at(1);
-	Print(Console::GenerateMessage(SUBSYSTEM_NAME,"read",request));
-	QByteArray response=ProcessRequest(request);
-	if (response.size() > 0) WriteToSocket(response,socket); // TODO: std::optional
+	Headers headers=ParseHeaders(data.at(0));
+	if (headers.find(HEADER_SUBSCRIPTION_TYPE) != headers.end() && subscriptionTypes.find(headers.at(HEADER_SUBSCRIPTION_TYPE)) != subscriptionTypes.end())
+	{
+		const QString &request=data.at(1);
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,"read",request));
+		QByteArray response=ProcessRequest(subscriptionTypes.at(headers.at(HEADER_SUBSCRIPTION_TYPE)),request);
+		if (response.size() > 0) WriteToSocket(response,socket); // TODO: std::optional
+	}
+	else
+	{
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,"parse","No subscription type in headers"));
+	}
 }
 
-const QByteArray EventSubscriber::ProcessRequest(const QString &request) // TODO: should this return std::optional?
+const EventSubscriber::Headers EventSubscriber::ParseHeaders(const QString &data)
+{
+	Headers headers;
+	for (const QString &line : data.split(LINE_BREAK))
+	{
+		QStringList pair=line.split(HEADER_DELIMITER,StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+		if (pair.size() > 1)
+		{
+			const QString key=pair.takeFirst();
+			headers.insert({key,pair.join(HEADER_DELIMITER).trimmed()});
+		}
+	}
+	return headers;
+}
+
+const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,const QString &request) // TODO: should this return std::optional?
 {
 	QJsonParseError jsonError;
 	QJsonDocument json=QJsonDocument::fromJson(StringConvert::ByteArray(request.trimmed()),&jsonError);
@@ -111,10 +142,17 @@ const QByteArray EventSubscriber::ProcessRequest(const QString &request) // TODO
 	}
 	else
 	{
-		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"== JSON Parsed! =="));
+		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"parser","JSON parsed successfully!"));
 	}
 
-	if (json.object().contains(JSON_KEY_CHALLENGE)) return StringConvert::ByteArray(BuildResponse(json.object().value(JSON_KEY_CHALLENGE).toString()));
+	if (json.object().contains(JSON_KEY_CHALLENGE)) return StringConvert::ByteArray(BuildResponse(json.object().value(JSON_KEY_CHALLENGE).toString())); // TODO: different function, this isn't a notification
+
+	if (type == SubscriptionType::CHANNEL_FOLLOW)
+	{
+		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Follow","Follow received"));
+		return StringConvert::ByteArray(BuildResponse());
+	}
+
 
 	/*if (json.object().contains(JSON_KEY_EVENT) && json.object().value(JSON_KEY_EVENT.toObject().contains(JSON_KEY_EVENT_REWARD))
 	{
