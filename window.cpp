@@ -113,18 +113,7 @@ bool Window::event(QEvent *event)
 			if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
 			if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
 
-			EventSubscriber *subscriber=CreateEventSubscriber();
-			connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
-			subscriber->Listen();
-			subscriber->Subscribe("channel.channel_points_custom_reward_redemption.add");
-			connect(subscriber,&EventSubscriber::Raid,[this]() {
-				Print("THIS DID STUFF OMG OMG OMG");
-				StageEphemeralPane(new AudioAnnouncePane({
-					{"Raid<br>",1},
-					{"Raid",1.5},
-					{"Raid",1}
-				},"C:\\Users\\herb\\Nextcloud\\Twitch\\Audio\\raid.mp3"));
-			});
+			BuildEventSubscriber();
 
 			connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
 			connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
@@ -215,6 +204,29 @@ void Window::DataAvailable()
 	emit Dispatch(data);
 }
 
+void Window::BuildEventSubscriber()
+{
+	EventSubscriber *subscriber=CreateEventSubscriber();
+	connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
+	subscriber->Listen();
+	subscriber->Subscribe("channel.channel_points_custom_reward_redemption.add");
+	connect(subscriber,&EventSubscriber::Redemption,[this](const QString &viewer,const QString &rewardTitle,const QString &message) {
+		StageEphemeralPane(new AnnouncePane({
+			{QString("%1<br>").arg(viewer),1.5},
+			{"has redeemed<br>",1},
+			{QString("%1<br>").arg(rewardTitle),1.5},
+			{message,1}
+		}));
+	});
+	connect(subscriber,&EventSubscriber::Raid,[this]() {
+		StageEphemeralPane(new AudioAnnouncePane({
+			{"Raid<br>",1},
+			{"Raid",1.5},
+			{"Raid",1}
+		},"C:\\Users\\observerherb\\Nextcloud\\Twitch\\Audio\\raid.mp3"));
+	});
+}
+
 /*!
  * \fn Window::SwapPane
  * \brief Changes the visible pane to a new pane
@@ -243,10 +255,10 @@ void Window::Authenticate()
 	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
-	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
+	/*connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
-	});
+	});*/
 	//connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");

@@ -96,7 +96,7 @@ private slots:
 	void verifyConnected()
 	{
 		QTimer::singleShot(5000,[this]() {
-			testWindow.EventSubscriber()->Data(DataFromFile("channel_raid.txt"));
+			testWindow.EventSubscriber()->Data(DataFromFile("channel_redemption.txt"));
 			testWindow.EventSubscriber()->TestDataAvailable();
 		});
 
@@ -104,7 +104,7 @@ private slots:
 		QVERIFY(windowSpy.wait(30000));
 	}
 
-	void badSubscriptionDataTest()
+	/*void badSubscriptionDataTest()
 	{
 		try
 		{
@@ -124,7 +124,7 @@ private slots:
 		{
 			std::cout << "Unknown critical error occurred!" << std::endl;
 		}
-	}
+	}*/
 
 	void multipleMessagesTest()
 	{

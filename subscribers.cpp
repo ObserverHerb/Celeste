@@ -19,10 +19,15 @@ const char *JSON_KEY_EVENT_REWARD_TITLE="title";
 const char *JSON_KEY_EVENT_FOLLOW="followed at";
 const char *JSON_KEY_EVENT_USER_NAME="user_name";
 const char *JSON_KEY_EVENT_USER_INPUT="user_input";
+const char *JSON_KEY_EVENT_VIEWERS="viewers";
+const char *JSON_KEY_EVENT_MESSAGE="message";
+const char *JSON_KEY_EVENT_CHEER_AMOUNT="bits";
 const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
 const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
+const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_reward_redemption.add";
+const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
 const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
 
 const QString EventSubscriber::SUBSYSTEM_NAME="Event Subscriber";
@@ -34,6 +39,8 @@ EventSubscriber::EventSubscriber(QObject *parent) : QTcpServer(parent),
 	secret(QUuid::createUuid().toString())
 {
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_REDEMPTION,SubscriptionType::CHANNEL_REDEMPTION});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_CHEER,SubscriptionType::CHANNEL_CHEER});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RAID,SubscriptionType::CHANNEL_RAID});
 
 	//connect(this,&EventSubscriber::acceptError,this,QOverload<QAbstractSocket::SocketError>::of(&EventSubscriber::)) // FIXME: handle error here?
@@ -65,7 +72,7 @@ void EventSubscriber::Subscribe(const QString &type)
 	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
 	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
 		// FIXME: check the validity of this reply!
-		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,reply->readAll()));
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,"twitch",reply->readAll()));
 		manager->disconnect();
 	});
 	QUrl query(TWITCH_API_ENDPOINT_EVENTSUB);
@@ -78,7 +85,7 @@ void EventSubscriber::Subscribe(const QString &type)
 		{"version","1"},
 		{
 			"condition",
-			QJsonObject({{"broadcaster_user_id",SUBSCRIPTION_TYPE_FOLLOW}})
+			QJsonObject({{"broadcaster_user_id","523304124"}})
 		},
 		{
 			"transport",
@@ -90,7 +97,7 @@ void EventSubscriber::Subscribe(const QString &type)
 		}
 	}));
 	emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Sending subscription request: %1").arg(QString(payload.toJson(QJsonDocument::Indented)))));
-	//manager->post(request,payload.toJson(QJsonDocument::Compact));
+	manager->post(request,payload.toJson(QJsonDocument::Compact));
 }
 
 void EventSubscriber::DataAvailable()
@@ -149,16 +156,34 @@ const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,con
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"parser","JSON parsed successfully!"));
 	}
 
-	if (json.object().contains(JSON_KEY_CHALLENGE)) return StringConvert::ByteArray(BuildResponse(json.object().value(JSON_KEY_CHALLENGE).toString())); // TODO: different function, this isn't a notification
+	if (json.object().contains(JSON_KEY_CHALLENGE))
+	{
+		QString response=BuildResponse(json.object().value(JSON_KEY_CHALLENGE).toString());
+		emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,"challenge",response));
+		return StringConvert::ByteArray(response); // TODO: different function, this isn't a notification
+	}
 
+	QJsonObject event=json.object().value(JSON_KEY_EVENT).toObject();
+	// TODO: check event for validity
 	switch (type)
 	{
 	case SubscriptionType::CHANNEL_FOLLOW:
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Follow","Follow received"));
+		emit Follow();
+		return StringConvert::ByteArray(BuildResponse());
+	case SubscriptionType::CHANNEL_REDEMPTION:
+	{
+		emit Redemption(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),event.value(JSON_KEY_EVENT_USER_INPUT).toString());
+		QString response=BuildResponse();
+		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Redemption",response));
+		return StringConvert::ByteArray(response);
+	}
+	case SubscriptionType::CHANNEL_CHEER:
+		emit Cheer(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),event.value(JSON_KEY_EVENT_MESSAGE).toString());
 		return StringConvert::ByteArray(BuildResponse());
 	case SubscriptionType::CHANNEL_RAID:
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Raid","You have been raided!"));
-		emit Raid();
+		emit Raid(event.value("from_broadcaster_user_name").toString(),event.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
 		return StringConvert::ByteArray(BuildResponse());
 	}
 
@@ -167,7 +192,10 @@ const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,con
 
 const QString EventSubscriber::BuildResponse(const QString &data) const
 {
-	return QString("HTTP/1.1 200 OK\nAccept Ranges: bytes\nContent-Length: %1\nContent-Type: text/plain");
+	if (data.size() > 0)
+		return QString("HTTP/1.1 200 OK\nAccept Ranges: bytes\nContent-Length: %1\nContent-Type: text/plain\n\n%2").arg(StringConvert::Integer(data.size()),data);
+	else
+		return QString("HTTP/1.1 200 OK");
 }
 
 void EventSubscriber::ConnectionAvailable()

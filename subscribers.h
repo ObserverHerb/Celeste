@@ -6,6 +6,8 @@
 enum class SubscriptionType
 {
 	CHANNEL_FOLLOW,
+	CHANNEL_REDEMPTION,
+	CHANNEL_CHEER,
 	CHANNEL_RAID
 };
 
@@ -36,7 +38,10 @@ protected:
 	virtual bool WriteToSocket(const QByteArray &data,QTcpSocket *socket=nullptr) const;
 signals:
 	void Print(const QString &message) const;
-	void Raid();
+	void Follow();
+	void Redemption(const QString &viewer,const QString &rewardTitle,const QString &message);
+	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
+	void Raid(const QString &raider,const unsigned int viewers);
 protected slots:
 	void ConnectionAvailable();
 };

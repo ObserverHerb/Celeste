@@ -103,6 +103,7 @@ protected:
 	static const char *SETTINGS_CATEGORY_VIBE;
 	static const char *SETTINGS_CATEGORY_WINDOW;
 	static const char *SETTINGS_CATEGORY_EVENTS;
+	void BuildEventSubscriber();
 	void SwapPane(PersistentPane *pane);
 	void Authenticate();
 	void StageEmpeheralPane(EphemeralPane &&pane) { StageEphemeralPane(&pane); }
