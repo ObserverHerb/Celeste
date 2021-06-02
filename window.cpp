@@ -222,7 +222,7 @@ void Window::BuildEventSubscriber()
 		const QString channelOwnerID=data.at(0).toObject().value("id").toString();
 		EventSubscriber *subscriber=CreateEventSubscriber(channelOwnerID);
 		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(channelOwnerID)));
-		connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
+		connect(subscriber,&EventSubscriber::Print,this,&Window::Log);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);
