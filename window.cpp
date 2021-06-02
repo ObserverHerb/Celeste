@@ -239,6 +239,7 @@ void Window::Authenticate()
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
 	});
+	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");
 }

@@ -15,6 +15,7 @@ if (WIN32)
 	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent WinExtras REQUIRED)
 else()
 	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent TextToSpeech REQUIRED)
+	find_package(Qt5Test REQUIRED)
 endif()
 
 add_executable(Celeste
@@ -38,6 +39,27 @@ add_executable(Celeste
 	resources/resources.qrc
 )
 
+add_executable(Testing
+	globals.h
+	settings.h
+	command.h
+	volume.h
+	relay.h
+	viewers.h
+	widgets.h
+	widgets.cpp
+	receivers.h
+	receivers.cpp
+	subscribers.h
+	subscribers.cpp
+	panes.h
+	panes.cpp
+	window.h
+	window.cpp
+	testing.cpp
+)
+add_test(NAME Testing COMMAND testing)
+
 if (WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::WinExtras)
@@ -49,4 +71,5 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
+	target_link_libraries(Testing PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
 endif()

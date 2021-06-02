@@ -118,6 +118,7 @@ signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);
 	void Ponging();
+	void GreenLight();
 protected slots:
 	void SocketError(QAbstractSocket::SocketError error);
 	void JoinStream();
