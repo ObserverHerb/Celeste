@@ -117,6 +117,14 @@ bool Window::event(QEvent *event)
 			connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
 			subscriber->Listen();
 			subscriber->Subscribe("channel.channel_points_custom_reward_redemption.add");
+			connect(subscriber,&EventSubscriber::Raid,[this]() {
+				Print("THIS DID STUFF OMG OMG OMG");
+				StageEphemeralPane(new AudioAnnouncePane({
+					{"Raid<br>",1},
+					{"Raid",1.5},
+					{"Raid",1}
+				},"C:\\Users\\herb\\Nextcloud\\Twitch\\Audio\\raid.mp3"));
+			});
 
 			connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
 			connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
@@ -235,11 +243,11 @@ void Window::Authenticate()
 	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
-	/*connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
+	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
 	});
-	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);*/
+	//connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");
 }

@@ -1,4 +1,5 @@
 #include <QtTest/QtTest>
+#include <QTimer>
 #include <iostream>
 #include "subscribers.h"
 #include "window.h"
@@ -92,11 +93,25 @@ private slots:
 		testWindow.show();
 	}
 
+	void verifyConnected()
+	{
+		QTimer::singleShot(5000,[this]() {
+			testWindow.EventSubscriber()->Data(DataFromFile("channel_raid.txt"));
+			testWindow.EventSubscriber()->TestDataAvailable();
+		});
+
+		QSignalSpy windowSpy(&testWindow,&TestWindow::GreenLight);
+		QVERIFY(windowSpy.wait(30000));
+	}
+
 	void badSubscriptionDataTest()
 	{
 		try
 		{
 			testWindow.EventSubscriber()->Data(DataFromFile("channel_follow.txt"));
+			testWindow.EventSubscriber()->TestDataAvailable();
+
+			testWindow.EventSubscriber()->Data(DataFromFile("channel_raid.txt"));
 			testWindow.EventSubscriber()->TestDataAvailable();
 		}
 
@@ -109,12 +124,6 @@ private slots:
 		{
 			std::cout << "Unknown critical error occurred!" << std::endl;
 		}
-	}
-
-	void verifyConnected()
-	{
-		QSignalSpy windowSpy(&testWindow,&TestWindow::GreenLight);
-		QVERIFY(windowSpy.wait(30000));
 	}
 
 	void multipleMessagesTest()

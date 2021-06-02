@@ -3,12 +3,10 @@
 #include <QTcpServer>
 #include "settings.h"
 
-inline const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
-inline const char *SUBSCRIPTION_TYPE_REDEPTION="channel.challen_points_custom_reward_redemption.add";
-
 enum class SubscriptionType
 {
-	CHANNEL_FOLLOW
+	CHANNEL_FOLLOW,
+	CHANNEL_RAID
 };
 
 class EventSubscriber : public QTcpServer
@@ -38,6 +36,7 @@ protected:
 	virtual bool WriteToSocket(const QByteArray &data,QTcpSocket *socket=nullptr) const;
 signals:
 	void Print(const QString &message) const;
+	void Raid();
 protected slots:
 	void ConnectionAvailable();
 };

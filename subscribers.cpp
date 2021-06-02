@@ -22,6 +22,9 @@ const char *JSON_KEY_EVENT_USER_INPUT="user_input";
 const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
+const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
+const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
+
 const QString EventSubscriber::SUBSYSTEM_NAME="Event Subscriber";
 const QString EventSubscriber::LINE_BREAK="\r\n";
 
@@ -30,7 +33,8 @@ EventSubscriber::EventSubscriber(QObject *parent) : QTcpServer(parent),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"ServerToken"),
 	secret(QUuid::createUuid().toString())
 {
-	subscriptionTypes.insert({"channel.follow",SubscriptionType::CHANNEL_FOLLOW});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RAID,SubscriptionType::CHANNEL_RAID});
 
 	//connect(this,&EventSubscriber::acceptError,this,QOverload<QAbstractSocket::SocketError>::of(&EventSubscriber::)) // FIXME: handle error here?
 	connect(this,&EventSubscriber::newConnection,this,&EventSubscriber::ConnectionAvailable);
@@ -74,7 +78,7 @@ void EventSubscriber::Subscribe(const QString &type)
 		{"version","1"},
 		{
 			"condition",
-			QJsonObject({{"broadcaster_user_id","channel.follow"}})
+			QJsonObject({{"broadcaster_user_id",SUBSCRIPTION_TYPE_FOLLOW}})
 		},
 		{
 			"transport",
@@ -86,7 +90,7 @@ void EventSubscriber::Subscribe(const QString &type)
 		}
 	}));
 	emit Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Sending subscription request: %1").arg(QString(payload.toJson(QJsonDocument::Indented)))));
-	manager->post(request,payload.toJson(QJsonDocument::Compact));
+	//manager->post(request,payload.toJson(QJsonDocument::Compact));
 }
 
 void EventSubscriber::DataAvailable()
@@ -147,26 +151,16 @@ const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,con
 
 	if (json.object().contains(JSON_KEY_CHALLENGE)) return StringConvert::ByteArray(BuildResponse(json.object().value(JSON_KEY_CHALLENGE).toString())); // TODO: different function, this isn't a notification
 
-	if (type == SubscriptionType::CHANNEL_FOLLOW)
+	switch (type)
 	{
+	case SubscriptionType::CHANNEL_FOLLOW:
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Follow","Follow received"));
 		return StringConvert::ByteArray(BuildResponse());
+	case SubscriptionType::CHANNEL_RAID:
+		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Raid","You have been raided!"));
+		emit Raid();
+		return StringConvert::ByteArray(BuildResponse());
 	}
-
-
-	/*if (json.object().contains(JSON_KEY_EVENT) && json.object().value(JSON_KEY_EVENT.toObject().contains(JSON_KEY_EVENT_REWARD))
-	{
-		QJsonObject event=json.object().value(JSON_KEY_EVENT).toObject();
-		Print(Console::GenerateMessage((SUBSYSTEM_NAME,QString("== REWARD: %1|%2|%3").arg(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_USER_INPUT).toString())))));
-		return StringConvert::ByteArray(BuildReponse());
-	}
-
-	if (json.object().contains(JSON_KEY_EVENT) && json.object().value(JSON_KEY_EVENT.toObject().contains(JSON_KEY_EVENT_FOLLOW))
-	{
-		QJsonObject event=json.object().value(JSON_KEY_EVENT).toObject();
-		Print(Console::GenerateMessage((SUBSYSTEM_NAME,QString("== FOLLOW: %1").arg(event.value(JSON_KEY_EVENT_USER_NAME).toString()))));
-		return StringConvert::ByteArray(BuildReponse());
-	}*/
 
 	return QByteArray(); // TODO: should this throw some kind of error? Unknown request?
 }
