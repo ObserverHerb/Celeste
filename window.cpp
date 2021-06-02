@@ -105,11 +105,12 @@ bool Window::event(QEvent *event)
 {
 	if (event->type() == QEvent::Polish)
 	{
+		const char *OPERATION="Initialize";
 		try
 		{
-			Print(QString("Creating data directory %1").arg(Filesystem::DataPath().absolutePath()));
+			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Creating data directory %1").arg(Filesystem::DataPath().absolutePath())));
 			if (!Filesystem::DataPath().exists() && !Filesystem::DataPath().mkpath(Filesystem::DataPath().absolutePath())) throw std::runtime_error("Failed to create data directory");
-			Print(QString("Creating log directory %1").arg(Filesystem::LogPath().absolutePath()));
+			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Creating log directory %1").arg(Filesystem::LogPath().absolutePath())));
 			if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
 			if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
 			connect(this,&Window::Print,this,&Window::Log);
@@ -124,8 +125,7 @@ bool Window::event(QEvent *event)
 
 		catch (std::runtime_error &exception)
 		{
-			Print("Aborting initialization!");
-			Print(exception.what());
+			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Aborting initialization!\n%1").arg(exception.what())));
 		}
 	}
 
@@ -165,14 +165,15 @@ void Window::closeEvent(QCloseEvent *event)
  */
 void Window::Connected()
 {
-	emit Print("Connected!");
+	const char *OPERATION="Connect";
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,"Connected!"));
 	if (!settingAdministrator)
 	{
-		Print("Please set the Administrator under the Authorization section in your settings file");
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,"Please set the Administrator under the Authorization section in your settings file"));
 		return;
 	}
-	Print(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator)));
-	emit Print("Sending credentials...");
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"send",QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,"Sending credentials..."));
 	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken))));
 	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
 }
@@ -183,7 +184,7 @@ void Window::Connected()
  */
 void Window::Disconnected()
 {
-	emit Print("Disconnected");
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"Disconnect","Disconnected"));
 }
 
 /*!
@@ -210,14 +211,15 @@ void Window::BuildEventSubscriber()
 	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
 	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
 		manager->deleteLater();
+		const char *CHANNEL_OWNER_ID="obtain channel owner ID";
 		QJsonParseError jsonError;
 		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-		if (json.isNull() || !json.object().contains("data")) emit Print(QString("Something went wrong asking Twitch for channel owner's profile").arg(settingChannel,jsonError.errorString()));
+		if (json.isNull() || !json.object().contains("data")) emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Something went wrong asking Twitch for channel %1's profile: %2").arg(settingChannel,jsonError.errorString())));
 		QJsonArray data=json.object().value("data").toArray();
-		if (data.size() < 1) emit Print(QString("%1 is not a valid Twitch user").arg(static_cast<QString>(settingChannel)));
+		if (data.size() < 1) emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("%1 is not a valid Twitch user").arg(static_cast<QString>(settingChannel))));
 		const QString channelOwnerID=data.at(0).toObject().value("id").toString();
 		EventSubscriber *subscriber=CreateEventSubscriber(channelOwnerID);
-		Print(QString("Event subscriber created for user ID: %1").arg(channelOwnerID));
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(channelOwnerID)));
 		connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
@@ -286,11 +288,11 @@ void Window::Authenticate()
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
 	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
-		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"authenticate",QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay)))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
 	});
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
-	emit Print("Connecting to IRC...");
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"connect","Connecting to IRC..."));
 }
 
 /*!
@@ -331,7 +333,7 @@ void Window::FollowChat()
 	}
 	catch (const std::runtime_error &exception)
 	{
-		visiblePane->Print(QString("There was a problem starting chat\n%1").arg(exception.what()));
+		visiblePane->Print(Console::GenerateMessage(QCoreApplication::applicationName(),"follow chat",QString("There was a problem starting chat\n%1").arg(exception.what())));
 		return;
 	}
 
@@ -418,7 +420,7 @@ void Window::FollowChat()
 				SwapPane(new StatusPane(this));
 				QString date=QDateTime::currentDateTime().toString("ddd d hh:mm:ss");
 				outputText=outputText.split("\n").join(QString("\n%1 ").arg(date));
-				Print(date+"\n"+outputText);
+				emit Print(date+"\n"+outputText);
 				this->disconnect();
 				break;
 			}
@@ -671,7 +673,7 @@ void Window::Pong() const
 
 void Window::Log(const QString &text)
 {
-	logFile.write(StringConvert::ByteArray(text));
+	logFile.write(StringConvert::ByteArray(QString("%1\n").arg(text)));
 }
 
 /*!
@@ -709,7 +711,7 @@ void Window::TryConnect()
 
 void Window::SocketError(QAbstractSocket::SocketError error)
 {
-	Print(QString("Failed to connect to server (%1)").arg(ircSocket->errorString()));
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"connect",QString("Failed to connect to server (%1)").arg(ircSocket->errorString())));
 	TryConnect();
 }
 
