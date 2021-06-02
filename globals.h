@@ -17,6 +17,7 @@ inline const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
 inline const char *TWITCH_API_ENDPOINT_EMOTE_LIST="https://api.twitch.tv/kraken/chat/emoticons";
 inline const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
 inline const char *TWITCH_API_ENDPOINT_USERS="https://api.twitch.tv/helix/users";
+inline const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
 inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
 inline const char *IRC_COMMAND_USER="NICK %1\n";
 inline const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
@@ -73,6 +74,18 @@ namespace StringConvert
 	}
 }
 
+namespace Console
+{
+	inline const QString GenerateMessage(const QString &subsystem,const QString &message)
+	{
+		return QString("== %1\n%2").arg(subsystem.toUpper(),message);
+	}
+
+	inline const QString GenerateMessage(const QString &subsystem,const QString &operation,const QString &message)
+	{
+		return GenerateMessage(QString("%1 (%2)").arg(subsystem,operation),message);
+	}
+}
 namespace TimeConvert
 {
 	constexpr std::chrono::seconds Seconds(const std::chrono::milliseconds &value) { return std::chrono::duration_cast<std::chrono::seconds>(value); }

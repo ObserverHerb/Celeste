@@ -12,10 +12,7 @@
 #include "settings.h"
 #include "volume.h"
 #include "panes.h"
-
-inline const char *SETTINGS_CATEGORY_VIBE="Vibe";
-inline const char *SETTINGS_CATEGORY_WINDOW="Window";
-inline const char *SETTINGS_CATEGORY_EVENTS="Events";
+#include "subscribers.h"
 
 enum class BuiltInCommands
 {
@@ -103,6 +100,9 @@ protected:
 	std::queue<EphemeralPane*> ephemeralPanes;
 	QFuture<void> worker;
 	static std::chrono::milliseconds uptime;
+	static const char *SETTINGS_CATEGORY_VIBE;
+	static const char *SETTINGS_CATEGORY_WINDOW;
+	static const char *SETTINGS_CATEGORY_EVENTS;
 	void SwapPane(PersistentPane *pane);
 	void Authenticate();
 	void StageEmpeheralPane(EphemeralPane &&pane) { StageEphemeralPane(&pane); }
@@ -111,11 +111,15 @@ protected:
 	std::tuple<QString,QImage> CurrentSong() const;
 	const QString Uptime() const;
 	const QSize ScreenThird();
+	void TryConnect();
+	virtual QByteArray ReadFromSocket() const;
+	virtual EventSubscriber* CreateEventSubscriber();
 signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);
 	void Ponging();
 protected slots:
+	void SocketError(QAbstractSocket::SocketError error);
 	void JoinStream();
 	void FollowChat();
 	void Pong() const;

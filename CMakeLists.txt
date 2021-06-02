@@ -28,6 +28,8 @@ add_executable(Celeste
 	widgets.cpp
 	receivers.h
 	receivers.cpp
+	subscribers.h
+	subscribers.cpp
 	panes.h
 	panes.cpp
 	window.h

@@ -18,6 +18,9 @@
 #include "receivers.h"
 
 std::chrono::milliseconds Window::uptime=TimeConvert::Now();
+const char *Window::SETTINGS_CATEGORY_VIBE="Vibe";
+const char *Window::SETTINGS_CATEGORY_WINDOW="Window";
+const char *Window::SETTINGS_CATEGORY_EVENTS="Events";
 
 /*!
  * \class Window
@@ -110,8 +113,14 @@ bool Window::event(QEvent *event)
 			if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
 			if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
 
+			EventSubscriber *subscriber=CreateEventSubscriber();
+			connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
+			subscriber->Listen();
+			subscriber->Subscribe("channel.channel_points_custom_reward_redemption.add");
+
 			connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
 			connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
+			connect(ircSocket,&QTcpSocket::errorOccurred,this,&Window::SocketError);
 			Authenticate();
 		}
 
@@ -188,7 +197,7 @@ void Window::Disconnected()
  */
 void Window::DataAvailable()
 {
-	QString data=ircSocket->readAll();
+	const QString data=ReadFromSocket();
 	logFile.write(StringConvert::ByteArray(data));
 	if (data.size() > 4 && data.left(4) == "PING")
 	{
@@ -634,4 +643,27 @@ const QSize Window::ScreenThird()
 	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
 	int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
 	return {shortestSide,shortestSide};
+}
+
+void Window::TryConnect()
+{
+	QTimer::singleShot(0,[this]() {
+		ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
+	});
+}
+
+void Window::SocketError(QAbstractSocket::SocketError error)
+{
+	Print(QString("Failed to connect to server (%1)").arg(ircSocket->errorString()));
+	TryConnect();
+}
+
+QByteArray Window::ReadFromSocket() const
+{
+	return ircSocket->readAll();
+}
+
+EventSubscriber* Window::CreateEventSubscriber()
+{
+	return new EventSubscriber(this);
 }
