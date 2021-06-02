@@ -51,7 +51,9 @@ Window::Window() : QWidget(nullptr),
 	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
-	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival")
+	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
+	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
+	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -241,13 +243,13 @@ void Window::BuildEventSubscriber()
 				{"is raiding with<br>",1},
 				{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
 				{"viewers",1}
-			},"C:\\Users\\herb\\Dropbox\\Twitch\\audio\\crickets.mp3"));
+			},settingRaidSound));
 		});
 		connect(subscriber,&EventSubscriber::Subscription,[this](const QString &viewer) {
 			StageEphemeralPane(new AudioAnnouncePane({
 				{QString("%1<br>").arg(viewer),1.5},
 				{"has subscribed!",1}
-			},"C:\\Users\\herb\\Dropbox\\Twitch\\audio\\crickets.mp3"));
+			},settingSubscriptionSound));
 		});
 
 	});

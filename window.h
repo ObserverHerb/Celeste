@@ -98,6 +98,8 @@ protected:
 	Setting settingBackgroundColor;
 	Setting settingAccentColor;
 	Setting settingArrivalSound;
+	Setting settingSubscriptionSound;
+	Setting settingRaidSound;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	QFuture<void> worker;
 	static std::chrono::milliseconds uptime;
