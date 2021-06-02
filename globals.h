@@ -46,6 +46,12 @@ namespace StringConvert
 		if (!succeeded) throw std::range_error("Unable to convert text to number");
 		return result;
 	}
+	inline QString PositiveInteger(const unsigned int &value)
+	{
+		QString result=QString::number(value);
+		if (result.isEmpty()) throw std::range_error("Unable to convert number to text");
+		return result;
+	}
 	inline unsigned int PositiveInteger(const QString &value)
 	{
 		bool succeeded=false;

@@ -7,7 +7,7 @@
 class TestEventSubscriber : public EventSubscriber
 {
 public:
-	TestEventSubscriber(QObject *parent=nullptr) : EventSubscriber(parent) { }
+	TestEventSubscriber(const QString &administratorID,QObject *parent=nullptr) : EventSubscriber(administratorID,parent) { }
 
 	void TestDataAvailable()
 	{
@@ -37,6 +37,7 @@ protected:
 
 class TestWindow : public Window
 {
+	Q_OBJECT
 public:
 	TestWindow() : Window(), validResponse(true) { }
 
@@ -51,6 +52,7 @@ public:
 	{
 		return testEventSubscriber;
 	}
+
 protected:
 	bool validResponse;
 	TestEventSubscriber *testEventSubscriber;
@@ -60,10 +62,19 @@ protected:
 		return validResponse ? ircSocket->readAll() : QByteArray("Things");
 	}
 
-	class EventSubscriber* CreateEventSubscriber() override
+	class EventSubscriber* CreateEventSubscriber(const QString &administratorID) override
 	{
-		testEventSubscriber=new TestEventSubscriber(this);
+		testEventSubscriber=new TestEventSubscriber(administratorID,this);
 		return testEventSubscriber;
+	}
+
+signals:
+	void GreenLight();
+
+protected slots:
+	void JoinStream() override
+	{
+		emit GreenLight();
 	}
 };
 
@@ -95,23 +106,24 @@ private slots:
 
 	void verifyConnected()
 	{
-		QTimer::singleShot(5000,[this]() {
-			testWindow.EventSubscriber()->Data(DataFromFile("channel_redemption.txt"));
-			testWindow.EventSubscriber()->TestDataAvailable();
-		});
-
 		QSignalSpy windowSpy(&testWindow,&TestWindow::GreenLight);
-		QVERIFY(windowSpy.wait(30000));
+		QVERIFY(windowSpy.wait(TimeConvert::Interval(testWindow.JoinDelay() + std::chrono::seconds(1))));
 	}
 
-	/*void badSubscriptionDataTest()
+	void goodSubscriptionDataTest()
 	{
 		try
 		{
+			testWindow.EventSubscriber()->Data(DataFromFile("channel_redemption.txt"));
+			testWindow.EventSubscriber()->TestDataAvailable();
+
 			testWindow.EventSubscriber()->Data(DataFromFile("channel_follow.txt"));
 			testWindow.EventSubscriber()->TestDataAvailable();
 
 			testWindow.EventSubscriber()->Data(DataFromFile("channel_raid.txt"));
+			testWindow.EventSubscriber()->TestDataAvailable();
+
+			testWindow.EventSubscriber()->Data(DataFromFile("channel_subscription.txt"));
 			testWindow.EventSubscriber()->TestDataAvailable();
 		}
 
@@ -124,13 +136,33 @@ private slots:
 		{
 			std::cout << "Unknown critical error occurred!" << std::endl;
 		}
-	}*/
+	}
+
+	void badSubscriptionDataTest()
+	{
+		try
+		{
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			std::cout << "Critical error: " << exception.what() << std::endl;
+		}
+
+		catch (...)
+		{
+			std::cout << "Unknown critical error occurred!" << std::endl;
+		}
+	}
 
 	void multipleMessagesTest()
 	{
 		testWindow.BreakResponses();
 		testWindow.TestDataAvailable();
 		QVERIFY(true);
+
+		QSignalSpy windowSpy(&testWindow,&TestWindow::GreenLight);
+		QVERIFY(windowSpy.wait(30000));
 	}
 };
 

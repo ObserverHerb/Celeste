@@ -25,23 +25,23 @@ const char *JSON_KEY_EVENT_CHEER_AMOUNT="bits";
 const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
-const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
-const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_reward_redemption.add";
-const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
-const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
-
 const QString EventSubscriber::SUBSYSTEM_NAME="Event Subscriber";
 const QString EventSubscriber::LINE_BREAK="\r\n";
+const char *EventSubscriber::SETTINGS_CATEGORY_EVENTSUB="Events";
 
-EventSubscriber::EventSubscriber(QObject *parent) : QTcpServer(parent),
+EventSubscriber::EventSubscriber(const QString &channelOwnerID,QObject *parent) : QTcpServer(parent),
+	channelOwnerID(channelOwnerID),
 	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"ServerToken"),
+	settingListenPort(SETTINGS_CATEGORY_EVENTSUB,"Port",4443),
+	settingCallbackURL(SETTINGS_CATEGORY_EVENTSUB,"CallbackURL"),
 	secret(QUuid::createUuid().toString())
 {
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_REDEMPTION,SubscriptionType::CHANNEL_REDEMPTION});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_CHEER,SubscriptionType::CHANNEL_CHEER});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RAID,SubscriptionType::CHANNEL_RAID});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_SUBSCRIPTION,SubscriptionType::CHANNEL_SUBSCRIPTION});
 
 	//connect(this,&EventSubscriber::acceptError,this,QOverload<QAbstractSocket::SocketError>::of(&EventSubscriber::)) // FIXME: handle error here?
 	connect(this,&EventSubscriber::newConnection,this,&EventSubscriber::ConnectionAvailable);
@@ -57,9 +57,8 @@ void EventSubscriber::Listen()
 	// FIXME: this is going to be a problemon machines with mutiple NICs
 	QList<QHostAddress> interfaceAddresses=QNetworkInterface::allAddresses();
 	if (interfaceAddresses.size() < 1) throw std::runtime_error("No network interfaces available"); // TODO: unit test this
-	int port=4443;
-	Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Using network address %1 and port %2").arg("any",port)));
-	if (!listen(QHostAddress::Any,port))
+	Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Using network address %1 and port %2").arg("any",StringConvert::Integer(static_cast<int>(settingListenPort)))));
+	if (!listen(QHostAddress::Any,settingListenPort))
 	{
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,QString("Error while subscribing: %1").arg(errorString())));
 		throw std::runtime_error("Failed to listen for incoming connections");
@@ -85,13 +84,13 @@ void EventSubscriber::Subscribe(const QString &type)
 		{"version","1"},
 		{
 			"condition",
-			QJsonObject({{"broadcaster_user_id","523304124"}})
+			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? "to_broadcaster_user_id" : "broadcaster_user_id",channelOwnerID}})
 		},
 		{
 			"transport",
 			QJsonObject({
 				{"method","webhook"},
-				{"callback",QString("https://%1").arg("www.sky-meyg.com/eventsub")},
+				{"callback",QString("https://%1").arg(static_cast<QString>(settingCallbackURL))},
 				{"secret",secret}
 			})
 		}
@@ -185,6 +184,10 @@ const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,con
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Raid","You have been raided!"));
 		emit Raid(event.value("from_broadcaster_user_name").toString(),event.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
 		return StringConvert::ByteArray(BuildResponse());
+	case SubscriptionType::CHANNEL_SUBSCRIPTION:
+		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Subscription","A viewer has subscribed"));
+		emit Subscription(event.value(JSON_KEY_EVENT_USER_NAME).toString());
+		return StringConvert::ByteArray(BuildResponse());
 	}
 
 	return QByteArray(); // TODO: should this throw some kind of error? Unknown request?
@@ -192,10 +195,20 @@ const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,con
 
 const QString EventSubscriber::BuildResponse(const QString &data) const
 {
+	QString response;
 	if (data.size() > 0)
-		return QString("HTTP/1.1 200 OK\nAccept Ranges: bytes\nContent-Length: %1\nContent-Type: text/plain\n\n%2").arg(StringConvert::Integer(data.size()),data);
+	{
+		response=QString("HTTP/1.1 200 OK%1Accept Ranges: bytes%1Content-Length: %2%1Content-Type: text/plain%1%1%3").arg(LINE_BREAK,StringConvert::Integer(data.size()),data);
+	}
 	else
-		return QString("HTTP/1.1 200 OK");
+	{
+		// for some reason the response has to have an actual body with data for Twitch
+		// to stop resending the notification
+		QString acknowledgement=QString("Acknowledged: %1").arg(QDateTime::currentDateTime().toString());
+		response=QString("HTTP/1.1 200 OK%1Accept Ranges: bytes%1Content-Length: %2%1Content-Type: text/plain%1%1%3").arg(LINE_BREAK,StringConvert::Integer(acknowledgement.size()),acknowledgement);
+	}
+	Print(Console::GenerateMessage(SUBSYSTEM_NAME,"write",response));
+	return response;
 }
 
 void EventSubscriber::ConnectionAvailable()

@@ -112,6 +112,7 @@ bool Window::event(QEvent *event)
 			Print(QString("Creating log directory %1").arg(Filesystem::LogPath().absolutePath()));
 			if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
 			if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
+			connect(this,&Window::Print,this,&Window::Log);
 
 			BuildEventSubscriber();
 
@@ -206,25 +207,54 @@ void Window::DataAvailable()
 
 void Window::BuildEventSubscriber()
 {
-	EventSubscriber *subscriber=CreateEventSubscriber();
-	connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
-	subscriber->Listen();
-	subscriber->Subscribe("channel.channel_points_custom_reward_redemption.add");
-	connect(subscriber,&EventSubscriber::Redemption,[this](const QString &viewer,const QString &rewardTitle,const QString &message) {
-		StageEphemeralPane(new AnnouncePane({
-			{QString("%1<br>").arg(viewer),1.5},
-			{"has redeemed<br>",1},
-			{QString("%1<br>").arg(rewardTitle),1.5},
-			{message,1}
-		}));
+	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+		manager->deleteLater();
+		QJsonParseError jsonError;
+		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+		if (json.isNull() || !json.object().contains("data")) emit Print(QString("Something went wrong asking Twitch for channel owner's profile").arg(settingChannel,jsonError.errorString()));
+		QJsonArray data=json.object().value("data").toArray();
+		if (data.size() < 1) emit Print(QString("%1 is not a valid Twitch user").arg(static_cast<QString>(settingChannel)));
+		const QString channelOwnerID=data.at(0).toObject().value("id").toString();
+		EventSubscriber *subscriber=CreateEventSubscriber(channelOwnerID);
+		Print(QString("Event subscriber created for user ID: %1").arg(channelOwnerID));
+		connect(subscriber,&EventSubscriber::Print,this,&Window::Print);
+		subscriber->Listen();
+		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
+		subscriber->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);
+		subscriber->Subscribe(SUBSCRIPTION_TYPE_CHEER);
+		subscriber->Subscribe(SUBSCRIPTION_TYPE_RAID);
+		subscriber->Subscribe(SUBSCRIPTION_TYPE_SUBSCRIPTION);
+		connect(subscriber,&EventSubscriber::Redemption,[this](const QString &viewer,const QString &rewardTitle,const QString &message) {
+			StageEphemeralPane(new AnnouncePane({
+				{QString("%1<br>").arg(viewer),1.5},
+				{"has redeemed<br>",1},
+				{QString("%1<br>").arg(rewardTitle),1.5},
+				{message,1}
+			}));
+		});
+		connect(subscriber,&EventSubscriber::Raid,[this](const QString &viewer,const unsigned int viewers) {
+			StageEphemeralPane(new AudioAnnouncePane({
+				{QString("%1<br>").arg(viewer),1.5},
+				{"is raiding with<br>",1},
+				{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
+				{"viewers",1}
+			},"C:\\Users\\herb\\Dropbox\\Twitch\\audio\\crickets.mp3"));
+		});
+		connect(subscriber,&EventSubscriber::Subscription,[this](const QString &viewer) {
+			StageEphemeralPane(new AudioAnnouncePane({
+				{QString("%1<br>").arg(viewer),1.5},
+				{"has subscribed!",1}
+			},"C:\\Users\\herb\\Dropbox\\Twitch\\audio\\crickets.mp3"));
+		});
+
 	});
-	connect(subscriber,&EventSubscriber::Raid,[this]() {
-		StageEphemeralPane(new AudioAnnouncePane({
-			{"Raid<br>",1},
-			{"Raid",1.5},
-			{"Raid",1}
-		},"C:\\Users\\observerherb\\Nextcloud\\Twitch\\Audio\\raid.mp3"));
-	});
+	QUrl query(TWITCH_API_ENDPOINT_USERS);
+	query.setQuery({{"login",static_cast<QString>(settingChannel)}});
+	QNetworkRequest request(query);
+	request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
+	request.setRawHeader("Client-ID",settingClientID);
+	manager->get(request);
 }
 
 /*!
@@ -255,11 +285,10 @@ void Window::Authenticate()
 	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
 	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
 	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
-	/*connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
+	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
 		Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))));
 		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
-	});*/
-	//connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,this,&Window::GreenLight);
+	});
 	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	emit Print("Connecting to IRC...");
 }
@@ -640,6 +669,11 @@ void Window::Pong() const
 	ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
 }
 
+void Window::Log(const QString &text)
+{
+	logFile.write(StringConvert::ByteArray(text));
+}
+
 /*!
  * \fn Window::Uptime
  * \brief Calculates the difference between now and when the bot was started
@@ -684,7 +718,7 @@ QByteArray Window::ReadFromSocket() const
 	return ircSocket->readAll();
 }
 
-EventSubscriber* Window::CreateEventSubscriber()
+EventSubscriber* Window::CreateEventSubscriber(const QString &channelOwnerID)
 {
-	return new EventSubscriber(this);
+	return new EventSubscriber(channelOwnerID,this);
 }

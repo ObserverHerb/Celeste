@@ -78,6 +78,7 @@ public:
 	void Connected();
 	void Disconnected();
 	void DataAvailable();
+	const std::chrono::milliseconds JoinDelay() const { return settingJoinDelay; };
 protected:
 	QTcpSocket *ircSocket;
 	PersistentPane *visiblePane;
@@ -114,17 +115,17 @@ protected:
 	const QSize ScreenThird();
 	void TryConnect();
 	virtual QByteArray ReadFromSocket() const;
-	virtual EventSubscriber* CreateEventSubscriber();
+	virtual EventSubscriber* CreateEventSubscriber(const QString &administratorID);
 signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);
 	void Ponging();
-	void GreenLight();
 protected slots:
 	void SocketError(QAbstractSocket::SocketError error);
-	void JoinStream();
+	virtual void JoinStream();
 	void FollowChat();
 	void Pong() const;
+	void Log(const QString &text);
 };
 
 #ifdef Q_OS_WIN
