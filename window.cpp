@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include "window.h"
 #include "receivers.h"
+#include "recognizers.h"
 
 std::chrono::milliseconds Window::uptime=TimeConvert::Now();
 const char *Window::SETTINGS_CATEGORY_VIBE="Vibe";
@@ -81,6 +82,7 @@ Window::Window() : QWidget(nullptr),
 	ircSocket=new QTcpSocket(this);
 
 	connect(this,&Window::Ponging,this,&Window::Pong);
+	connect(this,&Window::RequestEphemeralPane,this,&Window::StageEphemeralPane);
 }
 
 /*!
@@ -348,16 +350,7 @@ void Window::FollowChat()
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
-	if (settingArrivalSound)
-	{
-		connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
-			if (settingAdministrator != viewer.Name()) StageEphemeralPane(new AudioAnnouncePane({
-				{"Please welcome<br>",1},
-				{QString("%1<br>").arg(viewer.Name()),1.5},
-				{"to the chat",1}
-			},settingArrivalSound));
-		});
-	}
+	if (settingArrivalSound) connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,&Window::AnnounceArrival);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
@@ -609,6 +602,15 @@ void Window::FollowChat()
 	helpClock.start();
 }
 
+void Window::AnnounceArrival(const Viewer &viewer)
+{
+	if (settingAdministrator != viewer.Name()) emit RequestEphemeralPane(new AudioAnnouncePane({
+		{"Please welcome<br>",1},
+		{QString("%1<br>").arg(viewer.Name()),1.5},
+		{"to the chat",1}
+	},ArrivalSound()));
+}
+
 /*!
  * \fn Window::StageEphemeralPane
  * \brief Add an ephemeral pane to the queue of panes to be displayed
@@ -725,4 +727,9 @@ QByteArray Window::ReadFromSocket() const
 EventSubscriber* Window::CreateEventSubscriber(const QString &channelOwnerID)
 {
 	return new EventSubscriber(channelOwnerID,this);
+}
+
+const QString& Window::ArrivalSound() const
+{
+	return FileRecognizer(settingArrivalSound).Random();
 }

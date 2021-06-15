@@ -439,10 +439,12 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
  */
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
 {
-	audioPlayer->setMedia(QUrl::fromLocalFile(path));
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
-	}); // TODO: report loading failures to status section of chat pane
+	});
+	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
+	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,&AudioAnnouncePane::Finished);
+	audioPlayer->setMedia(QUrl::fromLocalFile(path));
 }
 
 AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
@@ -458,7 +460,7 @@ void AudioAnnouncePane::Show()
 {
 	Polish();
 	show();
-	audioPlayer->play(); // FIXME: catch errors above and don't play if the file failed to load
+	audioPlayer->play();
 }
 
 /*!

@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 #include <QTimer>
 #include <iostream>
+#include "recognizers.h"
 #include "subscribers.h"
 #include "window.h"
 
@@ -39,7 +40,19 @@ class TestWindow : public Window
 {
 	Q_OBJECT
 public:
-	TestWindow() : Window(), validResponse(true) { }
+	TestWindow() : Window(), validResponse(true), arrivalSound("/dev/null")
+	{
+		connect(this,&TestWindow::RequestEphemeralPane,[this](AudioAnnouncePane *pane) {
+			connect(pane,&AudioAnnouncePane::Finished,this,&TestWindow::GreenLight);
+			connect(pane,&AudioAnnouncePane::DurationAvailable,[this](qint64 duration) {
+				QWARN(QString::number(duration).toLatin1());
+				QSignalSpy windowSpy(this,&TestWindow::GreenLight);
+				QVERIFY(windowSpy.wait(duration));
+			});
+			QSignalSpy paneSpy(pane,&AudioAnnouncePane::DurationAvailable);
+			QVERIFY(paneSpy.wait(5000));
+		});
+	}
 
 	void TestDataAvailable()
 	{
@@ -48,6 +61,8 @@ public:
 
 	void BreakResponses() { validResponse=false; }
 
+	void SetArrivalSound(const QString& path) { arrivalSound=path; }
+
 	TestEventSubscriber* EventSubscriber() const
 	{
 		return testEventSubscriber;
@@ -55,6 +70,7 @@ public:
 
 protected:
 	bool validResponse;
+	QString arrivalSound;
 	TestEventSubscriber *testEventSubscriber;
 
 	QByteArray ReadFromSocket() const override
@@ -66,6 +82,11 @@ protected:
 	{
 		testEventSubscriber=new TestEventSubscriber(administratorID,this);
 		return testEventSubscriber;
+	}
+
+	const QString& ArrivalSound() const override
+	{
+		return arrivalSound;
 	}
 
 signals:
@@ -102,6 +123,34 @@ private slots:
 	void initTestCase()
 	{
 		testWindow.show();
+	}
+
+	void fileRecognizerTest()
+	{
+		QDir path(dataPath);
+		QVERIFY(path.cd("recognize"));
+		FileRecognizer recognizer(path.absolutePath());
+		QCOMPARE(QFileInfo(recognizer.First()).fileName(),"first.txt");
+
+		// FIXME: Make this a legit test rather than just prints
+		QWARN(recognizer.Random().toLatin1());
+		QWARN(recognizer.Random().toLatin1());
+		QWARN(recognizer.Random().toLatin1());
+		QWARN(recognizer.Random().toLatin1());
+		QWARN(recognizer.Random().toLatin1());
+	}
+
+	void arrivalTest()
+	{
+		testWindow.AnnounceArrival(Viewer("Invalid Viewer")); // FIXME: This is expected to fail, but QSignalSpy doesn't realize that
+
+		QDir path(dataPath);
+		QVERIFY(path.cd("audio"));
+		FileRecognizer recognizer(path.absolutePath());
+		testWindow.SetArrivalSound(recognizer.Random());
+		testWindow.AnnounceArrival(Viewer("Valid Viewer A"));
+		testWindow.SetArrivalSound(recognizer.Random());
+		testWindow.AnnounceArrival(Viewer("Valid Viewer B"));
 	}
 
 	void verifyConnected()

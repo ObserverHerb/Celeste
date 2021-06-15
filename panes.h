@@ -121,6 +121,8 @@ public:
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
+signals:
+	void DurationAvailable(qint64 duration);
 };
 
 class ImageAnnouncePane : public AnnouncePane
