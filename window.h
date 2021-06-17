@@ -117,7 +117,7 @@ protected:
 	void TryConnect();
 	virtual QByteArray ReadFromSocket() const;
 	virtual EventSubscriber* CreateEventSubscriber(const QString &administratorID);
-	virtual const QString& ArrivalSound() const;
+	virtual const QString ArrivalSound() const;
 signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);

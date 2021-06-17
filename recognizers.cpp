@@ -32,7 +32,7 @@ FileRecognizer::FileRecognizer(const QString &path)
 	}
 }
 
-const QString& FileRecognizer::File(const int index)
+const QString FileRecognizer::File(const int index)
 {
 	return files.at(index);
 }
@@ -41,7 +41,7 @@ const QString& FileRecognizer::File(const int index)
  * \fn FileRecognizer::First
  * \brief Return a path to the first file that was recognized
  */
-const QString& FileRecognizer::First()
+const QString FileRecognizer::First()
 {
 	return files.front();
 }
@@ -51,7 +51,7 @@ const QString& FileRecognizer::First()
  * \brief Return a path to a random file in the list of files
  * that was recognized
  */
-const QString& FileRecognizer::Random()
+const QString FileRecognizer::Random()
 {
 	return File(RandomIndex());
 }

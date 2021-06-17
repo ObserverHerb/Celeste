@@ -84,7 +84,7 @@ protected:
 		return testEventSubscriber;
 	}
 
-	const QString& ArrivalSound() const override
+	const QString ArrivalSound() const override
 	{
 		return arrivalSound;
 	}

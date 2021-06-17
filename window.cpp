@@ -729,7 +729,7 @@ EventSubscriber* Window::CreateEventSubscriber(const QString &channelOwnerID)
 	return new EventSubscriber(channelOwnerID,this);
 }
 
-const QString& Window::ArrivalSound() const
+const QString Window::ArrivalSound() const
 {
 	return FileRecognizer(settingArrivalSound).Random();
 }
