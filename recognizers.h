@@ -17,8 +17,17 @@ protected:
 };
 
 
-/*class UserRecognizer
+class UserRecognizer : public QObject
 {
+	Q_OBJECT
 public:
-	UserRecognizer();
-};*/
+	UserRecognizer(const QString &username);
+	const QString& Name() const;
+	const QString& ID() const;
+protected:
+	QString name;
+	QString id;
+signals:
+	void Error(const QString &message);
+	void Recognized(UserRecognizer *recognizer);
+};

@@ -32,3 +32,5 @@ protected:
 
 inline const char *SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
 inline Setting settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator");
+inline Setting settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID");
+inline Setting settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token");

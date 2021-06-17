@@ -92,8 +92,6 @@ protected:
 	Setting settingWindowSize;
 	Setting settingHelpCooldown;
 	Setting settingVibePlaylist;
-	Setting settingClientID;
-	Setting settingOAuthToken;
 	Setting settingJoinDelay;
 	Setting settingChannel;
 	Setting settingBackgroundColor;
