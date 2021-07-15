@@ -97,3 +97,16 @@ else()
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
 	target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
 endif()
+
+
+if (UNIX)
+	include(FindPkgConfig)
+	pkg_search_module(OBS REQUIRED libobs)
+	find_path(OBS_INCLUDE_DIR obs-module.h HINTS ${OBS_INCLUDEDIR} ${OBS_INCLUDE_DIRS})
+endif (UNIX)
+
+add_library(Pulsar MODULE pulsar/pulsar.cpp)
+target_include_directories(Pulsar SYSTEM PRIVATE ${OBS_INCLUDE_DIR}/obs)
+target_link_libraries(Pulsar ${OBS_LIBRARIES} Qt5::Network)
+
+#install_obs_plugin_with_data(Pulsar data)
