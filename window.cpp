@@ -616,8 +616,12 @@ void Window::FollowChat()
 		connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
 			chatPane->Alert(QString("<b>Roaster failed to start</b><br>%2").arg(vibeKeeper->errorString()));
 		});
-		connect(roaster,&QMediaPlayer::currentMediaChanged,[this,chatPane](const QMediaContent &media) {
-			roaster->stop();
+		connect(roaster,&QMediaPlayer::mediaStatusChanged,[this](QMediaPlayer::MediaStatus status) {
+			if (status == QMediaPlayer::EndOfMedia)
+			{
+				roaster->stop();
+				roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
+			}
 		});
 	}
 
