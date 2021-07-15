@@ -100,6 +100,7 @@ protected:
 	Setting settingArrivalSound;
 	Setting settingSubscriptionSound;
 	Setting settingRaidSound;
+	Setting settingPortraitVideo;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	QFuture<void> worker;
 	static std::chrono::milliseconds uptime;

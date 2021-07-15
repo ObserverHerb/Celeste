@@ -53,7 +53,8 @@ Window::Window() : QWidget(nullptr),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
-	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid")
+	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
+	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -339,8 +340,11 @@ void Window::FollowChat()
 		return;
 	}
 
-	connect(this,&Window::Ponging,[chatPane]() {
-		chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
+	connect(this,&Window::Ponging,[this,chatPane]() {
+		if (settingPortraitVideo)
+			StageEphemeralPane(new VideoPane(settingPortraitVideo));
+		else
+			chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 	});
 	connect(chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
