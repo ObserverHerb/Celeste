@@ -22,6 +22,8 @@ endif()
 add_executable(Celeste
 	globals.h
 	settings.h
+	channel.h
+	channel.cpp
 	command.h
 	volume.h
 	relay.h
@@ -45,6 +47,8 @@ add_executable(Celeste
 add_executable(Testing
 	globals.h
 	settings.h
+	channel.h
+	channel.cpp
 	command.h
 	volume.h
 	relay.h

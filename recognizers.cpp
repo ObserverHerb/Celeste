@@ -1,7 +1,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QString>
-#include <QNetworkAccessmanager>
+#include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QJsonDocument>

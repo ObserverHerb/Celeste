@@ -57,12 +57,11 @@ class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_er
 	Q_OBJECT
 	using TagMap=std::unordered_map<QString,QString>;
 public:
-	ChatMessageReceiver(QObject *parent) : ChatMessageReceiver(std::vector<Command>(),parent) { }
-	ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent=nullptr);
+	ChatMessageReceiver(QObject *parent=nullptr);
 	~ChatMessageReceiver();
 	void AttachCommand(const Command &command);
 	const Command RandomCommand() const;
-	const std::unordered_map<QString,Command>& Commands() { return commands; }
+	const std::unordered_map<QString,Command>& Commands() const { return commands; }
 protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;
@@ -83,7 +82,7 @@ signals:
 	void PlayAudio(const QString &user,const QString &message,const QString &path);
 	void Speak(const QString sentence);
 	void ShowVoices();
-	void DispatchCommand(const Command &command);
+	void ForwardCommand(const Command &command);
 public slots:
 	void Process(const QString data) override;
 };
