@@ -41,10 +41,13 @@ Window::Window() : QWidget(nullptr),
 	vibeFader(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
+	roaster(new QMediaPlayer(this)),
 	logFile(Filesystem::LogPath().absoluteFilePath("current")),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
+	settingInactivityCooldown(SETTINGS_CATEGORY_WINDOW,"InactivityCooldown",1800000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
+	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
 	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
 	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
@@ -77,6 +80,7 @@ Window::Window() : QWidget(nullptr),
 	SwapPane(new StatusPane(this));
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
+	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
 	vibeKeeper->setVolume(0);
 
 	ircSocket=new QTcpSocket(this);
@@ -206,6 +210,7 @@ void Window::DataAvailable()
 		emit Ponging();
 		return;
 	}
+	inactivityClock.start();
 	emit Dispatch(data);
 }
 
@@ -595,6 +600,27 @@ void Window::FollowChat()
 		});
 	}
 
+	if (settingRoasts)
+	{
+		connect(&roastSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
+			chatPane->Alert(QString("<b>Failed to load roasts</b><br>%2").arg(roastSources.errorString()));
+		});
+		connect(&roastSources,&QMediaPlaylist::loaded,[this,chatPane]() {
+			roastSources.shuffle();
+			roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
+			roaster->setPlaylist(&roastSources);
+			connect(&inactivityClock,&QTimer::timeout,roaster,&QMediaPlayer::play);
+			chatPane->Alert("Roasts loaded!");
+		});
+		roastSources.load(QUrl::fromLocalFile(settingRoasts));
+		connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
+			chatPane->Alert(QString("<b>Roaster failed to start</b><br>%2").arg(vibeKeeper->errorString()));
+		});
+		connect(roaster,&QMediaPlayer::currentMediaChanged,[this,chatPane](const QMediaContent &media) {
+			roaster->stop();
+		});
+	}
+
 	connect(&helpClock,&QTimer::timeout,[this,chatMessageReceiver]() {
 		if (!ephemeralPanes.empty()) return;
 		try
@@ -611,6 +637,11 @@ void Window::FollowChat()
 		}
 	});
 	helpClock.start();
+
+	connect(&inactivityClock,&QTimer::timeout,[this]() {
+		if (settingPortraitVideo) StageEphemeralPane(new VideoPane(settingPortraitVideo));
+	});
+	inactivityClock.start();
 }
 
 /*!

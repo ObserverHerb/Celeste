@@ -86,11 +86,16 @@ protected:
 	QWidget *background;
 	QMediaPlayer *vibeKeeper;
 	QMediaPlaylist vibeSources;
+	QMediaPlayer *roaster;
+	QMediaPlaylist roastSources;
 	QTimer helpClock;
+	QTimer inactivityClock;
 	QFile logFile;
 	Setting settingWindowSize;
 	Setting settingHelpCooldown;
+	Setting settingInactivityCooldown;
 	Setting settingVibePlaylist;
+	Setting settingRoasts;
 	Setting settingClientID;
 	Setting settingOAuthToken;
 	Setting settingJoinDelay;
