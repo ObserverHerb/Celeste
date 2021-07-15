@@ -109,7 +109,10 @@ bool Window::event(QEvent *event)
 
 			connect(channel,QOverload<ChatMessageReceiver*>::of(&Channel::Joined),this,&Window::FollowChat);
 			connect(channel,&Channel::Ping,[this]() {
-				chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
+				if (settingPortraitVideo)
+					StageEphemeralPane(new VideoPane(settingPortraitVideo));
+				else
+					chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 			});
 			connect(channel,&Channel::Print,this,&Window::Print);
 			connect(channel,&Channel::Log,this,&Window::Log);
