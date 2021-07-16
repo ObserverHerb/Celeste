@@ -676,6 +676,7 @@ void Window::Pong() const
 void Window::Log(const QString &text)
 {
 	logFile.write(StringConvert::ByteArray(QString("%1\n").arg(text)));
+	logFile.flush();
 }
 
 /*!
