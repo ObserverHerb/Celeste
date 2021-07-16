@@ -30,6 +30,8 @@ add_executable(Celeste
 	widgets.cpp
 	receivers.h
 	receivers.cpp
+	recognizers.h
+	recognizers.cpp
 	subscribers.h
 	subscribers.cpp
 	panes.h
@@ -49,6 +51,8 @@ add_executable(Testing
 	viewers.h
 	widgets.h
 	widgets.cpp
+	recognizers.h
+	recognizers.cpp
 	receivers.h
 	receivers.cpp
 	subscribers.h

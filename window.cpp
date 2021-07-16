@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include "window.h"
 #include "receivers.h"
+#include "recognizers.h"
 
 std::chrono::milliseconds Window::uptime=TimeConvert::Now();
 const char *Window::SETTINGS_CATEGORY_VIBE="Vibe";
@@ -45,8 +46,6 @@ Window::Window() : QWidget(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
-	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
-	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
@@ -81,6 +80,7 @@ Window::Window() : QWidget(nullptr),
 	ircSocket=new QTcpSocket(this);
 
 	connect(this,&Window::Ponging,this,&Window::Pong);
+	connect(this,&Window::RequestEphemeralPane,this,&Window::StageEphemeralPane);
 }
 
 /*!
@@ -210,55 +210,45 @@ void Window::DataAvailable()
 
 void Window::BuildEventSubscriber()
 {
-	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
-		manager->deleteLater();
-		const char *CHANNEL_OWNER_ID="obtain channel owner ID";
-		QJsonParseError jsonError;
-		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-		if (json.isNull() || !json.object().contains("data")) emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Something went wrong asking Twitch for channel %1's profile: %2").arg(settingChannel,jsonError.errorString())));
-		QJsonArray data=json.object().value("data").toArray();
-		if (data.size() < 1) emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("%1 is not a valid Twitch user").arg(static_cast<QString>(settingChannel))));
-		const QString channelOwnerID=data.at(0).toObject().value("id").toString();
-		EventSubscriber *subscriber=CreateEventSubscriber(channelOwnerID);
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(channelOwnerID)));
-		connect(subscriber,&EventSubscriber::Print,this,&Window::Log);
+	const char *CHANNEL_OWNER_ID="obtain channel owner ID";
+	UserRecognizer* userRecognizer=new UserRecognizer(settingChannel);
+	connect(userRecognizer,&UserRecognizer::Recognized,[this,CHANNEL_OWNER_ID](UserRecognizer* recognizer) {
+		EventSubscriber* subscriber=CreateEventSubscriber(recognizer->Name());
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
+		connect(subscriber, &EventSubscriber::Print, this, &Window::Log);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_CHEER);
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_RAID);
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_SUBSCRIPTION);
-		connect(subscriber,&EventSubscriber::Redemption,[this](const QString &viewer,const QString &rewardTitle,const QString &message) {
+		connect(subscriber,&EventSubscriber::Redemption,[this](const QString& viewer,const QString& rewardTitle,const QString& message) {
 			StageEphemeralPane(new AnnouncePane({
 				{QString("%1<br>").arg(viewer),1.5},
 				{"has redeemed<br>",1},
 				{QString("%1<br>").arg(rewardTitle),1.5},
 				{message,1}
-			}));
-		});
-		connect(subscriber,&EventSubscriber::Raid,[this](const QString &viewer,const unsigned int viewers) {
+				}));
+			});
+		connect(subscriber,&EventSubscriber::Raid,[this](const QString& viewer, const unsigned int viewers) {
 			StageEphemeralPane(new AudioAnnouncePane({
 				{QString("%1<br>").arg(viewer),1.5},
 				{"is raiding with<br>",1},
 				{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
 				{"viewers",1}
-			},settingRaidSound));
-		});
-		connect(subscriber,&EventSubscriber::Subscription,[this](const QString &viewer) {
+				}, settingRaidSound));
+			});
+		connect(subscriber,&EventSubscriber::Subscription,[this](const QString& viewer) {
 			StageEphemeralPane(new AudioAnnouncePane({
 				{QString("%1<br>").arg(viewer),1.5},
 				{"has subscribed!",1}
-			},settingSubscriptionSound));
-		});
-
+				}, settingSubscriptionSound));
+			});
+		recognizer->deleteLater();
 	});
-	QUrl query(TWITCH_API_ENDPOINT_USERS);
-	query.setQuery({{"login",static_cast<QString>(settingChannel)}});
-	QNetworkRequest request(query);
-	request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
-	request.setRawHeader("Client-ID",settingClientID);
-	manager->get(request);
+	connect(userRecognizer,&UserRecognizer::Error,[this,CHANNEL_OWNER_ID](const QString &message) {
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,message));
+	});
 }
 
 /*!
@@ -348,16 +338,7 @@ void Window::FollowChat()
 
 	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
-	if (settingArrivalSound)
-	{
-		connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,[this](const Viewer &viewer) {
-			if (settingAdministrator != viewer.Name()) StageEphemeralPane(new AudioAnnouncePane({
-				{"Please welcome<br>",1},
-				{QString("%1<br>").arg(viewer.Name()),1.5},
-				{"to the chat",1}
-			},settingArrivalSound));
-		});
-	}
+	if (settingArrivalSound) connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,&Window::AnnounceArrival);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
@@ -609,6 +590,15 @@ void Window::FollowChat()
 	helpClock.start();
 }
 
+void Window::AnnounceArrival(const Viewer &viewer)
+{
+	if (settingAdministrator != viewer.Name()) emit RequestEphemeralPane(new AudioAnnouncePane({
+		{"Please welcome<br>",1},
+		{QString("%1<br>").arg(viewer.Name()),1.5},
+		{"to the chat",1}
+	},ArrivalSound()));
+}
+
 /*!
  * \fn Window::StageEphemeralPane
  * \brief Add an ephemeral pane to the queue of panes to be displayed
@@ -726,4 +716,9 @@ QByteArray Window::ReadFromSocket() const
 EventSubscriber* Window::CreateEventSubscriber(const QString &channelOwnerID)
 {
 	return new EventSubscriber(channelOwnerID,this);
+}
+
+const QString Window::ArrivalSound() const
+{
+	return FileRecognizer(settingArrivalSound).Random();
 }

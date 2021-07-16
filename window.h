@@ -13,6 +13,7 @@
 #include "volume.h"
 #include "panes.h"
 #include "subscribers.h"
+#include "viewers.h"
 
 enum class BuiltInCommands
 {
@@ -91,8 +92,6 @@ protected:
 	Setting settingWindowSize;
 	Setting settingHelpCooldown;
 	Setting settingVibePlaylist;
-	Setting settingClientID;
-	Setting settingOAuthToken;
 	Setting settingJoinDelay;
 	Setting settingChannel;
 	Setting settingBackgroundColor;
@@ -109,8 +108,6 @@ protected:
 	void BuildEventSubscriber();
 	void SwapPane(PersistentPane *pane);
 	void Authenticate();
-	void StageEmpeheralPane(EphemeralPane &&pane) { StageEphemeralPane(&pane); }
-	void StageEphemeralPane(EphemeralPane *pane);
 	void ReleaseLiveEphemeralPane();
 	std::tuple<QString,QImage> CurrentSong() const;
 	const QString Uptime() const;
@@ -118,11 +115,16 @@ protected:
 	void TryConnect();
 	virtual QByteArray ReadFromSocket() const;
 	virtual EventSubscriber* CreateEventSubscriber(const QString &administratorID);
+	virtual const QString ArrivalSound() const;
 signals:
 	void Print(const QString text);
 	void Dispatch(const QString data);
 	void Ponging();
+	void RequestEphemeralPane(AudioAnnouncePane *pane);
+public slots:
+	void AnnounceArrival(const Viewer &viewer);
 protected slots:
+	void StageEphemeralPane(EphemeralPane *pane);
 	void SocketError(QAbstractSocket::SocketError error);
 	virtual void JoinStream();
 	void FollowChat();
