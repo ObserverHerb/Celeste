@@ -105,7 +105,7 @@ void Channel::Joined()
 void Channel::Follow()
 {
 	if (dispatch) disconnect(dispatch);
-	dispatch=connect(this,&Channel::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
+	dispatch=connect(this,&Channel::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 }
 
 void Channel::SocketError(QAbstractSocket::SocketError error)

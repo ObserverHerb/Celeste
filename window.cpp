@@ -115,10 +115,12 @@ bool Window::event(QEvent *event)
 
 			BuildEventSubscriber();
 
-			channel->Connect();
+			connect(channel,QOverload<ChatMessageReceiver&>::of(&Channel::Joined),this,&Window::FollowChat);
 			connect(channel,&Channel::Ping,[this]() {
 				chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 			});
+			connect(channel,&Channel::Print,this,&Window::Print);
+			channel->Connect();
 		}
 
 		catch (std::runtime_error &exception)
