@@ -42,17 +42,21 @@ Window::Window() : QWidget(nullptr),
 	vibeFader(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
+	roaster(new QMediaPlayer(this)),
 	logFile(Filesystem::LogPath().absoluteFilePath("current")),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
+	settingInactivityCooldown(SETTINGS_CATEGORY_WINDOW,"InactivityCooldown",1800000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
+	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
 	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
-	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid")
+	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
+	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -75,6 +79,7 @@ Window::Window() : QWidget(nullptr),
 	SwapPane(new StatusPane(this));
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
+	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
 	vibeKeeper->setVolume(0);
 
 	ircSocket=new QTcpSocket(this);
@@ -205,6 +210,7 @@ void Window::DataAvailable()
 		emit Ponging();
 		return;
 	}
+	inactivityClock.start();
 	emit Dispatch(data);
 }
 
@@ -329,8 +335,11 @@ void Window::FollowChat()
 		return;
 	}
 
-	connect(this,&Window::Ponging,[chatPane]() {
-		chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
+	connect(this,&Window::Ponging,[this,chatPane]() {
+		if (settingPortraitVideo)
+			StageEphemeralPane(new VideoPane(settingPortraitVideo));
+		else
+			chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 	});
 	connect(chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
@@ -572,6 +581,31 @@ void Window::FollowChat()
 		});
 	}
 
+	if (settingRoasts)
+	{
+		connect(&roastSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
+			chatPane->Alert(QString("<b>Failed to load roasts</b><br>%2").arg(roastSources.errorString()));
+		});
+		connect(&roastSources,&QMediaPlaylist::loaded,[this,chatPane]() {
+			roastSources.shuffle();
+			roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
+			roaster->setPlaylist(&roastSources);
+			connect(&inactivityClock,&QTimer::timeout,roaster,&QMediaPlayer::play);
+			chatPane->Alert("Roasts loaded!");
+		});
+		roastSources.load(QUrl::fromLocalFile(settingRoasts));
+		connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
+			chatPane->Alert(QString("<b>Roaster failed to start</b><br>%2").arg(vibeKeeper->errorString()));
+		});
+		connect(roaster,&QMediaPlayer::mediaStatusChanged,[this](QMediaPlayer::MediaStatus status) {
+			if (status == QMediaPlayer::EndOfMedia)
+			{
+				roaster->stop();
+				roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
+			}
+		});
+	}
+
 	connect(&helpClock,&QTimer::timeout,[this,chatMessageReceiver]() {
 		if (!ephemeralPanes.empty()) return;
 		try
@@ -588,6 +622,11 @@ void Window::FollowChat()
 		}
 	});
 	helpClock.start();
+
+	connect(&inactivityClock,&QTimer::timeout,[this]() {
+		if (settingPortraitVideo) StageEphemeralPane(new VideoPane(settingPortraitVideo));
+	});
+	inactivityClock.start();
 }
 
 void Window::AnnounceArrival(const Viewer &viewer)
