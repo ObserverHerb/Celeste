@@ -210,10 +210,11 @@ void Window::DataAvailable()
 
 void Window::BuildEventSubscriber()
 {
+	const char *CHANNEL_OWNER_ID="obtain channel owner ID";
 	UserRecognizer* userRecognizer=new UserRecognizer(settingChannel);
-	connect(userRecognizer,&UserRecognizer::Recognized,[this](UserRecognizer* recognizer) {
+	connect(userRecognizer,&UserRecognizer::Recognized,[this,CHANNEL_OWNER_ID](UserRecognizer* recognizer) {
 		EventSubscriber* subscriber=CreateEventSubscriber(recognizer->Name());
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"obtain channel owner ID",QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
 		connect(subscriber, &EventSubscriber::Print, this, &Window::Log);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
@@ -244,6 +245,9 @@ void Window::BuildEventSubscriber()
 				}, settingSubscriptionSound));
 			});
 		recognizer->deleteLater();
+	});
+	connect(userRecognizer,&UserRecognizer::Error,[this,CHANNEL_OWNER_ID](const QString &message) {
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,message));
 	});
 }
 

@@ -79,12 +79,14 @@ UserRecognizer::UserRecognizer(const QString &username) : name(username)
 		if (json.isNull() || !json.object().contains("data"))
 		{
 			emit Error(QString("Something went wrong asking Twitch for user %1's profile: %2").arg(username,jsonError.errorString()));
+			deleteLater();
 			return;
 		}
 		QJsonArray data=json.object().value("data").toArray();
 		if (data.size() < 1)
 		{
 			emit Error(QString("%1 is not a valid Twitch user").arg(username));
+			deleteLater();
 			return;
 		}
 		id=data.at(0).toObject().value("id").toString();
