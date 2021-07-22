@@ -69,7 +69,7 @@ void ChannelJoinReceiver::Fail()
 	emit Failed();
 }
 
-ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent) : MessageReceiver(parent)
+ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(parent)
 {
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open command list file: %1").arg(commandListFile.fileName()).toStdString());
@@ -96,7 +96,6 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 			for (const QJsonValue &value : jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray()) commandAliases.insert_or_assign(value.toString(),commands.at(name));
 		}
 	}
-	for (const Command &command : builtInCommands) commands[command.Name()]=command;
 	for (const std::pair<QString,Command> command : commands)
 	{
 		if (!command.second.Protected()) userCommands.push_back(command.second);
@@ -200,8 +199,8 @@ void ChatMessageReceiver::Process(const QString data)
 				case CommandType::AUDIO:
 					emit PlayAudio(user,command->Message(),command->Path());
 					break;
-				case CommandType::DISPATCH:
-					DispatchCommand({*command,parameter});
+				case CommandType::FORWARD:
+					ForwardCommand({*command,parameter});
 					break;
 				};
 				return;

@@ -22,6 +22,8 @@ endif()
 add_executable(Celeste
 	globals.h
 	settings.h
+	channel.h
+	channel.cpp
 	command.h
 	volume.h
 	relay.h
@@ -30,6 +32,8 @@ add_executable(Celeste
 	widgets.cpp
 	receivers.h
 	receivers.cpp
+	recognizers.h
+	recognizers.cpp
 	subscribers.h
 	subscribers.cpp
 	panes.h
@@ -43,12 +47,16 @@ add_executable(Celeste
 add_executable(Testing
 	globals.h
 	settings.h
+	channel.h
+	channel.cpp
 	command.h
 	volume.h
 	relay.h
 	viewers.h
 	widgets.h
 	widgets.cpp
+	recognizers.h
+	recognizers.cpp
 	receivers.h
 	receivers.cpp
 	subscribers.h

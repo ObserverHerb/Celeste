@@ -5,13 +5,13 @@
 
 enum class CommandType
 {
-	DISPATCH,
+	FORWARD,
 	VIDEO,
 	AUDIO
 };
 using CommandTypeLookup=std::unordered_map<QString,CommandType>;
 const CommandTypeLookup COMMAND_TYPES={
-	{"dispatch",CommandType::DISPATCH},
+	{"dispatch",CommandType::FORWARD},
 	{"video",CommandType::VIDEO},
 	{"announce",CommandType::AUDIO}
 };
@@ -19,7 +19,7 @@ const CommandTypeLookup COMMAND_TYPES={
 class Command
 {
 public:
-	Command() : Command(QString(),QString(),CommandType::DISPATCH,false,QString(),QString()) { }
+	Command() : Command(QString(),QString(),CommandType::FORWARD,false,QString(),QString()) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), path(path), message(message), protect(protect) { }
 	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), path(command.path), message(message), protect(command.protect) { }
