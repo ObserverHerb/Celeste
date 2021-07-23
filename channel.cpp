@@ -7,15 +7,15 @@ const char *Channel::OPERATION_AUTHORIZATION="authorization";
 const char *Channel::OPERATION_SEND="sending data";
 const char *Channel::OPERATION_RECEIVE="receiving data";
 
-Channel::Channel(QObject *parent) : QObject(parent),
+Channel::Channel(IRCSocket *socket,QObject *parent) : QObject(parent),
 	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
-	ircSocket(nullptr),
+	ircSocket(socket),
 	authenticationReceiver(new AuthenticationReceiver(this)),
 	channelJoinReceiver(new ChannelJoinReceiver(this)),
 	chatMessageReceiver(new ChatMessageReceiver(this))
 {
-	ircSocket=new IRCSocket(this);
+	if (!ircSocket) ircSocket=new IRCSocket(this);
 	connect(ircSocket,&IRCSocket::connected,this,&Channel::Connected);
 	connect(ircSocket,&IRCSocket::disconnected,this,&Channel::Disconnected);
 	connect(ircSocket,&IRCSocket::readyRead,this,&Channel::DataAvailable);
@@ -93,7 +93,7 @@ void Channel::Join()
 	if (dispatch) disconnect(dispatch);
 	dispatch=connect(this,&Channel::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
 	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION_CHANNEL,QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay)))));
-	QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,[this]() {
+	QTimer::singleShot(TimeConvert::Interval(JoinDelay()),this,[this]() {
 		ircSocket->write("CAP REQ :twitch.tv/tags :twitch.tv/commands\n");
 		ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel) : static_cast<QString>(settingAdministrator))));
 	});

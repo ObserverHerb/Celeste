@@ -16,10 +16,12 @@ class Channel : public QObject
 {
 	Q_OBJECT
 public:
-	Channel(QObject *parent=nullptr);
+	Channel(QObject *parent=nullptr) : Channel(nullptr,parent) { }
+	Channel(IRCSocket *socket,QObject *parent=nullptr);
 	~Channel();
 	void Connect();
 	const QString Name() const { return settingChannel; }
+	const std::chrono::milliseconds JoinDelay() const { return static_cast<std::chrono::milliseconds>(settingJoinDelay); }
 protected:
 	Setting settingChannel;
 	Setting settingJoinDelay;
