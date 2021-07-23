@@ -115,7 +115,7 @@ bool Window::event(QEvent *event)
 
 			BuildEventSubscriber();
 
-			connect(channel,QOverload<ChatMessageReceiver&>::of(&Channel::Joined),this,&Window::FollowChat);
+			connect(channel,QOverload<ChatMessageReceiver*>::of(&Channel::Joined),this,&Window::FollowChat);
 			connect(channel,&Channel::Ping,[this]() {
 				chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 			});
@@ -219,16 +219,16 @@ void Window::SwapPane(PersistentPane *pane)
  * recognized. This is also where any persistent operations, such as
  * periodically displaying command hints, are started.
  */
-void Window::FollowChat(ChatMessageReceiver &chatMessageReceiver)
+void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 {
-	connect(&chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
-	connect(&chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
-	connect(&chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
-	if (settingArrivalSound) connect(&chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,&Window::AnnounceArrival);
-	connect(&chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
+	connect(chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
+	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
+	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
+	if (settingArrivalSound) connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,&Window::AnnounceArrival);
+	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
 	});
-	connect(&chatMessageReceiver,&ChatMessageReceiver::PlayAudio,[this](const QString &user,const QString &message,const QString &path) {
+	connect(chatMessageReceiver,&ChatMessageReceiver::PlayAudio,[this](const QString &user,const QString &message,const QString &path) {
 		StageEphemeralPane(new AudioAnnouncePane({
 			{QString("%1<br>").arg(user),1.5},
 			{message,1}
@@ -237,25 +237,25 @@ void Window::FollowChat(ChatMessageReceiver &chatMessageReceiver)
 	SwapPane(chatPane);
 
 	Command AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::FORWARD,true);
-	chatMessageReceiver.AttachCommand(AgendaCommand);
+	chatMessageReceiver->AttachCommand(AgendaCommand);
 	Command CommandsCommand("commands","List all of the commands Celeste recognizes",CommandType::FORWARD,false);
-	chatMessageReceiver.AttachCommand(CommandsCommand);
+	chatMessageReceiver->AttachCommand(CommandsCommand);
 	Command PanicCommand("panic","Crash Celeste",CommandType::FORWARD,true);
-	chatMessageReceiver.AttachCommand(PanicCommand);
+	chatMessageReceiver->AttachCommand(PanicCommand);
 	Command ShoutOutCommand("so","Call attention to another streamer's channel",CommandType::FORWARD,false);
-	chatMessageReceiver.AttachCommand(ShoutOutCommand);
+	chatMessageReceiver->AttachCommand(ShoutOutCommand);
 	Command SongCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::FORWARD,false);
-	chatMessageReceiver.AttachCommand(SongCommand);
+	chatMessageReceiver->AttachCommand(SongCommand);
 	Command TimezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::FORWARD,false);
-	chatMessageReceiver.AttachCommand(TimezoneCommand);
+	chatMessageReceiver->AttachCommand(TimezoneCommand);
 	Command UpdateCommand("update","Refresh database of content such as emotes",CommandType::FORWARD,true);
-	chatMessageReceiver.AttachCommand(UpdateCommand);
+	chatMessageReceiver->AttachCommand(UpdateCommand);
 	Command UptimeCommand("uptime","Show how long the bot has been connected",CommandType::FORWARD,false);
-	chatMessageReceiver.AttachCommand(UptimeCommand);
+	chatMessageReceiver->AttachCommand(UptimeCommand);
 	Command VibeCommand("vibe","Start the playlist of music for the stream",CommandType::FORWARD,true);
-	chatMessageReceiver.AttachCommand(VibeCommand);
+	chatMessageReceiver->AttachCommand(VibeCommand);
 	Command VolumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::FORWARD,true);
-	chatMessageReceiver.AttachCommand(VolumeCommand);
+	chatMessageReceiver->AttachCommand(VolumeCommand);
 	const std::unordered_map<QString,Commands> commands={
 		{AgendaCommand.Name(),Commands::AGENDA},
 		{CommandsCommand.Name(),Commands::COMMANDS},
@@ -268,7 +268,7 @@ void Window::FollowChat(ChatMessageReceiver &chatMessageReceiver)
 		{VibeCommand.Name(),Commands::VIBE},
 		{VolumeCommand.Name(),Commands::VOLUME}
 	};
-	connect(&chatMessageReceiver,&ChatMessageReceiver::ForwardCommand,[this,&chatMessageReceiver,commands](const Command &command) {
+	connect(chatMessageReceiver,&ChatMessageReceiver::ForwardCommand,[this,chatMessageReceiver,commands](const Command &command) {
 		try
 		{
 			switch (commands.at(command.Name()))
@@ -280,7 +280,7 @@ void Window::FollowChat(ChatMessageReceiver &chatMessageReceiver)
 			{
 				std::vector<std::pair<QString,double>> user;
 				std::vector<std::pair<QString,double>> admin;
-				for (const std::pair<QString,Command> &command : chatMessageReceiver.Commands())
+				for (const std::pair<QString,Command> &command : chatMessageReceiver->Commands())
 				{
 					if (command.second.Protected())
 					{
@@ -488,11 +488,11 @@ void Window::FollowChat(ChatMessageReceiver &chatMessageReceiver)
 		});
 	}
 
-	connect(&helpClock,&QTimer::timeout,[this,&chatMessageReceiver]() {
+	connect(&helpClock,&QTimer::timeout,[this,chatMessageReceiver]() {
 		if (!ephemeralPanes.empty()) return;
 		try
 		{
-			const Command &command=chatMessageReceiver.RandomCommand();
+			const Command &command=chatMessageReceiver->RandomCommand();
 			StageEphemeralPane(new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
 				command.Name(),
 				command.Description()

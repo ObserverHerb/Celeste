@@ -76,7 +76,7 @@ public slots:
 	void AnnounceArrival(const Viewer &viewer);
 protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
-	void FollowChat(ChatMessageReceiver &chatMessageReceiver);
+	void FollowChat(ChatMessageReceiver *chatMessageReceiver);
 	void Log(const QString &text);
 };
 

@@ -101,7 +101,7 @@ void Channel::Join()
 
 void Channel::Joined()
 {
-	emit Joined(*chatMessageReceiver);
+	emit Joined(chatMessageReceiver);
 	Follow();
 }
 

@@ -40,7 +40,7 @@ signals:
 	void Print(const QString text);
 	void Log(const QString &message);
 	void Dispatch(const QString data);
-	void Joined(ChatMessageReceiver &chatMessageReceiver);
+	void Joined(ChatMessageReceiver *chatMessageReceiver);
 	void Ping();
 protected slots:
 	void DataAvailable();
