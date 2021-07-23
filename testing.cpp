@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 #include <QTimer>
 #include <iostream>
+#include "channel.h"
 #include "recognizers.h"
 #include "subscribers.h"
 #include "window.h"
@@ -36,6 +37,47 @@ protected:
 	}
 };
 
+class TestIRCSocket : public IRCSocket
+{
+	Q_OBJECT
+
+public:
+	void SetResponse(const QString &data)
+	{
+		response=data;
+	}
+
+	void ObtainResponse()
+	{
+		response.clear();
+	}
+
+	virtual QByteArray Read() override
+	{
+		return response.isEmpty() ? readAll() : StringConvert::ByteArray(response);
+	}
+
+protected:
+	QString response;
+
+};
+
+class TestChannel : public Channel
+{
+	Q_OBJECT
+
+public:
+	TestChannel(TestIRCSocket *socket,QObject *parent) : Channel(socket,parent)
+	{
+
+	}
+
+	void ForceDataAvailable()
+	{
+		DataAvailable();
+	}
+};
+
 class TestWindow : public Window
 {
 	Q_OBJECT
@@ -54,13 +96,6 @@ public:
 		});
 	}
 
-	void TestDataAvailable()
-	{
-		DataAvailable();
-	}
-
-	void BreakResponses() { validResponse=false; }
-
 	void SetArrivalSound(const QString& path) { arrivalSound=path; }
 
 	TestEventSubscriber* EventSubscriber() const
@@ -72,11 +107,6 @@ protected:
 	bool validResponse;
 	QString arrivalSound;
 	TestEventSubscriber *testEventSubscriber;
-
-	QByteArray ReadFromSocket() const override
-	{
-		return validResponse ? ircSocket->readAll() : QByteArray("Things");
-	}
 
 	class EventSubscriber* CreateEventSubscriber(const QString &administratorID) override
 	{
@@ -90,18 +120,13 @@ protected:
 	}
 
 signals:
-	void GreenLight();
-
-protected slots:
-	void JoinStream() override
-	{
-		emit GreenLight();
-	}
+	void GreenLight() const;
 };
 
 class Testing : public QObject
 {
 	Q_OBJECT
+
 public:
 	void DataPath(const QString &path)
 	{
@@ -120,6 +145,11 @@ private:
 	TestWindow testWindow;
 	QDir dataPath;
 private slots:
+	void Print(const QString &message)
+	{
+		qInfo() << message;
+	}
+
 	void initTestCase()
 	{
 		testWindow.show();
@@ -151,12 +181,6 @@ private slots:
 		testWindow.AnnounceArrival(Viewer("Valid Viewer A"));
 		testWindow.SetArrivalSound(recognizer.Random());
 		testWindow.AnnounceArrival(Viewer("Valid Viewer B"));
-	}
-
-	void verifyConnected()
-	{
-		QSignalSpy windowSpy(&testWindow,&TestWindow::GreenLight);
-		QVERIFY(windowSpy.wait(TimeConvert::Interval(testWindow.JoinDelay() + std::chrono::seconds(1))));
 	}
 
 	void goodSubscriptionDataTest()
@@ -206,12 +230,39 @@ private slots:
 
 	void multipleMessagesTest()
 	{
-		testWindow.BreakResponses();
-		testWindow.TestDataAvailable();
+		TestIRCSocket socket;
+		TestChannel channel(&socket,nullptr);
+		connect(&channel,&Channel::Print,this,&Testing::Print);
+		channel.Connect();
+		QSignalSpy channelSpy(&channel,QOverload<ChatMessageReceiver*>::of(&TestChannel::Joined));
+		QVERIFY(channelSpy.wait(TimeConvert::Interval(channel.JoinDelay()+std::chrono::seconds(1))));
+		QString data=DataFromFile("chat_message.txt");
+		int size=data.size();
+		ChatMessageReceiver *chatMessageReceiver=channelSpy.takeFirst().at(0).value<ChatMessageReceiver*>();
+		connect(chatMessageReceiver,&ChatMessageReceiver::Alert,this,[](const QString &message) {
+			qWarning() << message; // but we do want to see why processing failed for context
+		});
+		QSignalSpy messageSpy(chatMessageReceiver,&ChatMessageReceiver::Print);
+		for (int count=0; count < size; count++)
+		{
+			QMetaObject::invokeMethod(this,[&socket,&channel,&data,&count]() {
+				// trigger using event loop so it doesn't fire before we wait for a response
+				socket.SetResponse(data.left(count)+":gauntlet!gauntlet@gauntlet.tmi.twitch.tv PRIVMSG gauntlet :Test\r\n");
+				channel.ForceDataAvailable();
+			},Qt::QueuedConnection);
+			QVERIFY(messageSpy.wait(3000));
+		}
+		data+=data;
+		for (int count=size*2; count >= size; count--)
+		{
+			QMetaObject::invokeMethod(chatMessageReceiver,[&socket,&channel,&data,&count]() {
+				// trigger using event loop so it doesn't fire before we wait for a response
+				socket.SetResponse(data.left(count));
+				channel.ForceDataAvailable();
+			},Qt::QueuedConnection);
+			QVERIFY(messageSpy.wait(3000));
+		}
 		QVERIFY(true);
-
-		QSignalSpy windowSpy(&testWindow,&TestWindow::GreenLight);
-		QVERIFY(windowSpy.wait(30000));
 	}
 };
 
@@ -224,7 +275,9 @@ int main(int argc, char** argv)
 	}
 
 	argc=1;
-	QApplication app(argc,argv);
+	QApplication application(argc,argv);
+	application.setOrganizationName(ORGANIZATION_NAME);
+	application.setApplicationName(APPLICATION_NAME);
 
 	Testing testing;
 	testing.DataPath(argv[1]);
