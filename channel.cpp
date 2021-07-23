@@ -49,7 +49,10 @@ void Channel::DataAvailable()
 
 void Channel::Connect()
 {
-	QTimer::singleShot(0,[this]() { ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT); }); // trigger using event loop so the socket operation doesn't freeze the UI
+	QMetaObject::invokeMethod(ircSocket,[this]() {
+		// trigger using event loop so the socket operation doesn't freeze the UI
+		ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
+	},Qt::QueuedConnection);
 	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"connect","Connecting to IRC..."));
 }
 
