@@ -69,7 +69,7 @@ void ChannelJoinReceiver::Fail()
 	emit Failed();
 }
 
-ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QObject *parent) : MessageReceiver(parent)
+ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(parent)
 {
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open command list file: %1").arg(commandListFile.fileName()).toStdString());
@@ -96,7 +96,6 @@ ChatMessageReceiver::ChatMessageReceiver(std::vector<Command> builtInCommands,QO
 			for (const QJsonValue &value : jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray()) commandAliases.insert_or_assign(value.toString(),commands.at(name));
 		}
 	}
-	for (const Command &command : builtInCommands) commands[command.Name()]=command;
 	for (const std::pair<QString,Command> command : commands)
 	{
 		if (!command.second.Protected()) userCommands.push_back(command.second);
@@ -160,94 +159,99 @@ const Command ChatMessageReceiver::RandomCommand() const
 
 void ChatMessageReceiver::Process(const QString data)
 {
-	try
+	QStringList messageSegments;
+	messageSegments=data.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
+	if (messageSegments.size() < 2)
 	{
-		QStringList messageSegments;
-		if (messageSegments=data.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid payload");
-		TagMap tags=ParseTags(messageSegments.takeFirst());
-		if (messageSegments=messageSegments.join(" ").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2) throw std::runtime_error("Invalid number of message segments");
-		QString user=ParseHostmask(messageSegments.takeFirst());
-		IdentifyViewer(user);
-		if (messageSegments.at(0).at(0) == "!")
+		Fail("Message is invalid");
+		return;
+	}
+	TagMap tags=ParseTags(messageSegments.takeFirst());
+	if (messageSegments=messageSegments.join(" ").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2)
+	{
+		Fail("Invalid message segment count");
+		return;
+	}
+	QString user=ParseHostmask(messageSegments.takeFirst());
+	if (user.isEmpty())
+	{
+		Fail("Invalid message sender");
+		return;
+	}
+	IdentifyViewer(user);
+	if (messageSegments.at(0).at(0) == "!")
+	{
+		auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
+		if (Command *command=FindCommand(commandName); command)
 		{
-			auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
-			if (Command *command=FindCommand(commandName); command)
+			if (command->Protected() && settingAdministrator != user)
 			{
-				if (command->Protected() && settingAdministrator != user)
-				{
-					emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
-					return;
-				}
-				switch (command->Type())
-				{
-				case CommandType::VIDEO:
-					if (command->Random())
-					{
-						QDir directory(command->Path());
-						QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
-						if (videos.size() < 1)
-						{
-							Print("No videos found");
-							break;
-						}
-						emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(0,videos.size()))));
-					}
-					else
-					{
-						emit PlayVideo(command->Path());
-					}
-					break;
-				case CommandType::AUDIO:
-					emit PlayAudio(user,command->Message(),command->Path());
-					break;
-				case CommandType::DISPATCH:
-					DispatchCommand({*command,parameter});
-					break;
-				};
+				emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
 				return;
 			}
-		}
-		messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-		for (QString &word : messageSegments)
-		{
-			if (QString emoteName=word.trimmed(); emoticons.find(emoteName) != emoticons.end())
+			switch (command->Type())
 			{
-				QString emotePath=QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(emoteName));
-				if (!QFile(emotePath).exists())
+			case CommandType::VIDEO:
+				if (command->Random())
 				{
-					QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-					QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,emoteName,emotePath](QNetworkReply *reply) {
-						if (reply->error())
-						{
-							emit Alert(QString("Failed to download %1 emote: %2").arg(emoteName,reply->errorString()));
-							return;
-						}
-						if (!QImage::fromData(reply->readAll()).save(emotePath)) Alert(QString("Failed to save emote: %1").arg(emotePath));
-						emit Refresh();
-						manager->deleteLater();
-					});
-					QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emoticons.at(emoteName)));
-					manager->get(request);
+					QDir directory(command->Path());
+					QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
+					if (videos.size() < 1)
+					{
+						Print("No videos found");
+						break;
+					}
+					emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(0,videos.size()))));
 				}
-				word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));
-			}
-		}
-		if (messageSegments.front() == "\001ACTION")
-		{
-			messageSegments.pop_front();
-			messageSegments.back().remove('\001');
-			emit Print(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
-		}
-		else
-		{
-			emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
+				else
+				{
+					emit PlayVideo(command->Path());
+				}
+				break;
+			case CommandType::AUDIO:
+				emit PlayAudio(user,command->Message(),command->Path());
+				break;
+			case CommandType::FORWARD:
+				ForwardCommand({*command,parameter});
+				break;
+			};
+			return;
 		}
 	}
-
-	catch (const std::runtime_error &exception)
+	messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+	for (QString &word : messageSegments)
 	{
-		emit Alert(exception.what());
-		emit Failed();
+		if (QString emoteName=word.trimmed(); emoticons.find(emoteName) != emoticons.end())
+		{
+			QString emotePath=QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(emoteName));
+			if (!QFile(emotePath).exists())
+			{
+				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+				QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,emoteName,emotePath](QNetworkReply *reply) {
+					if (reply->error())
+					{
+						emit Alert(QString("Failed to download %1 emote: %2").arg(emoteName,reply->errorString()));
+						return;
+					}
+					if (!QImage::fromData(reply->readAll()).save(emotePath)) Alert(QString("Failed to save emote: %1").arg(emotePath));
+					emit Refresh();
+					manager->deleteLater();
+				});
+				QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emoticons.at(emoteName)));
+				manager->get(request);
+			}
+			word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));
+		}
+	}
+	if (messageSegments.front() == "\001ACTION")
+	{
+		messageSegments.pop_front();
+		messageSegments.back().remove('\001');
+		emit Print(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
+	}
+	else
+	{
+		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
 	}
 }
 
@@ -257,7 +261,15 @@ ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
 	for (const QString &pair : tags.split(";",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)))
 	{
 		QStringList components=pair.split("=",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-		result[components.at(KEY)]=components.at(VALUE);
+		if (components.size() == 2)
+			result[components.at(KEY)]=components.at(VALUE);
+		else
+			Alert(QString("Message has an invalid tag: %1").arg(pair));
+	}
+	if (result.find("color") == result.end())
+	{
+		Alert("Message has no color");
+		result["color"]="#ffffff";
 	}
 	return result;
 }
@@ -265,7 +277,11 @@ ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
 QString ChatMessageReceiver::ParseHostmask(const QString &mask)
 {
 	QStringList hostmaskSegments=mask.split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	if (hostmaskSegments.size() < 1) throw std::runtime_error("Invalid hostmask");
+	if (hostmaskSegments.size() < 1)
+	{
+		Alert("Message hostmask is invalid");
+		return QString();
+	}
 	return hostmaskSegments.front();
 }
 
@@ -289,4 +305,10 @@ Command* ChatMessageReceiver::FindCommand(const QString &name)
 	if (commands.find(name) != commands.end()) return &commands.at(name);
 	if (commandAliases.find(name) != commandAliases.end()) return &commandAliases.at(name).get();
 	return nullptr;
+}
+
+void ChatMessageReceiver::Fail(const QString &reason)
+{
+	emit Alert(reason);
+	emit Failed();
 }

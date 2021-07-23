@@ -37,8 +37,9 @@ const char *Window::SETTINGS_CATEGORY_EVENTS="Events";
  * and timers needed for built-in commands.
  */
 Window::Window() : QWidget(nullptr),
-	ircSocket(nullptr),
+	channel(new Channel(this)),
 	visiblePane(nullptr),
+	chatPane(new ChatPane(this)),
 	vibeFader(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
@@ -49,8 +50,6 @@ Window::Window() : QWidget(nullptr),
 	settingInactivityCooldown(SETTINGS_CATEGORY_WINDOW,"InactivityCooldown",1800000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
 	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
-	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
-	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
@@ -82,9 +81,6 @@ Window::Window() : QWidget(nullptr),
 	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
 	vibeKeeper->setVolume(0);
 
-	ircSocket=new QTcpSocket(this);
-
-	connect(this,&Window::Ponging,this,&Window::Pong);
 	connect(this,&Window::RequestEphemeralPane,this,&Window::StageEphemeralPane);
 }
 
@@ -124,10 +120,12 @@ bool Window::event(QEvent *event)
 
 			BuildEventSubscriber();
 
-			connect(ircSocket,&QTcpSocket::connected,this,&Window::Connected);
-			connect(ircSocket,&QTcpSocket::readyRead,this,&Window::DataAvailable);
-			connect(ircSocket,&QTcpSocket::errorOccurred,this,&Window::SocketError);
-			Authenticate();
+			connect(channel,QOverload<ChatMessageReceiver*>::of(&Channel::Joined),this,&Window::FollowChat);
+			connect(channel,&Channel::Ping,[this]() {
+				chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
+			});
+			connect(channel,&Channel::Print,this,&Window::Print);
+			channel->Connect();
 		}
 
 		catch (std::runtime_error &exception)
@@ -159,66 +157,13 @@ void Window::closeEvent(QCloseEvent *event)
 		logFile.close();
 	}
 
-	ircSocket->disconnectFromHost();
-
 	event->accept();
-}
-
-/*!
- * \fn Window::Connected
- * \brief Slot that is called when a successful connection to IRC is made
- *
- * This will start the process of authenticating with Twitch.
- */
-void Window::Connected()
-{
-	const char *OPERATION="Connect";
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,"Connected!"));
-	if (!settingAdministrator)
-	{
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,"Please set the Administrator under the Authorization section in your settings file"));
-		return;
-	}
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"send",QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,"Sending credentials..."));
-	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken))));
-	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
-}
-
-/*!
- * \fn Window::Disconnected
- * \brief Slot that is called when the connection to IRC is dropped.
- */
-void Window::Disconnected()
-{
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"Disconnect","Disconnected"));
-}
-
-/*!
- * \fn Window::DataAvailable
- * \brief Slot that is called when data is received from the IRC server.
- *
- * Messages that are to be processed by the bot are passed to the
- * Window::Dispatch() function.
- */
-void Window::DataAvailable()
-{
-	const QString data=ReadFromSocket();
-	logFile.write(StringConvert::ByteArray(data));
-	if (data.size() > 4 && data.left(4) == "PING")
-	{
-		emit Ponging();
-		return;
-	}
-	inactivityClock.start();
-	emit Dispatch(data);
 }
 
 void Window::BuildEventSubscriber()
 {
-	const char *CHANNEL_OWNER_ID="obtain channel owner ID";
-	UserRecognizer* userRecognizer=new UserRecognizer(settingChannel);
-	connect(userRecognizer,&UserRecognizer::Recognized,[this,CHANNEL_OWNER_ID](UserRecognizer* recognizer) {
+	UserRecognizer *userRecognizer=new UserRecognizer(channel->Name());
+	connect(userRecognizer,&UserRecognizer::Recognized,[this](UserRecognizer* recognizer) {
 		EventSubscriber* subscriber=CreateEventSubscriber(recognizer->Name());
 		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
 		connect(subscriber, &EventSubscriber::Print, this, &Window::Log);
@@ -274,42 +219,6 @@ void Window::SwapPane(PersistentPane *pane)
 }
 
 /*!
- * \fn Window::Authenticate
- * \brief Attempts to connect to the IRC server
- *
- * If authentication is successful, an attempt to join the administrator's
- * channel is triggered after a short delay.
- */
-void Window::Authenticate()
-{
-	AuthenticationReceiver *authenticationReceiver=new AuthenticationReceiver(this);
-	connect(this,&Window::Dispatch,authenticationReceiver,&AuthenticationReceiver::Process);
-	connect(authenticationReceiver,&AuthenticationReceiver::Print,visiblePane,&PersistentPane::Print);
-	connect(authenticationReceiver,&AuthenticationReceiver::Succeeded,[this]() {
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"authenticate",QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay)))));
-		QTimer::singleShot(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingJoinDelay)),this,&Window::JoinStream);
-	});
-	ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"connect","Connecting to IRC..."));
-}
-
-/*!
- * \fn Window::JoinStream
- * \brief Attempts to the administrator's IRC channel
- *
- * If successful, switch to watching for chat messages.
- */
-void Window::JoinStream()
-{
-	ChannelJoinReceiver *channelJoinReceiver=new ChannelJoinReceiver(this);
-	connect(this,&Window::Dispatch,channelJoinReceiver,&ChannelJoinReceiver::Process);
-	connect(channelJoinReceiver,&ChannelJoinReceiver::Print,visiblePane,&PersistentPane::Print);
-	connect(channelJoinReceiver,&ChannelJoinReceiver::Succeeded,this,&Window::FollowChat);
-	ircSocket->write("CAP REQ :twitch.tv/tags :twitch.tv/commands\n");
-	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel) : static_cast<QString>(settingAdministrator))));
-}
-
-/*!
  * \fn Window::FollowChat
  * \brief Watch for and process chat messages
  *
@@ -318,34 +227,10 @@ void Window::JoinStream()
  * recognized. This is also where any persistent operations, such as
  * periodically displaying command hints, are started.
  */
-void Window::FollowChat()
+void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 {
-	ChatMessageReceiver *chatMessageReceiver=nullptr;
-	ChatPane *chatPane=nullptr;
-	try
-	{
-		chatMessageReceiver=new ChatMessageReceiver({
-			AgendaCommand,CommandsCommand,PanicCommand,PingCommand,ShoutOutCommand,SongCommand,TimezoneCommand,UpdateCommand,UptimeCommand,VibeCommand,VolumeCommand
-		},this);
-		chatPane=new ChatPane(this);
-	}
-	catch (const std::runtime_error &exception)
-	{
-		visiblePane->Print(Console::GenerateMessage(QCoreApplication::applicationName(),"follow chat",QString("There was a problem starting chat\n%1").arg(exception.what())));
-		return;
-	}
-
-	connect(this,&Window::Ponging,[this,chatPane]() {
-		if (settingPortraitVideo)
-			StageEphemeralPane(new VideoPane(settingPortraitVideo));
-		else
-			chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
-	});
 	connect(chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
-	SwapPane(chatPane);
-
-	connect(this,&Window::Dispatch,chatMessageReceiver,&ChatMessageReceiver::Process);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
 	if (settingArrivalSound) connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,&Window::AnnounceArrival);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
@@ -357,16 +242,49 @@ void Window::FollowChat()
 			{message,1}
 		},path));
 	});
+	SwapPane(chatPane);
 
-	connect(chatMessageReceiver,&ChatMessageReceiver::DispatchCommand,[this,chatPane,chatMessageReceiver](const Command &command) {
+	Command AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::FORWARD,true);
+	chatMessageReceiver->AttachCommand(AgendaCommand);
+	Command CommandsCommand("commands","List all of the commands Celeste recognizes",CommandType::FORWARD,false);
+	chatMessageReceiver->AttachCommand(CommandsCommand);
+	Command PanicCommand("panic","Crash Celeste",CommandType::FORWARD,true);
+	chatMessageReceiver->AttachCommand(PanicCommand);
+	Command ShoutOutCommand("so","Call attention to another streamer's channel",CommandType::FORWARD,false);
+	chatMessageReceiver->AttachCommand(ShoutOutCommand);
+	Command SongCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::FORWARD,false);
+	chatMessageReceiver->AttachCommand(SongCommand);
+	Command TimezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::FORWARD,false);
+	chatMessageReceiver->AttachCommand(TimezoneCommand);
+	Command UpdateCommand("update","Refresh database of content such as emotes",CommandType::FORWARD,true);
+	chatMessageReceiver->AttachCommand(UpdateCommand);
+	Command UptimeCommand("uptime","Show how long the bot has been connected",CommandType::FORWARD,false);
+	chatMessageReceiver->AttachCommand(UptimeCommand);
+	Command VibeCommand("vibe","Start the playlist of music for the stream",CommandType::FORWARD,true);
+	chatMessageReceiver->AttachCommand(VibeCommand);
+	Command VolumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::FORWARD,true);
+	chatMessageReceiver->AttachCommand(VolumeCommand);
+	const std::unordered_map<QString,Commands> commands={
+		{AgendaCommand.Name(),Commands::AGENDA},
+		{CommandsCommand.Name(),Commands::COMMANDS},
+		{PanicCommand.Name(),Commands::PANIC},
+		{ShoutOutCommand.Name(),Commands::SHOUTOUT},
+		{SongCommand.Name(),Commands::SONG},
+		{TimezoneCommand.Name(),Commands::TIMEZONE},
+		{UpdateCommand.Name(),Commands::UPDATE},
+		{UptimeCommand.Name(),Commands::UPTIME},
+		{VibeCommand.Name(),Commands::VIBE},
+		{VolumeCommand.Name(),Commands::VOLUME}
+	};
+	connect(chatMessageReceiver,&ChatMessageReceiver::ForwardCommand,[this,chatMessageReceiver,commands](const Command &command) {
 		try
 		{
-			switch (BUILT_IN_COMMANDS.at(command.Name()))
+			switch (commands.at(command.Name()))
 			{
-			case BuiltInCommands::AGENDA:
+			case Commands::AGENDA:
 				chatPane->SetAgenda(command.Message());
 				break;
-			case BuiltInCommands::COMMANDS:
+			case Commands::COMMANDS:
 			{
 				std::vector<std::pair<QString,double>> user;
 				std::vector<std::pair<QString,double>> admin;
@@ -400,7 +318,7 @@ void Window::FollowChat()
 				StageEphemeralPane(pane);
 				break;
 			}
-			case BuiltInCommands::PANIC:
+			case Commands::PANIC:
 			{
 				QFile outputFile(Filesystem::DataPath().absoluteFilePath("panic.txt"));
 				QString outputText;
@@ -416,15 +334,12 @@ void Window::FollowChat()
 				this->disconnect();
 				break;
 			}
-			case BuiltInCommands::PING:
-				ircSocket->write(StringConvert::ByteArray(TWITCH_PING));
-				break;
-			case BuiltInCommands::SHOUTOUT:
+			case Commands::SHOUTOUT:
 			{
 				QString user=command.Message();
 				user=user.remove("@");
 				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-				connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane,user](QNetworkReply *reply) {
+				connect(manager,&QNetworkAccessManager::finished,[this,manager,user](QNetworkReply *reply) {
 					manager->disconnect();
 					QJsonParseError jsonError;
 					QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
@@ -432,7 +347,7 @@ void Window::FollowChat()
 					QJsonArray data=json.object().value("data").toArray();
 					if (data.size() < 1) chatPane->Alert(QString("%1 is not a valid Twitch user").arg(user));
 					QJsonObject entry=data.at(0).toObject();
-					connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane,user,description=entry.value("description").toString()](QNetworkReply *reply) {
+					connect(manager,&QNetworkAccessManager::finished,[this,manager,user,description=entry.value("description").toString()](QNetworkReply *reply) {
 						QImage profileImage;
 						if (reply->error())
 							emit chatPane->Alert("Failed to download profile image");
@@ -458,17 +373,17 @@ void Window::FollowChat()
 				manager->get(request);
 				break;
 			}
-			case BuiltInCommands::SONG:
+			case Commands::SONG:
 			{
 				ImageAnnouncePane *pane=Tuple::New<ImageAnnouncePane,QString,QImage>(CurrentSong());
 				pane->AccentColor(settingAccentColor);
 				StageEphemeralPane(pane);
 				break;
 			}
-			case BuiltInCommands::TIMEZONE:
+			case Commands::TIMEZONE:
 				chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 				break;
-			case BuiltInCommands::UPDATE:
+			case Commands::UPDATE:
 			{
 				if (worker.isRunning())
 				{
@@ -476,8 +391,8 @@ void Window::FollowChat()
 					break;
 				}
 				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-				connect(manager,&QNetworkAccessManager::finished,[this,manager,chatPane](QNetworkReply *reply) {
-					worker=QtConcurrent::run([manager,chatPane,reply]() {
+				connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+					worker=QtConcurrent::run([this,manager,reply]() {
 						if (reply->error())
 						{
 							chatPane->Alert(QString("Network call failed: %1").arg(reply->errorString()));
@@ -515,7 +430,7 @@ void Window::FollowChat()
 				});
 				break;
 			}
-			case BuiltInCommands::UPTIME:
+			case Commands::UPTIME:
 			{
 				Relay::Status::Context *statusContext=chatPane->Alert(Uptime());
 				connect(statusContext,&Relay::Status::Context::UpdateRequested,[this,statusContext]() {
@@ -523,7 +438,7 @@ void Window::FollowChat()
 				});
 				break;
 			}
-			case BuiltInCommands::VIBE:
+			case Commands::VIBE:
 				if (vibeKeeper->state() == QMediaPlayer::PlayingState)
 				{
 					chatPane->Alert("Pausing the vibes...");
@@ -532,7 +447,7 @@ void Window::FollowChat()
 				}
 				vibeKeeper->play();
 				break;
-			case BuiltInCommands::VOLUME:
+			case Commands::VOLUME:
 				if (command.Message().isEmpty())
 				{
 					if (vibeFader)
@@ -563,20 +478,20 @@ void Window::FollowChat()
 
 	if (settingVibePlaylist)
 	{
-		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
+		connect(&vibeSources,&QMediaPlaylist::loadFailed,[this]() {
 			chatPane->Alert(QString("<b>Failed to load vibe playlist</b><br>%2").arg(vibeSources.errorString()));
 		});
-		connect(&vibeSources,&QMediaPlaylist::loaded,[this,chatPane]() {
+		connect(&vibeSources,&QMediaPlaylist::loaded,[this]() {
 			vibeSources.shuffle();
 			vibeSources.setCurrentIndex(Random::Bounded(0,vibeSources.mediaCount()));
 			vibeKeeper->setPlaylist(&vibeSources);
 			chatPane->Alert("Vibe playlist loaded!");
 		});
 		vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
-		connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
+		connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
 			chatPane->Alert(QString("<b>Vibe Keeper failed to start</b><br>%2").arg(vibeKeeper->errorString()));
 		});
-		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this,chatPane](QMediaPlayer::State state) {
+		connect(vibeKeeper,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 			if (state == QMediaPlayer::PlayingState) chatPane->Alert(std::get<QString>(CurrentSong()));
 		});
 	}
@@ -618,7 +533,7 @@ void Window::FollowChat()
 		}
 		catch (const std::range_error &exception)
 		{
-			chatMessageReceiver->Alert(QString("Failed to show hint for random command<br>%1").arg(exception.what()));
+			chatPane->Alert(QString("Failed to show hint for random command<br>%1").arg(exception.what()));
 		}
 	});
 	helpClock.start();
@@ -691,17 +606,6 @@ std::tuple<QString,QImage> Window::CurrentSong() const
 	};
 }
 
-/*!
- * \fn Window::Pong
- * \brief Responds to a Twitch PING with a PONG
- *
- * This is transparent to viewers. It will not be displayed on a pane.
- */
-void Window::Pong() const
-{
-	ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
-}
-
 void Window::Log(const QString &text)
 {
 	logFile.write(StringConvert::ByteArray(QString("%1\n").arg(text)));
@@ -732,24 +636,6 @@ const QSize Window::ScreenThird()
 	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
 	int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
 	return {shortestSide,shortestSide};
-}
-
-void Window::TryConnect()
-{
-	QTimer::singleShot(0,[this]() {
-		ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
-	});
-}
-
-void Window::SocketError(QAbstractSocket::SocketError error)
-{
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"connect",QString("Failed to connect to server (%1)").arg(ircSocket->errorString())));
-	TryConnect();
-}
-
-QByteArray Window::ReadFromSocket() const
-{
-	return ircSocket->readAll();
 }
 
 EventSubscriber* Window::CreateEventSubscriber(const QString &channelOwnerID)
