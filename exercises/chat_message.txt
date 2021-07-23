@@ -1,0 +1,1 @@
+@badge-info=subscriber/6;badges=broadcaster/1,subscriber/0;client-nonce=3a5bb84a7d8431fcbba4e7203fbd1ac2;color=#8A2BE2;display-name=ObserverHerb;emotes=;flags=;id=30f73b3f-cc12-4d5e-8351-8feda9bcf413;mod=0;room-id=523304124;subscriber=1;tmi-sent-ts=1626984507173;turbo=0;user-id=523304124;user-type= :gauntlet!gauntlet@gauntlet.tmi.twitch.tv PRIVMSG gauntlet :Test

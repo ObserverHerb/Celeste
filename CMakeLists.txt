@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
 project(Celeste LANGUAGES CXX)
+include(CTest)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -17,6 +18,39 @@ if (WIN32)
 else()
 	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent TextToSpeech REQUIRED)
 	find_package(Qt5 COMPONENTS Test REQUIRED)
+endif()
+
+if(BUILD_TESTING)
+	add_executable(Gauntlet
+		globals.h
+		settings.h
+		channel.h
+		channel.cpp
+		command.h
+		volume.h
+		relay.h
+		viewers.h
+		widgets.h
+		widgets.cpp
+		recognizers.h
+		recognizers.cpp
+		receivers.h
+		receivers.cpp
+		subscribers.h
+		subscribers.cpp
+		panes.h
+		panes.cpp
+		window.h
+		window.cpp
+		testing.cpp
+	)
+	add_test(NAME Gauntlet COMMAND Gauntlet ${CMAKE_SOURCE_DIR}/exercises)
+
+	if (WIN32)
+		target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::WinExtras)
+	else()
+		target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
+	endif()
 endif()
 
 add_executable(Celeste
@@ -44,35 +78,10 @@ add_executable(Celeste
 	resources/resources.qrc
 )
 
-add_executable(Testing
-	globals.h
-	settings.h
-	channel.h
-	channel.cpp
-	command.h
-	volume.h
-	relay.h
-	viewers.h
-	widgets.h
-	widgets.cpp
-	recognizers.h
-	recognizers.cpp
-	receivers.h
-	receivers.cpp
-	subscribers.h
-	subscribers.cpp
-	panes.h
-	panes.cpp
-	window.h
-	window.cpp
-	testing.cpp
-)
-add_test(NAME Testing COMMAND testing)
-
 if (WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::WinExtras)
-	target_link_libraries(Testing PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::WinExtras)
+	target_link_libraries(Test PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::WinExtras)
 else()
 	include(CheckIPOSupported)
 	check_ipo_supported(RESULT result)
@@ -81,5 +90,5 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
-	target_link_libraries(Testing PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
+	target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
 endif()
