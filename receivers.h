@@ -68,12 +68,13 @@ protected:
 	std::vector<Command> userCommands;
 	std::unordered_map<QString,QString> emoticons;
 	Viewers viewers;
+	QFuture<void> worker;
 	void IdentifyViewer(const QString &name);
 	Command* FindCommand(const QString &name);
 	TagMap ParseTags(const QString &tags);
 	QString ParseHostmask(const QString &mask);
 	std::tuple<QString,QString> ParseCommand(const QString &message);
-	QFuture<void> worker;
+	void Fail(const QString &reason);
 signals:
 	void Refresh();
 	void Alert(const QString &text);
