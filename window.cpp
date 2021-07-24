@@ -500,10 +500,10 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 
 	if (settingRoasts)
 	{
-		connect(&roastSources,&QMediaPlaylist::loadFailed,[this,chatPane]() {
+		connect(&roastSources,&QMediaPlaylist::loadFailed,[this]() {
 			chatPane->Alert(QString("<b>Failed to load roasts</b><br>%2").arg(roastSources.errorString()));
 		});
-		connect(&roastSources,&QMediaPlaylist::loaded,[this,chatPane]() {
+		connect(&roastSources,&QMediaPlaylist::loaded,[this]() {
 			roastSources.shuffle();
 			roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
 			roaster->setPlaylist(&roastSources);
@@ -511,7 +511,7 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 			chatPane->Alert("Roasts loaded!");
 		});
 		roastSources.load(QUrl::fromLocalFile(settingRoasts));
-		connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this,chatPane](QMediaPlayer::Error error) {
+		connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
 			chatPane->Alert(QString("<b>Roaster failed to start</b><br>%2").arg(vibeKeeper->errorString()));
 		});
 		connect(roaster,&QMediaPlayer::mediaStatusChanged,[this](QMediaPlayer::MediaStatus status) {
