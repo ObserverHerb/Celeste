@@ -165,7 +165,7 @@ void Window::BuildEventSubscriber()
 	UserRecognizer *userRecognizer=new UserRecognizer(channel->Name());
 	connect(userRecognizer,&UserRecognizer::Recognized,[this](UserRecognizer* recognizer) {
 		EventSubscriber* subscriber=CreateEventSubscriber(recognizer->Name());
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"eventsub",QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
 		connect(subscriber, &EventSubscriber::Print, this, &Window::Log);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
@@ -197,9 +197,11 @@ void Window::BuildEventSubscriber()
 			});
 		recognizer->deleteLater();
 	});
-	connect(userRecognizer,&UserRecognizer::Error,[this,CHANNEL_OWNER_ID](const QString &message) {
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),CHANNEL_OWNER_ID,message));
+	connect(userRecognizer,&UserRecognizer::Error,[this](const QString &message) {
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"recognize user",message));
 	});
+	// FIXME: there is a (ridiculously small) window of opportunity here for the network call to succeed before the
+	// connections are made
 }
 
 /*!
