@@ -53,7 +53,7 @@ void Channel::Connect()
 		// trigger using event loop so the socket operation doesn't freeze the UI
 		ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);
 	},Qt::QueuedConnection);
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"connect","Connecting to IRC..."));
+	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION_CONNECTION,"Connecting to IRC..."));
 }
 
 void Channel::Connected()
