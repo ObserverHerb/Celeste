@@ -233,7 +233,7 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 {
 	connect(chatMessageReceiver,&ChatMessageReceiver::Refresh,chatPane,&ChatPane::Refresh);
 	connect(chatMessageReceiver,&ChatMessageReceiver::Alert,chatPane,&ChatPane::Alert);
-	connect(chatMessageReceiver,&ChatMessageReceiver::Print,visiblePane,&PersistentPane::Print);
+	connect(chatMessageReceiver,&ChatMessageReceiver::Print,chatPane,&ChatPane::Print);
 	if (settingArrivalSound) connect(chatMessageReceiver,&ChatMessageReceiver::ArrivalConfirmed,this,&Window::AnnounceArrival);
 	connect(chatMessageReceiver,&ChatMessageReceiver::PlayVideo,[this](const QString &path) {
 		StageEphemeralPane(new VideoPane(path));
