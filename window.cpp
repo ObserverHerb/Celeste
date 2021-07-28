@@ -44,7 +44,6 @@ Window::Window() : QWidget(nullptr),
 	background(new QWidget(this)),
 	vibeKeeper(new QMediaPlayer(this)),
 	roaster(new QMediaPlayer(this)),
-	logFile(Filesystem::LogPath().absoluteFilePath("current")),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingHelpCooldown(SETTINGS_CATEGORY_WINDOW,"HelpCooldown",300000),
 	settingInactivityCooldown(SETTINGS_CATEGORY_WINDOW,"InactivityCooldown",1800000),
@@ -85,16 +84,6 @@ Window::Window() : QWidget(nullptr),
 }
 
 /*!
- * \fn Window::~Window
- * \brief Deallocate the main window.
- *
- * This will close the connection to IRC.
- */
-Window::~Window()
-{
-}
-
-/*!
  * \fn Window::event
  * \brief Handles events the window receives from the operating system.
  *
@@ -114,8 +103,6 @@ bool Window::event(QEvent *event)
 			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Creating data directory %1").arg(Filesystem::DataPath().absolutePath())));
 			if (!Filesystem::DataPath().exists() && !Filesystem::DataPath().mkpath(Filesystem::DataPath().absolutePath())) throw std::runtime_error("Failed to create data directory");
 			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Creating log directory %1").arg(Filesystem::LogPath().absolutePath())));
-			if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
-			if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
 			connect(this,&Window::Print,this,&Window::Log);
 
 			BuildEventSubscriber();
@@ -125,6 +112,7 @@ bool Window::event(QEvent *event)
 				chatPane->Alert("Twitch is asking if we're still here<br>Letting Twitch server know we're still here");
 			});
 			connect(channel,&Channel::Print,this,&Window::Print);
+			connect(channel,&Channel::Log,this,&Window::Log);
 			channel->Connect();
 		}
 
@@ -135,29 +123,6 @@ bool Window::event(QEvent *event)
 	}
 
 	return QWidget::event(event);
-}
-
-void Window::closeEvent(QCloseEvent *event)
-{
-	if (logFile.exists())
-	{
-		logFile.reset();
-		QFile datedFile(Filesystem::LogPath().absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
-		if (datedFile.exists())
-		{
-			if (datedFile.open(QIODevice::WriteOnly|QIODevice::Append))
-			{
-				while (!logFile.atEnd()) datedFile.write(logFile.read(4096));
-			}
-		}
-		else
-		{
-			logFile.rename(QFileInfo(datedFile).absoluteFilePath());
-		}
-		logFile.close();
-	}
-
-	event->accept();
 }
 
 void Window::BuildEventSubscriber()
@@ -606,12 +571,6 @@ std::tuple<QString,QImage> Window::CurrentSong() const
 		),
 		vibeKeeper->metaData("CoverArtImage").value<QImage>()
 	};
-}
-
-void Window::Log(const QString &text)
-{
-	logFile.write(StringConvert::ByteArray(QString("%1\n").arg(text)));
-	logFile.flush();
 }
 
 /*!

@@ -38,7 +38,7 @@ Channel::~Channel()
 void Channel::DataAvailable()
 {
 	const QString data=ircSocket->Read();
-	Log(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION_RECEIVE,StringConvert::ByteArray(data)));
+	emit Log(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION_RECEIVE,StringConvert::ByteArray(data)));
 	if (data.size() > 4 && data.left(4) == "PING")
 	{
 		emit Ping();

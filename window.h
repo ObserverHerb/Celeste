@@ -34,9 +34,7 @@ class Window : public QWidget
 	Q_OBJECT
 public:
 	Window();
-	~Window();
 	bool event(QEvent *event) override;
-	void closeEvent(QCloseEvent *event) override;
 protected:
 	Channel *channel;
 	PersistentPane *visiblePane;
@@ -49,7 +47,6 @@ protected:
 	QMediaPlaylist roastSources;
 	QTimer helpClock;
 	QTimer inactivityClock;
-	QFile logFile;
 	Setting settingWindowSize;
 	Setting settingHelpCooldown;
 	Setting settingInactivityCooldown;
@@ -76,6 +73,7 @@ protected:
 	virtual EventSubscriber* CreateEventSubscriber(const QString &administratorID);
 	virtual const QString ArrivalSound() const;
 signals:
+	void Log(const QString &text);
 	void Print(const QString text);
 	void RequestEphemeralPane(AudioAnnouncePane *pane);
 public slots:
@@ -83,7 +81,6 @@ public slots:
 protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
 	void FollowChat(ChatMessageReceiver *chatMessageReceiver);
-	void Log(const QString &text);
 };
 
 #ifdef Q_OS_WIN
