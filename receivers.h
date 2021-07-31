@@ -2,9 +2,10 @@
 
 #include <QObject>
 #include <QTimer>
-#include <QtConcurrent>
+#include <QNetworkAccessManager>
 #include <vector>
 #include "command.h"
+#include "emote.h"
 #include "viewers.h"
 
 class MessageReceiver : public QObject
@@ -58,7 +59,6 @@ class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_er
 	using TagMap=std::unordered_map<QString,QString>;
 public:
 	ChatMessageReceiver(QObject *parent=nullptr);
-	~ChatMessageReceiver();
 	void AttachCommand(const Command &command);
 	const Command RandomCommand() const;
 	const std::unordered_map<QString,Command>& Commands() const { return commands; }
@@ -66,14 +66,14 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;
 	std::vector<Command> userCommands;
-	std::unordered_map<QString,QString> emoticons;
 	Viewers viewers;
-	QFuture<void> worker;
+	QNetworkAccessManager *downloadManager;
 	void IdentifyViewer(const QString &name);
 	Command* FindCommand(const QString &name);
 	TagMap ParseTags(const QString &tags);
 	QString ParseHostmask(const QString &mask);
 	std::tuple<QString,QString> ParseCommand(const QString &message);
+	const QString DownloadEmote(const Emote &emote);
 	void Fail(const QString &reason);
 signals:
 	void Refresh();

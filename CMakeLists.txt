@@ -59,6 +59,7 @@ add_executable(Celeste
 	channel.h
 	channel.cpp
 	command.h
+	emote.h
 	volume.h
 	relay.h
 	viewers.h

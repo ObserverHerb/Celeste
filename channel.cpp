@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "channel.h"
 #include "globals.h"
 

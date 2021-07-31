@@ -69,7 +69,7 @@ void ChannelJoinReceiver::Fail()
 	emit Failed();
 }
 
-ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(parent)
+ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(parent), downloadManager(new QNetworkAccessManager(this))
 {
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open command list file: %1").arg(commandListFile.fileName()).toStdString());
@@ -79,7 +79,7 @@ ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(pare
 	if (data.isEmpty()) data="[]";
 	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
 	if (json.isNull()) throw std::runtime_error(jsonError.errorString().toStdString());
-	for (const QJsonValue jsonValue : json.array())
+	for (const QJsonValue &jsonValue : json.array())
 	{
 		QJsonObject jsonObject=jsonValue.toObject();
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
@@ -96,55 +96,10 @@ ChatMessageReceiver::ChatMessageReceiver(QObject *parent) : MessageReceiver(pare
 			for (const QJsonValue &value : jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray()) commandAliases.insert_or_assign(value.toString(),commands.at(name));
 		}
 	}
-	for (const std::pair<QString,Command> command : commands)
+	for (const std::pair<QString,Command> &command : commands)
 	{
 		if (!command.second.Protected()) userCommands.push_back(command.second);
 	}
-
-	worker=QtConcurrent::run([this]() {
-		QFile emoteListFile(Filesystem::DataPath().filePath(EMOTE_FILENAME));
-		if (!emoteListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open emote list file: %1").arg(emoteListFile.fileName()).toStdString());
-		QJsonParseError jsonError;
-		QByteArray data=emoteListFile.readAll();
-		if (data.isEmpty()) data="{}";
-		QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
-		if (json.isNull()) throw std::runtime_error(jsonError.errorString().toStdString());
-		QJsonObject object=json.object();
-		QStringList keys=object.keys();
-
-		int threads=std::max(QThread::idealThreadCount()-QThreadPool::globalInstance()->activeThreadCount(),1);
-		std::vector<std::list<std::pair<QString,QString>>> segments(threads);
-		std::div_t segmentSize=std::div(object.size(),threads);
-		QFutureSynchronizer<void> futures;
-		for (int threadID=0; threadID < threads; threadID++)
-		{
-			futures.addFuture(QtConcurrent::run([&object,&keys,size=segmentSize.quot,threadID,&segments]() {
-				int segmentStartIndex=threadID*size;
-				int segmentEndIndex=segmentStartIndex+size;
-				for (int index=segmentStartIndex; index < segmentEndIndex; index++) segments[threadID].push_back(std::make_pair(keys.at(index),object.value(keys.at(index)).toString()));
-			}));
-		}
-		futures.waitForFinished();
-
-		emoticons.reserve(keys.size());
-		int objectSize=object.size();
-		for (int index=objectSize-segmentSize.rem; index < objectSize; index++) emoticons[keys.at(index)]=object.take(keys.at(index)).toString();
-		object=QJsonObject();
-		for (int threadID=0; threadID < threads; threadID++)
-		{
-			std::list<std::pair<QString,QString>> &segment=segments.at(threadID);
-			while (segment.size() > 0)
-			{
-				emoticons.insert(segment.back());
-				segment.pop_back();
-			}
-		}
-	});
-}
-
-ChatMessageReceiver::~ChatMessageReceiver()
-{
-	worker.waitForFinished();
 }
 
 void ChatMessageReceiver::AttachCommand(const Command &command)
@@ -166,6 +121,8 @@ void ChatMessageReceiver::Process(const QString data)
 		Fail("Message is invalid");
 		return;
 	}
+
+	// extract some metadata that appears before the message
 	TagMap tags=ParseTags(messageSegments.takeFirst());
 	if (messageSegments=messageSegments.join(" ").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2)
 	{
@@ -179,6 +136,8 @@ void ChatMessageReceiver::Process(const QString data)
 		return;
 	}
 	IdentifyViewer(user);
+
+	// determine if this is a command, and if so, process it as such
 	if (messageSegments.at(0).at(0) == "!")
 	{
 		auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
@@ -218,41 +177,64 @@ void ChatMessageReceiver::Process(const QString data)
 			return;
 		}
 	}
-	messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	for (QString &word : messageSegments)
-	{
-		if (QString emoteName=word.trimmed(); emoticons.find(emoteName) != emoticons.end())
-		{
-			QString emotePath=QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(emoteName));
-			if (!QFile(emotePath).exists())
-			{
-				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-				QObject::connect(manager,&QNetworkAccessManager::finished,[this,manager,emoteName,emotePath](QNetworkReply *reply) {
-					if (reply->error())
-					{
-						emit Alert(QString("Failed to download %1 emote: %2").arg(emoteName,reply->errorString()));
-						return;
-					}
-					if (!QImage::fromData(reply->readAll()).save(emotePath)) Alert(QString("Failed to save emote: %1").arg(emotePath));
-					emit Refresh();
-					manager->deleteLater();
-				});
-				QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emoticons.at(emoteName)));
-				manager->get(request);
-			}
-			word=word.replace(emoteName,QString("<img style='vertical-align: middle;' src='%1' />").arg(emotePath));
-		}
-	}
+
+	// determine if the message is an action
+	// have to do this here, because the ACTION tag
+	// throws off the indicies in processing emotes below
+	bool action=false;
 	if (messageSegments.front() == "\001ACTION")
 	{
 		messageSegments.pop_front();
 		messageSegments.back().remove('\001');
-		emit Print(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
+		action=true;
 	}
-	else
+	QString message=messageSegments.join(":");
+
+	// look for emotes if they exist
+	if (tags.find("emotes") != tags.end())
 	{
-		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(user,messageSegments.join(" "),tags.at("color")));
+		std::vector<Emote> emotes;
+		QStringList entries=tags.at("emotes").split("/",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+		for (const QString &entry : entries)
+		{
+			QStringList details=entry.split(":");
+			if (details.size() < 2)
+			{
+				emit Alert("Malformatted emote in message");
+				continue;
+			}
+			for (const QString &instance : details.at(1).split(","))
+			{
+				QStringList indicies=instance.split("-");
+				if (indicies.size() < 2)
+				{
+					emit Alert("Cannot determine where emote starts or ends");
+					continue;
+				}
+				unsigned int start=StringConvert::PositiveInteger(indicies.at(0));
+				unsigned int end=StringConvert::PositiveInteger(indicies.at(1));
+				emotes.push_back({details.at(0),QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(details.at(0))),start,end});
+			}
+		}
+
+		QString emotedMessage;
+		std::sort(emotes.begin(),emotes.end());
+		unsigned int position=0;
+		for (const Emote &emote : emotes)
+		{
+			if (position < emote.start) emotedMessage+=message.midRef(position,emote.start-position);
+			emotedMessage+=QString("<img style='vertical-align: middle;' src='%1' />").arg(DownloadEmote(emote));
+			position=emote.end+1;
+		}
+		if (position < message.size()) emotedMessage+=message.midRef(position,message.size()-position);
+		message=emotedMessage;
 	}
+
+	// print the final message
+	if (action)
+		emit Print(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(user,message,tags.at("color")));
+	else
+		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(user,message,tags.at("color")));
 }
 
 ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
@@ -264,12 +246,12 @@ ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
 		if (components.size() == 2)
 			result[components.at(KEY)]=components.at(VALUE);
 		else
-			Alert(QString("Message has an invalid tag: %1").arg(pair));
+			emit Alert(QString("Message has an invalid tag: %1").arg(pair));
 	}
 	if (result.find("color") == result.end())
 	{
-		Alert("Message has no color");
-		result["color"]="#ffffff";
+		emit Alert("Message has no color");
+		result["color"]="#ffffff"; // TODO: this should be the foreground color of the chat pane
 	}
 	return result;
 }
@@ -279,7 +261,7 @@ QString ChatMessageReceiver::ParseHostmask(const QString &mask)
 	QStringList hostmaskSegments=mask.split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
 	if (hostmaskSegments.size() < 1)
 	{
-		Alert("Message hostmask is invalid");
+		emit Alert("Message hostmask is invalid");
 		return QString();
 	}
 	return hostmaskSegments.front();
@@ -305,6 +287,27 @@ Command* ChatMessageReceiver::FindCommand(const QString &name)
 	if (commands.find(name) != commands.end()) return &commands.at(name);
 	if (commandAliases.find(name) != commandAliases.end()) return &commandAliases.at(name).get();
 	return nullptr;
+}
+
+const QString ChatMessageReceiver::DownloadEmote(const Emote &emote)
+{
+	const QString emotePath=QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(QString("%1.png").arg(emote.id));
+	if (!QFile(emotePath).exists())
+	{
+		QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.id));
+		QNetworkReply *downloadReply=downloadManager->get(request);
+		connect(downloadReply,&QNetworkReply::finished,[this,downloadReply,id=emote.id,emotePath]() {
+			if (downloadReply->error())
+			{
+				emit Alert(QString("Failed to download %1 emote: %2").arg(id,downloadReply->errorString()));
+				return;
+			}
+			if (!QImage::fromData(downloadReply->readAll()).save(emotePath)) emit Alert(QString("Failed to save emote: %1").arg(emotePath));
+			emit Refresh();
+		});
+
+	}
+	return emotePath;
 }
 
 void ChatMessageReceiver::Fail(const QString &reason)
