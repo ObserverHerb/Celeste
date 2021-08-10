@@ -84,6 +84,7 @@ signals:
 	void Speak(const QString sentence);
 	void ShowVoices();
 	void ForwardCommand(const Command &command);
+	void MessageProcessed();
 public slots:
 	void Process(const QString data) override;
 };

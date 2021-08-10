@@ -212,6 +212,9 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 			{message,1}
 		},path));
 	});
+	connect(chatMessageReceiver,&ChatMessageReceiver::MessageProcessed,[this]() {
+		inactivityClock.start();
+	});
 	SwapPane(chatPane);
 
 	Command AgendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::FORWARD,true);

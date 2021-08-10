@@ -235,6 +235,8 @@ void ChatMessageReceiver::Process(const QString data)
 		emit Print(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(user,message,tags.at("color")));
 	else
 		emit Print(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(user,message,tags.at("color")));
+
+	emit MessageProcessed();
 }
 
 ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
