@@ -32,10 +32,10 @@ public:
 	StatusPane(QWidget *parent);
 protected:
 	QTextEdit *output;
-	Setting settingFont;
-	Setting settingFontSize;
-	Setting settingForegroundColor;
-	Setting settingBackgroundColor;
+	ApplicationSetting settingFont;
+	ApplicationSetting settingFontSize;
+	ApplicationSetting settingForegroundColor;
+	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
 public slots:
 	void Print(const QString &text) override;
@@ -53,11 +53,11 @@ protected:
 	QLabel *status;
 	std::queue<Relay::Status::Package> statusUpdates;
 	QTimer statusClock;
-	Setting settingFont;
-	Setting settingFontSize;
-	Setting settingForegroundColor;
-	Setting settingBackgroundColor;
-	Setting settingStatusInterval;
+	ApplicationSetting settingFont;
+	ApplicationSetting settingFontSize;
+	ApplicationSetting settingForegroundColor;
+	ApplicationSetting settingBackgroundColor;
+	ApplicationSetting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
 	void ResetStatusClock();
 public slots:
@@ -104,11 +104,11 @@ protected:
 	QColor accentColor;
 	QLabel *output;
 	QTimer clock;
-	Setting settingDuration;
-	Setting settingFont;
-	Setting settingFontSize;
-	Setting settingForegroundColor;
-	Setting settingBackgroundColor;
+	ApplicationSetting settingDuration;
+	ApplicationSetting settingFont;
+	ApplicationSetting settingFontSize;
+	ApplicationSetting settingForegroundColor;
+	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
 };
 

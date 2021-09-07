@@ -23,8 +23,8 @@ public:
 	const QString Name() const { return settingChannel; }
 	const std::chrono::milliseconds JoinDelay() const { return static_cast<std::chrono::milliseconds>(settingJoinDelay); }
 protected:
-	Setting settingChannel;
-	Setting settingJoinDelay;
+	ApplicationSetting settingChannel;
+	ApplicationSetting settingJoinDelay;
 	IRCSocket *ircSocket;
 	AuthenticationReceiver *authenticationReceiver;
 	ChannelJoinReceiver *channelJoinReceiver;

@@ -5,10 +5,12 @@
 #include <QSize>
 #include "globals.h"
 
-class Setting
+inline const char *SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
+
+class BasicSetting
 {
 public:
-	Setting(const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,ORGANIZATION_NAME,APPLICATION_NAME) { }
+	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,ORGANIZATION_NAME,applicationName) { }
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source.value(name,defaultValue); }
 	void Set(const QVariant &value) { source.setValue(name,value); }
@@ -30,7 +32,18 @@ protected:
 	QSettings source;
 };
 
-inline const char *SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
-inline Setting settingAdministrator(SETTINGS_CATEGORY_AUTHORIZATION,"Administrator");
-inline Setting settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID");
-inline Setting settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"Token");
+class ApplicationSetting : public BasicSetting
+{
+public:
+	ApplicationSetting(const QString &category,const QString &name,const QVariant &value=QVariant()) : BasicSetting(APPLICATION_NAME,category,name,value) { }
+};
+
+class AuthorizationSetting : public BasicSetting
+{
+public:
+	AuthorizationSetting(const QString &name,const QVariant &value=QVariant()) : BasicSetting(QString("%1_%2").arg(APPLICATION_NAME,SETTINGS_CATEGORY_AUTHORIZATION),SETTINGS_CATEGORY_AUTHORIZATION,name,value) { }
+};
+
+inline AuthorizationSetting settingAdministrator("Administrator");
+inline AuthorizationSetting settingClientID("ClientID");
+inline AuthorizationSetting settingOAuthToken("Token");

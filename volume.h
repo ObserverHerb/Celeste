@@ -55,7 +55,7 @@ namespace Volume
 			player->setVolume(initialVolume); // FIXME: volume doesn't return to initial value
 		}
 	protected:
-		Setting settingDefaultDuration;
+		ApplicationSetting settingDefaultDuration;
 		QMediaPlayer *player;
 		unsigned int initialVolume;
 		unsigned int targetVolume;
