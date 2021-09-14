@@ -147,22 +147,30 @@ void Window::BuildEventSubscriber()
 				{"has redeemed<br>",1},
 				{QString("%1<br>").arg(rewardTitle),1.5},
 				{message,1}
-				}));
-			});
+			}));
+		});
 		connect(subscriber,&EventSubscriber::Raid,[this](const QString& viewer, const unsigned int viewers) {
-			StageEphemeralPane(new AudioAnnouncePane({
-				{QString("%1<br>").arg(viewer),1.5},
-				{"is raiding with<br>",1},
-				{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
-				{"viewers",1}
-				}, settingRaidSound));
-			});
+			try
+			{
+				StageEphemeralPane(new AudioAnnouncePane({
+					{QString("%1<br>").arg(viewer),1.5},
+					{"is raiding with<br>",1},
+					{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
+					{"viewers",1}
+				},settingRaidSound));
+			}
+			catch (std::runtime_error &exception)
+			{
+				chatPane->Alert("Failed to create pane for raid");
+				emit Log(exception.what());
+			}
+		});
 		connect(subscriber,&EventSubscriber::Subscription,[this](const QString& viewer) {
 			StageEphemeralPane(new AudioAnnouncePane({
 				{QString("%1<br>").arg(viewer),1.5},
 				{"has subscribed!",1}
-				}, settingSubscriptionSound));
-			});
+			},settingSubscriptionSound));
+		});
 		recognizer->deleteLater();
 	});
 	connect(userRecognizer,&UserRecognizer::Error,[this](const QString &message) {

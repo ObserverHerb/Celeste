@@ -20,6 +20,7 @@ public:
 	void Set(const QVariant &value) { source->setValue(name,value); }
 	operator bool() const { return source->contains(name); }
 	operator QString() const { return Value().toString(); }
+	operator StringConvert::Valid() const { return Value().toString(); }
 	operator unsigned int() const { return Value().toUInt(); }
 	operator int() const { return Value().toInt(); }
 	operator quint16() const { return Value().toUInt(); }

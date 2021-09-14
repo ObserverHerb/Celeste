@@ -61,6 +61,15 @@ namespace StringConvert
 		return result;
 	}
 
+	class Valid : public QString
+	{
+	public:
+		Valid(const QString &string) : QString(string)
+		{
+			if (string.isEmpty() || string.isNull()) throw std::runtime_error("Invalid or empty string was passed");
+		}
+	};
+
 	namespace Split
 	{
 #if QT_VERSION < QT_VERSION_CHECK(5,14,0)
