@@ -46,7 +46,7 @@ public:
 class AuthorizationSetting : public BasicSetting
 {
 public:
-	AuthorizationSetting(const QString &name,const QVariant &value=QVariant()) : BasicSetting(QString("%1_%2").arg(APPLICATION_NAME,SETTINGS_CATEGORY_AUTHORIZATION),SETTINGS_CATEGORY_AUTHORIZATION,name,value)
+	AuthorizationSetting(const QString &name,const QVariant &value=QVariant()) : BasicSetting(SETTINGS_CATEGORY_AUTHORIZATION,APPLICATION_NAME,name,value)
 	{
 		std::optional<QString> filePath=Filesystem::CreateHiddenFile(source->fileName());
 		if (!filePath) throw std::runtime_error("Could not create file for private settings"); // FIXME: don't create settings objects below before main() function
