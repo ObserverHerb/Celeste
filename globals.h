@@ -8,6 +8,7 @@
 #include <random>
 #include <functional>
 #include <stdexcept>
+#include "platform.h"
 
 inline const char *ORGANIZATION_NAME="Sky-Meyg";
 inline const char *APPLICATION_NAME="Celeste";
@@ -123,18 +124,6 @@ namespace Tuple
 	}
 }
 
-namespace Platform
-{
-	constexpr bool Windows()
-	{
-	#ifdef Q_OS_WIN
-		return true;
-	#else
-		return false;
-	#endif
-	}
-}
-
 namespace Filesystem
 {
 	inline const QDir DataPath()
@@ -145,28 +134,6 @@ namespace Filesystem
 	inline const QDir LogPath()
 	{
 		return DataPath().absoluteFilePath(LOG_DIRECTORY);
-	}
-
-	inline const std::optional<QString> CreateHiddenFile(const QString &filePath)
-	{
-		const QFileInfo details(filePath);
-		const QDir path(details.absolutePath());
-		QFile file;
-		if (Platform::Windows())
-		{
-			//SetFileAttributesA
-		}
-		else
-		{
-			file.setFileName(QString("%1%2.%3").arg(path.absolutePath(),QDir::separator(),details.fileName()));
-			if (!file.exists())
-			{
-				if (!path.mkpath(path.absolutePath())) return std::nullopt;
-				if (!file.open(QIODevice::WriteOnly)) return std::nullopt;
-				file.close();
-			}
-			return file.fileName();
-		}
 	}
 }
 

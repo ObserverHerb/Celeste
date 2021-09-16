@@ -40,6 +40,8 @@ if(BUILD_TESTING)
 		subscribers.cpp
 		panes.h
 		panes.cpp
+		platform.h
+		platform.cpp
 		window.h
 		window.cpp
 		testing.cpp
@@ -73,6 +75,8 @@ add_executable(Celeste
 	subscribers.cpp
 	panes.h
 	panes.cpp
+	platform.h
+	platform.cpp
 	window.h
 	window.cpp
 	main.cpp
