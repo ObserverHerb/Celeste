@@ -8,9 +8,11 @@ const char *Channel::OPERATION_AUTHORIZATION="authorization";
 const char *Channel::OPERATION_SEND="sending data";
 const char *Channel::OPERATION_RECEIVE="receiving data";
 
+const char *SETTINGS_CATEGORY_CHANNEL="Channel";
+
 Channel::Channel(IRCSocket *socket,QObject *parent) : QObject(parent),
-	settingChannel(SETTINGS_CATEGORY_AUTHORIZATION,"Channel",""),
-	settingJoinDelay(SETTINGS_CATEGORY_AUTHORIZATION,"JoinDelay",5),
+	settingChannel(SETTINGS_CATEGORY_CHANNEL,"Name",""),
+	settingJoinDelay(SETTINGS_CATEGORY_CHANNEL,"JoinDelay",5),
 	ircSocket(socket),
 	authenticationReceiver(new AuthenticationReceiver(this)),
 	channelJoinReceiver(new ChannelJoinReceiver(this)),

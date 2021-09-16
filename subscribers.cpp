@@ -31,8 +31,8 @@ const char *EventSubscriber::SETTINGS_CATEGORY_EVENTSUB="Events";
 
 EventSubscriber::EventSubscriber(const QString &channelOwnerID,QObject *parent) : QTcpServer(parent),
 	channelOwnerID(channelOwnerID),
-	settingClientID(SETTINGS_CATEGORY_AUTHORIZATION,"ClientID"),
-	settingOAuthToken(SETTINGS_CATEGORY_AUTHORIZATION,"ServerToken"),
+	settingClientID("ClientID"),
+	settingOAuthToken("ServerToken"),
 	settingListenPort(SETTINGS_CATEGORY_EVENTSUB,"Port",4443),
 	settingCallbackURL(SETTINGS_CATEGORY_EVENTSUB,"CallbackURL"),
 	secret(QUuid::createUuid().toString())

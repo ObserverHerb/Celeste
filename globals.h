@@ -4,9 +4,11 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <chrono>
+#include <optional>
 #include <random>
 #include <functional>
 #include <stdexcept>
+#include "platform.h"
 
 inline const char *ORGANIZATION_NAME="Sky-Meyg";
 inline const char *APPLICATION_NAME="Celeste";
@@ -60,6 +62,15 @@ namespace StringConvert
 		return result;
 	}
 
+	class Valid : public QString
+	{
+	public:
+		Valid(const QString &string) : QString(string)
+		{
+			if (string.isEmpty() || string.isNull()) throw std::runtime_error("Invalid or empty string was passed");
+		}
+	};
+
 	namespace Split
 	{
 #if QT_VERSION < QT_VERSION_CHECK(5,14,0)
@@ -110,18 +121,6 @@ namespace Tuple
 		return std::apply([](Arguments... arguments)->Type* {
 			return new Type(arguments...);
 		},tuple);
-	}
-}
-
-namespace Platform
-{
-	constexpr bool Windows()
-	{
-	#ifdef Q_OS_WIN
-		return true;
-	#else
-		return false;
-	#endif
 	}
 }
 

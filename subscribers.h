@@ -34,10 +34,10 @@ protected:
 	static const QString LINE_BREAK;
 	static const char *SETTINGS_CATEGORY_EVENTSUB;
 	const QString channelOwnerID;
-	Setting settingClientID;
-	Setting settingOAuthToken;
-	Setting settingListenPort;
-	Setting settingCallbackURL;
+	AuthorizationSetting settingClientID;
+	AuthorizationSetting settingOAuthToken;
+	ApplicationSetting settingListenPort;
+	ApplicationSetting settingCallbackURL;
 	const QString secret;
 	QString buffer;
 	SubscriptionTypes subscriptionTypes; // TODO: find a better name for this

@@ -436,17 +436,20 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const StringConvert::Valid &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
 {
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
-	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,&AudioAnnouncePane::Finished);
+	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this]() {
+		emit Error("Failed to load audio for pane");
+		emit Finished();
+	});
 	audioPlayer->setMedia(QUrl::fromLocalFile(path));
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
+AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const StringConvert::Valid &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
 {
 	output->setText(BuildParagraph(lines));
 }
