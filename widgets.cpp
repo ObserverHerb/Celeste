@@ -21,12 +21,20 @@ namespace StyleSheet
 ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent)
 {
 	connect(this,&ScrollingTextEdit::textChanged,[this]() {
-		ensureCursorVisible();
+		Tail();
 	});
 }
 
 void ScrollingTextEdit::resizeEvent(QResizeEvent *event)
 {
+	Tail();
 	QTextEdit::resizeEvent(event);
+}
+
+void ScrollingTextEdit::Tail()
+{
+	QTextCursor cursor=this->textCursor();
+	cursor.movePosition(QTextCursor::End);
+	this->setTextCursor(cursor);
 	ensureCursorVisible();
 }

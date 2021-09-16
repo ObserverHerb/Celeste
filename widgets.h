@@ -13,4 +13,5 @@ public:
 	ScrollingTextEdit(QWidget *parent=nullptr);
 protected:
 	void resizeEvent(QResizeEvent *event);
+	void Tail();
 };
