@@ -202,8 +202,7 @@ void ChatPane::Refresh()
  */
 void ChatPane::Print(const QString &text)
 {
-	chat->insertHtml(text);
-	chat->insertPlainText("\n");
+	chat->Append(text);
 }
 
 /*!

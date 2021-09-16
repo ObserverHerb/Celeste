@@ -11,6 +11,7 @@ class ScrollingTextEdit : public QTextEdit
 {
 public:
 	ScrollingTextEdit(QWidget *parent=nullptr);
+	void Append(const QString &text);
 protected:
 	void resizeEvent(QResizeEvent *event);
 	void Tail();

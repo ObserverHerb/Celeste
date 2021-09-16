@@ -33,8 +33,15 @@ void ScrollingTextEdit::resizeEvent(QResizeEvent *event)
 
 void ScrollingTextEdit::Tail()
 {
-	QTextCursor cursor=this->textCursor();
+	QTextCursor cursor=textCursor();
 	cursor.movePosition(QTextCursor::End);
-	this->setTextCursor(cursor);
+	setTextCursor(cursor);
 	ensureCursorVisible();
+}
+
+void ScrollingTextEdit::Append(const QString &text)
+{
+	Tail();
+	if (!toPlainText().isEmpty()) insertPlainText("\n"); // FIXME: this is really inefficient
+	insertHtml(text);
 }
