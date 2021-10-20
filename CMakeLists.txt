@@ -100,6 +100,7 @@ endif()
 
 
 if (UNIX)
+	find_package(Qt5 COMPONENTS Network REQUIRED)
 	include(FindPkgConfig)
 	pkg_search_module(OBS REQUIRED libobs)
 	find_path(OBS_INCLUDE_DIR obs-module.h HINTS ${OBS_INCLUDEDIR} ${OBS_INCLUDE_DIRS})
