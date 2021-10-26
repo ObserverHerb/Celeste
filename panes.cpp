@@ -443,7 +443,7 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const StringConvert::Va
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this]() {
-		emit Error("Failed to load audio for pane");
+		emit Error(QString("Failed to load audio for pane: %1").arg(audioPlayer->errorString()));
 		emit Finished();
 	});
 	audioPlayer->setMedia(QUrl::fromLocalFile(path));
