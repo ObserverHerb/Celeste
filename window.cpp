@@ -258,181 +258,179 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 		{VolumeCommand.Name(),Commands::VOLUME}
 	};
 	connect(chatMessageReceiver,&ChatMessageReceiver::ForwardCommand,[this,chatMessageReceiver,commands](const Command &command) {
-		try
-		{
-			switch (commands.at(command.Name()))
-			{
-			case Commands::AGENDA:
-				chatPane->SetAgenda(command.Message());
-				break;
-			case Commands::COMMANDS:
-			{
-				std::vector<std::pair<QString,double>> user;
-				std::vector<std::pair<QString,double>> admin;
-				for (const std::pair<QString,Command> &command : chatMessageReceiver->Commands())
-				{
-					if (command.second.Protected())
-					{
-						admin.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.second.Name()),0.6});
-						admin.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second.Description()),0.5});
-					}
-					else
-					{
-						user.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.second.Name()),0.6});
-						user.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second.Description()),0.5});
-					}
-				}
-				AnnouncePane *pane;
-				int duration=15000;
-				int count=8; // TODO: this should be calculated based on text line height vs pixel height of window
-				count=count*2; // a single command covers two lines
-				for (int page=0; page < std::ceil(static_cast<double>(user.size())/count); page++)
-				{
-					std::vector<std::pair<QString,double>>::size_type start=page*count;
-					std::vector<std::pair<QString,double>>::size_type end=start+count;
-					pane=new AnnouncePane({&user[start],&user[std::min(user.size(),end)]});
-					pane->Duration(duration);
-					StageEphemeralPane(pane);
-				}
-				pane=new AnnouncePane(admin);
-				pane->Duration(duration);
-				StageEphemeralPane(pane);
-				break;
-			}
-			case Commands::PANIC:
-			{
-				QFile outputFile(Filesystem::DataPath().absoluteFilePath("panic.txt"));
-				QString outputText;
-				if (outputFile.open(QIODevice::ReadOnly))
-				{
-					outputText=outputFile.readAll();
-					outputFile.close();
-				}
-				SwapPane(new StatusPane(this));
-				QString date=QDateTime::currentDateTime().toString("ddd d hh:mm:ss");
-				outputText=outputText.split("\n").join(QString("\n%1 ").arg(date));
-				emit Print(date+"\n"+outputText);
-				this->disconnect();
-				break;
-			}
-			case Commands::SHOUTOUT:
-			{
-				UserRecognizer *user=new UserRecognizer(QString(command.Message()).remove("@"));
-				connect(user,&UserRecognizer::Recognized,[this,user]() {
-					ImageAnnouncePane *pane=new ImageAnnouncePane({
-						{"Drop a follow on<br>",1},
-						{QString("%1<br>").arg(user->DisplayName()),1.5},
-						{user->Description(),0.5}
-						},user->ProfileImage());
-					pane->AccentColor(settingAccentColor);
-					pane->Duration(10000);
-					StageEphemeralPane(pane);
-				});
-				connect(user,&UserRecognizer::Error,[this](const QString &message) {
-					emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"recognize user",message));
-				});
-				break;
-			}
-			case Commands::SONG:
-			{
-				ImageAnnouncePane *pane=Tuple::New<ImageAnnouncePane,QString,QImage>(CurrentSong());
-				pane->AccentColor(settingAccentColor);
-				StageEphemeralPane(pane);
-				break;
-			}
-			case Commands::TIMEZONE:
-				chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
-				break;
-			case Commands::UPDATE:
-			{
-				if (worker.isRunning())
-				{
-					chatPane->Alert("Another job is already running.");
-					break;
-				}
-				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-				connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
-					worker=QtConcurrent::run([this,manager,reply]() {
-						if (reply->error())
-						{
-							chatPane->Alert(QString("Network call failed: %1").arg(reply->errorString()));
-							return;
-						}
-						chatPane->Alert("Parsing emote list...");
-						QJsonParseError jsonError;
-						QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-						if (json.isNull()) chatPane->Alert(QString("Unregonized reponse from Twitch: %1").arg(jsonError.errorString()));
-						chatPane->Alert("Rebuilding data structure...");
-
-						QFile commandListFile(Filesystem::DataPath().filePath(EMOTE_FILENAME));
-						if (!commandListFile.open(QIODevice::ReadWrite)) return;
-						commandListFile.write("{\n");
-						for (const QJsonValue &entry : json.object().value("emoticons").toArray())
-						{
-							QStringList fragments=entry.toObject().value("images").toObject().value("url").toString().split("/",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-							if (fragments.size() < 5) continue;
-							commandListFile.write(StringConvert::ByteArray(QString("\t\"%1\": \"%2\",\n").arg(entry.toObject().value("regex").toString(),fragments.at(4))));
-						}
-						commandListFile.seek(commandListFile.pos()-2);
-						commandListFile.write("\n}");
-						commandListFile.close();
-
-						manager->deleteLater();
-					});
-				});
-				QNetworkRequest request({TWITCH_API_ENDPOINT_EMOTE_LIST});
-				request.setRawHeader("Accept",TWITCH_API_VERSION_5);
-				request.setRawHeader("Client-ID",settingClientID);
-				Relay::Status::Context *statusContext=chatPane->Alert("Downloading emote list...");
-				connect(manager->get(request),&QNetworkReply::downloadProgress,[this,statusContext](qint64 received,qint64 total) {
-					statusContext->Updated(QLocale::system().formattedDataSize(received));
-					statusContext->ResetClock();
-				});
-				break;
-			}
-			case Commands::UPTIME:
-			{
-				Relay::Status::Context *statusContext=chatPane->Alert(Uptime());
-				connect(statusContext,&Relay::Status::Context::UpdateRequested,[this,statusContext]() {
-					emit statusContext->Updated(Uptime());
-				});
-				break;
-			}
-			case Commands::VIBE:
-				if (vibeKeeper->state() == QMediaPlayer::PlayingState)
-				{
-					chatPane->Alert("Pausing the vibes...");
-					vibeKeeper->pause();
-					break;
-				}
-				vibeKeeper->play();
-				break;
-			case Commands::VOLUME:
-				if (command.Message().isEmpty())
-				{
-					if (vibeFader)
-					{
-						vibeFader->Abort();
-						chatPane->Alert("Aborting volume change...");
-					}
-					break;
-				}
-				try
-				{
-					vibeFader=new Volume::Fader(vibeKeeper,command.Message(),this);
-					connect(vibeFader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
-					vibeFader->Start();
-				}
-				catch (const std::range_error &exception)
-				{
-					chatPane->Alert(QString("%1\n\n%2").arg("Failed to adjust volume!",exception.what()));
-				}
-				break;
-			}
-		}
-		catch (const std::out_of_range &exception)
+		if (commands.find(command.Name()) == commands.end())
 		{
 			chatPane->Alert(QString(R"(Command "%1" not fully implemented!)").arg(command.Name()));
+			return;
+		}
+		switch (commands.at(command.Name()))
+		{
+		case Commands::AGENDA:
+			chatPane->SetAgenda(command.Message());
+			break;
+		case Commands::COMMANDS:
+		{
+			std::vector<std::pair<QString,double>> user;
+			std::vector<std::pair<QString,double>> admin;
+			for (const std::pair<QString,Command> &command : chatMessageReceiver->Commands())
+			{
+				if (command.second.Protected())
+				{
+					admin.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.second.Name()),0.6});
+					admin.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second.Description()),0.5});
+				}
+				else
+				{
+					user.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.second.Name()),0.6});
+					user.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second.Description()),0.5});
+				}
+			}
+			AnnouncePane *pane;
+			int duration=15000;
+			int count=8; // TODO: this should be calculated based on text line height vs pixel height of window
+			count=count*2; // a single command covers two lines
+			for (int page=0; page < std::ceil(static_cast<double>(user.size())/count); page++)
+			{
+				std::vector<std::pair<QString,double>>::size_type start=page*count;
+				std::vector<std::pair<QString,double>>::size_type end=start+count;
+				pane=new AnnouncePane({&user[start],&user[std::min(user.size(),end)]});
+				pane->Duration(duration);
+				StageEphemeralPane(pane);
+			}
+			pane=new AnnouncePane(admin);
+			pane->Duration(duration);
+			StageEphemeralPane(pane);
+			break;
+		}
+		case Commands::PANIC:
+		{
+			QFile outputFile(Filesystem::DataPath().absoluteFilePath("panic.txt"));
+			QString outputText;
+			if (outputFile.open(QIODevice::ReadOnly))
+			{
+				outputText=outputFile.readAll();
+				outputFile.close();
+			}
+			SwapPane(new StatusPane(this));
+			QString date=QDateTime::currentDateTime().toString("ddd d hh:mm:ss");
+			outputText=outputText.split("\n").join(QString("\n%1 ").arg(date));
+			emit Print(date+"\n"+outputText);
+			this->disconnect();
+			break;
+		}
+		case Commands::SHOUTOUT:
+		{
+			UserRecognizer *user=new UserRecognizer(QString(command.Message()).remove("@"));
+			connect(user,&UserRecognizer::Recognized,[this,user]() {
+				ImageAnnouncePane *pane=new ImageAnnouncePane({
+					{"Drop a follow on<br>",1},
+					{QString("%1<br>").arg(user->DisplayName()),1.5},
+					{user->Description(),0.5}
+					},user->ProfileImage());
+				pane->AccentColor(settingAccentColor);
+				pane->Duration(10000);
+				StageEphemeralPane(pane);
+			});
+			connect(user,&UserRecognizer::Error,[this](const QString &message) {
+				emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"recognize user",message));
+			});
+			break;
+		}
+		case Commands::SONG:
+		{
+			ImageAnnouncePane *pane=Tuple::New<ImageAnnouncePane,QString,QImage>(CurrentSong());
+			pane->AccentColor(settingAccentColor);
+			StageEphemeralPane(pane);
+			break;
+		}
+		case Commands::TIMEZONE:
+			chatPane->Alert(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
+			break;
+		case Commands::UPDATE:
+		{
+			if (worker.isRunning())
+			{
+				chatPane->Alert("Another job is already running.");
+				break;
+			}
+			QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+			connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+				worker=QtConcurrent::run([this,manager,reply]() {
+					if (reply->error())
+					{
+						chatPane->Alert(QString("Network call failed: %1").arg(reply->errorString()));
+						return;
+					}
+					chatPane->Alert("Parsing emote list...");
+					QJsonParseError jsonError;
+					QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+					if (json.isNull()) chatPane->Alert(QString("Unregonized reponse from Twitch: %1").arg(jsonError.errorString()));
+					chatPane->Alert("Rebuilding data structure...");
+
+					QFile commandListFile(Filesystem::DataPath().filePath(EMOTE_FILENAME));
+					if (!commandListFile.open(QIODevice::ReadWrite)) return;
+					commandListFile.write("{\n");
+					for (const QJsonValue &entry : json.object().value("emoticons").toArray())
+					{
+						QStringList fragments=entry.toObject().value("images").toObject().value("url").toString().split("/",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+						if (fragments.size() < 5) continue;
+						commandListFile.write(StringConvert::ByteArray(QString("\t\"%1\": \"%2\",\n").arg(entry.toObject().value("regex").toString(),fragments.at(4))));
+					}
+					commandListFile.seek(commandListFile.pos()-2);
+					commandListFile.write("\n}");
+					commandListFile.close();
+
+					manager->deleteLater();
+				});
+			});
+			QNetworkRequest request({TWITCH_API_ENDPOINT_EMOTE_LIST});
+			request.setRawHeader("Accept",TWITCH_API_VERSION_5);
+			request.setRawHeader("Client-ID",settingClientID);
+			Relay::Status::Context *statusContext=chatPane->Alert("Downloading emote list...");
+			connect(manager->get(request),&QNetworkReply::downloadProgress,[this,statusContext](qint64 received,qint64 total) {
+				statusContext->Updated(QLocale::system().formattedDataSize(received));
+				statusContext->ResetClock();
+			});
+			break;
+		}
+		case Commands::UPTIME:
+		{
+			Relay::Status::Context *statusContext=chatPane->Alert(Uptime());
+			connect(statusContext,&Relay::Status::Context::UpdateRequested,[this,statusContext]() {
+				emit statusContext->Updated(Uptime());
+			});
+			break;
+		}
+		case Commands::VIBE:
+			if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+			{
+				chatPane->Alert("Pausing the vibes...");
+				vibeKeeper->pause();
+				break;
+			}
+			vibeKeeper->play();
+			break;
+		case Commands::VOLUME:
+			if (command.Message().isEmpty())
+			{
+				if (vibeFader)
+				{
+					vibeFader->Abort();
+					chatPane->Alert("Aborting volume change...");
+				}
+				break;
+			}
+			try
+			{
+				vibeFader=new Volume::Fader(vibeKeeper,command.Message(),this);
+				connect(vibeFader,&Volume::Fader::Feedback,chatPane,&ChatPane::Alert);
+				vibeFader->Start();
+			}
+			catch (const std::range_error &exception)
+			{
+				chatPane->Alert(QString("%1\n\n%2").arg("Failed to adjust volume!",exception.what()));
+			}
+			break;
 		}
 	});
 
