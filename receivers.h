@@ -6,7 +6,7 @@
 #include <vector>
 #include "command.h"
 #include "emote.h"
-#include "viewers.h"
+#include "recognizers.h"
 
 class MessageReceiver : public QObject
 {

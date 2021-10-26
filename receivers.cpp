@@ -279,9 +279,14 @@ std::tuple<QString,QString> ChatMessageReceiver::ParseCommand(const QString &mes
 
 void ChatMessageReceiver::IdentifyViewer(const QString &name)
 {
-	Viewer viewer(name);
-	if (viewers.find(name) == viewers.end()) emit ArrivalConfirmed(name);
-	viewers.emplace(name,viewer);
+	Viewer viewer=std::make_shared<UserRecognizer>(name);
+	if (viewers.find(name) == viewers.end())
+	{
+		connect(viewer.get(),&UserRecognizer::Recognized,[this,viewer]() {
+			emit ArrivalConfirmed(viewer);
+		});
+		viewers.emplace(name,viewer);
+	}
 }
 
 Command* ChatMessageReceiver::FindCommand(const QString &name)

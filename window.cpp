@@ -504,13 +504,13 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 	inactivityClock.start();
 }
 
-void Window::AnnounceArrival(const Viewer &viewer)
+void Window::AnnounceArrival(Viewer viewer)
 {
-	if (settingAdministrator != viewer.Name()) emit RequestEphemeralPane(new AudioAnnouncePane({
+	if (settingAdministrator != viewer->Name()) emit RequestEphemeralPane(new MultimediaAnnouncePane({
 		{"Please welcome<br>",1},
-		{QString("%1<br>").arg(viewer.Name()),1.5},
+		{QString("%1<br>").arg(viewer->DisplayName()),1.5},
 		{"to the chat",1}
-	},ArrivalSound()));
+	},viewer->ProfileImage(),ArrivalSound()));
 }
 
 /*!

@@ -12,7 +12,6 @@
 #include "panes.h"
 #include "settings.h"
 #include "subscribers.h"
-#include "viewers.h"
 #include "volume.h"
 
 enum class Commands
@@ -75,9 +74,9 @@ protected:
 signals:
 	void Log(const QString &text);
 	void Print(const QString text);
-	void RequestEphemeralPane(AudioAnnouncePane *pane);
+	void RequestEphemeralPane(EphemeralPane *pane);
 public slots:
-	void AnnounceArrival(const Viewer &viewer);
+	void AnnounceArrival(Viewer viewer);
 protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
 	void FollowChat(ChatMessageReceiver *chatMessageReceiver);

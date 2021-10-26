@@ -517,7 +517,7 @@ void ImageAnnouncePane::Polish()
 	layout()->addWidget(stack);
 }
 
-MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane("",parent)
+MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane("",parent), imagePane(nullptr)
 {
 	audioPane=new AudioAnnouncePane("",path,this);
 	connect(audioPane,&AudioAnnouncePane::Finished,this,&MultimediaAnnouncePane::Finished);

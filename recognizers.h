@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QString>
 #include <QImage>
+#include <memory>
+#include <unordered_map>
 
 class FileRecognizer : public QObject
 {
@@ -40,3 +42,5 @@ signals:
 	void ProfileImageDownloaded();
 	void Recognized(UserRecognizer *recognizer);
 };
+using Viewer=std::shared_ptr<UserRecognizer>;
+using Viewers=std::unordered_map<QString,std::shared_ptr<UserRecognizer>>;

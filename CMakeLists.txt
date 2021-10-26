@@ -29,7 +29,6 @@ if(BUILD_TESTING)
 		command.h
 		volume.h
 		relay.h
-		viewers.h
 		widgets.h
 		widgets.cpp
 		recognizers.h
@@ -64,7 +63,6 @@ add_executable(Celeste
 	emote.h
 	volume.h
 	relay.h
-	viewers.h
 	widgets.h
 	widgets.cpp
 	receivers.h
