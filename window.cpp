@@ -525,7 +525,12 @@ void Window::AnnounceArrival(const Viewer &viewer)
  */
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
-	connect(pane,&EphemeralPane::Finished,this,&Window::ReleaseLiveEphemeralPane);
+	QMetaObject::Connection *finishedTrigger=new QMetaObject::Connection;
+	*finishedTrigger=connect(pane,&EphemeralPane::Finished,[this,pane,finishedTrigger]() {
+		disconnect(*finishedTrigger);
+		delete finishedTrigger;
+		ReleaseLiveEphemeralPane();
+	});
 	background->layout()->addWidget(pane);
 	if (ephemeralPanes.size() > 0)
 	{
