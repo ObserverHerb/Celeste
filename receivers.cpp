@@ -226,7 +226,7 @@ void ChatMessageReceiver::Process(const QString data)
 			emotedMessage+=QString("<img style='vertical-align: middle;' src='%1' />").arg(DownloadEmote(emote));
 			position=emote.end+1;
 		}
-		if (position < message.size()) emotedMessage+=message.midRef(position,message.size()-position);
+		if (position < static_cast<unsigned int>(message.size())) emotedMessage+=message.midRef(position,message.size()-position);
 		message=emotedMessage;
 	}
 
