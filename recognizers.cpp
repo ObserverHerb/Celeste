@@ -89,8 +89,14 @@ UserRecognizer::UserRecognizer(const QString &username) : name(username)
 			deleteLater();
 			return;
 		}
-		id=data.at(0).toObject().value("id").toString();
-		emit Recognized(this);
+		QJsonObject details=data.at(0).toObject();
+		id=details.value("id").toString();
+		displayName=details.value("display_name").toString();
+		description=details.value("description").toString();
+		DownloadProfileImage(data.at(0).toObject().value("profile_image_url").toString());
+		connect(this,&UserRecognizer::ProfileImageDownloaded,[this]() {
+			emit Recognized(this);
+		});
 	});
 	QUrl query(TWITCH_API_ENDPOINT_USERS);
 	query.setQuery({{"login",username}});
@@ -108,4 +114,37 @@ const QString& UserRecognizer::Name() const
 const QString& UserRecognizer::ID() const
 {
 	return id;
+}
+
+const QString& UserRecognizer::DisplayName() const
+{
+	return displayName;
+}
+
+const QImage& UserRecognizer::ProfileImage() const
+{
+	return profileImage;
+}
+
+const QString& UserRecognizer::Description() const
+{
+	return description;
+}
+
+void UserRecognizer::DownloadProfileImage(const QString &url)
+{
+	QNetworkAccessManager* manager=new QNetworkAccessManager(this);
+	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+		manager->deleteLater();
+		if (reply->error())
+		{
+			emit Error(QString("Something went wrong user %1's profile image: %2").arg(name,reply->errorString()));
+		}
+		else
+		{
+			profileImage=QImage::fromData(reply->readAll());
+			emit ProfileImageDownloaded();
+		}
+	});
+	manager->get(QNetworkRequest(url));
 }

@@ -485,7 +485,7 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 
 	scene=new QGraphicsScene(this);
 	int coverSize=std::max(size().width(),size().height());
-	scene->addPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
+	if (!image.isNull()) scene->addPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
 	view=new QGraphicsView(scene);
 	view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

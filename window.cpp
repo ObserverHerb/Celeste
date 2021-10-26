@@ -317,41 +317,20 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 			}
 			case Commands::SHOUTOUT:
 			{
-				QString user=command.Message();
-				user=user.remove("@");
-				QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-				connect(manager,&QNetworkAccessManager::finished,[this,manager,user](QNetworkReply *reply) {
-					manager->disconnect();
-					QJsonParseError jsonError;
-					QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-					if (json.isNull() || !json.object().contains("data")) chatPane->Alert(QString("Something went wrong asking Twitch for profile for %1's profile: %2").arg(user,jsonError.errorString()));
-					QJsonArray data=json.object().value("data").toArray();
-					if (data.size() < 1) chatPane->Alert(QString("%1 is not a valid Twitch user").arg(user));
-					QJsonObject entry=data.at(0).toObject();
-					connect(manager,&QNetworkAccessManager::finished,[this,manager,user,description=entry.value("description").toString()](QNetworkReply *reply) {
-						QImage profileImage;
-						if (reply->error())
-							emit chatPane->Alert("Failed to download profile image");
-						else
-							profileImage=QImage::fromData(reply->readAll());
-						ImageAnnouncePane *pane=new ImageAnnouncePane({
-							{"Drop a follow on<br>",1},
-							{QString("%1<br>").arg(user),1.5},
-							{description,0.5}
-						},profileImage);
-						pane->AccentColor(settingAccentColor);
-						pane->Duration(10000);
-						StageEphemeralPane(pane);
-						manager->deleteLater();
-					});
-					manager->get(QNetworkRequest(entry.value("profile_image_url").toString()));
+				UserRecognizer *user=new UserRecognizer(QString(command.Message()).remove("@"));
+				connect(user,&UserRecognizer::Recognized,[this,user]() {
+					ImageAnnouncePane *pane=new ImageAnnouncePane({
+						{"Drop a follow on<br>",1},
+						{QString("%1<br>").arg(user->DisplayName()),1.5},
+						{user->Description(),0.5}
+						},user->ProfileImage());
+					pane->AccentColor(settingAccentColor);
+					pane->Duration(10000);
+					StageEphemeralPane(pane);
 				});
-				QUrl query(TWITCH_API_ENDPOINT_USERS);
-				query.setQuery({{"login",user}});
-				QNetworkRequest request(query);
-				request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
-				request.setRawHeader("Client-ID",settingClientID);
-				manager->get(request);
+				connect(user,&UserRecognizer::Error,[this](const QString &message) {
+					emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"recognize user",message));
+				});
 				break;
 			}
 			case Commands::SONG:
