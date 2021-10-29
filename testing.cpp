@@ -84,14 +84,14 @@ class TestWindow : public Window
 public:
 	TestWindow() : Window(), validResponse(true), arrivalSound("/dev/null")
 	{
-		connect(this,&TestWindow::RequestEphemeralPane,[this](AudioAnnouncePane *pane) {
+		connect(this,&TestWindow::RequestEphemeralPane,[this](EphemeralPane *pane) {
 			connect(pane,&AudioAnnouncePane::Finished,this,&TestWindow::GreenLight);
-			connect(pane,&AudioAnnouncePane::DurationAvailable,[this](qint64 duration) {
+			connect(dynamic_cast<AudioAnnouncePane*>(pane),&AudioAnnouncePane::DurationAvailable,[this](qint64 duration) {
 				QWARN(QString::number(duration).toLatin1());
 				QSignalSpy windowSpy(this,&TestWindow::GreenLight);
 				QVERIFY(windowSpy.wait(duration));
 			});
-			QSignalSpy paneSpy(pane,&AudioAnnouncePane::DurationAvailable);
+			QSignalSpy paneSpy(dynamic_cast<AudioAnnouncePane*>(pane),&AudioAnnouncePane::DurationAvailable);
 			QVERIFY(paneSpy.wait(5000));
 		});
 	}
@@ -172,15 +172,15 @@ private slots:
 
 	void arrivalTest()
 	{
-		testWindow.AnnounceArrival(Viewer("Invalid Viewer")); // FIXME: This is expected to fail, but QSignalSpy doesn't realize that
+		testWindow.AnnounceArrival(MakeViewer("Invalid Viewer")); // FIXME: This is expected to fail, but QSignalSpy doesn't realize that
 
 		QDir path(dataPath);
 		QVERIFY(path.cd("audio"));
 		FileRecognizer recognizer(path.absolutePath());
 		testWindow.SetArrivalSound(recognizer.Random());
-		testWindow.AnnounceArrival(Viewer("Valid Viewer A"));
+		testWindow.AnnounceArrival(MakeViewer("Valid Viewer A"));
 		testWindow.SetArrivalSound(recognizer.Random());
-		testWindow.AnnounceArrival(Viewer("Valid Viewer B"));
+		testWindow.AnnounceArrival(MakeViewer("Valid Viewer B"));
 	}
 
 	void goodSubscriptionDataTest()

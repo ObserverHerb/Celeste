@@ -44,3 +44,4 @@ signals:
 };
 using Viewer=std::shared_ptr<UserRecognizer>;
 using Viewers=std::unordered_map<QString,std::shared_ptr<UserRecognizer>>;
+inline std::shared_ptr<UserRecognizer>(*const &MakeViewer)(const QString&)=static_cast<std::shared_ptr<UserRecognizer>(*)(const QString&)>(std::make_shared<UserRecognizer>);
