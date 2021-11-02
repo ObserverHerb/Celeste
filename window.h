@@ -46,6 +46,7 @@ protected:
 	QMediaPlaylist roastSources;
 	QTimer helpClock;
 	QTimer inactivityClock;
+	QDateTime lastRaid;
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingHelpCooldown;
 	ApplicationSetting settingInactivityCooldown;
@@ -56,6 +57,7 @@ protected:
 	ApplicationSetting settingArrivalSound;
 	ApplicationSetting settingSubscriptionSound;
 	ApplicationSetting settingRaidSound;
+	ApplicationSetting settingRaidInterruptDuration;
 	ApplicationSetting settingPortraitVideo;
 	std::queue<EphemeralPane*> ephemeralPanes;
 	QFuture<void> worker;

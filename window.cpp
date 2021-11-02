@@ -54,6 +54,7 @@ Window::Window() : QWidget(nullptr),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
+	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
 	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait")
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
@@ -78,6 +79,7 @@ Window::Window() : QWidget(nullptr),
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
 	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
+	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
 	vibeKeeper->setVolume(0);
 
 	connect(this,&Window::RequestEphemeralPane,this,&Window::StageEphemeralPane);
@@ -158,6 +160,7 @@ void Window::BuildEventSubscriber()
 					{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
 					{"viewers",1}
 				},settingRaidSound));
+				lastRaid=QDateTime::currentDateTime();
 			}
 			catch (std::runtime_error &exception)
 			{
@@ -504,11 +507,14 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 
 void Window::AnnounceArrival(Viewer viewer)
 {
-	if (settingAdministrator != viewer->Name()) emit RequestEphemeralPane(new MultimediaAnnouncePane({
-		{"Please welcome<br>",1},
-		{QString("%1<br>").arg(viewer->DisplayName()),1.5},
-		{"to the chat",1}
-	},viewer->ProfileImage(),ArrivalSound()));
+	if (settingAdministrator != viewer->Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
+	{
+		emit RequestEphemeralPane(new MultimediaAnnouncePane({
+			{"Please welcome<br>",1},
+			{QString("%1<br>").arg(viewer->DisplayName()),1.5},
+			{"to the chat",1}
+		},viewer->ProfileImage(),ArrivalSound()));
+	}
 }
 
 /*!

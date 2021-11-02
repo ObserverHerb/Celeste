@@ -24,6 +24,7 @@ public:
 	operator unsigned int() const { return Value().toUInt(); }
 	operator int() const { return Value().toInt(); }
 	operator quint16() const { return Value().toUInt(); }
+	operator qint64() const { return Value().toLongLong(); }
 	operator qreal() const { return Value().toReal(); }
 	operator std::chrono::milliseconds() const { return std::chrono::milliseconds(Value().toUInt()); }
 	operator std::chrono::seconds() const { return std::chrono::seconds(Value().toUInt()); }
