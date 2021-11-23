@@ -18,6 +18,8 @@ public:
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source->value(name,defaultValue); }
 	void Set(const QVariant &value) { source->setValue(name,value); }
+	bool Enabled() const { return Value().toBool(); }
+	bool Disabled() const { return !Enabled(); }
 	operator bool() const { return source->contains(name); }
 	operator QString() const { return Value().toString(); }
 	operator StringConvert::Valid() const { return Value().toString(); }

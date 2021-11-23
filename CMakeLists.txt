@@ -48,6 +48,8 @@ if(BUILD_TESTING)
 	add_test(NAME Gauntlet COMMAND Gauntlet ${CMAKE_SOURCE_DIR}/exercises)
 
 	if (WIN32)
+		#set(EXERCISE_PATH "exercises" PATH)
+		#set_target_properties(Gauntlet PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "${EXERCISE_PATH}")
 		target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::WinExtras)
 	else()
 		target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)

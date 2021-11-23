@@ -6,6 +6,8 @@
 #include "subscribers.h"
 #include "window.h"
 
+const std::chrono::seconds INTERVAL_NETWORK_TIMEOUT(30);
+
 class TestEventSubscriber : public EventSubscriber
 {
 public:
@@ -142,7 +144,7 @@ public:
 		return data;
 	}
 private:
-	TestWindow testWindow;
+	//TestWindow testWindow;
 	QDir dataPath;
 private slots:
 	void Print(const QString &message)
@@ -152,10 +154,10 @@ private slots:
 
 	void initTestCase()
 	{
-		testWindow.show();
+		//testWindow.show();
 	}
 
-	void fileRecognizerTest()
+	/*void fileRecognizerTest()
 	{
 		QDir path(dataPath);
 		QVERIFY(path.cd("recognize"));
@@ -168,22 +170,36 @@ private slots:
 		QWARN(recognizer.Random().toLatin1());
 		QWARN(recognizer.Random().toLatin1());
 		QWARN(recognizer.Random().toLatin1());
+	}*/
+
+	void invalidUser()
+	{
+		UserRecognizer *invalidViewer=new UserRecognizer("Invalid Viewer");
+		QSignalSpy recognizerSpy(invalidViewer,&UserRecognizer::Error);
+		QVERIFY(recognizerSpy.wait(5000));
+	}
+
+	void validUser()
+	{
+		UserRecognizer *validViewer=new UserRecognizer("Valid Viewer");
+		QSignalSpy recognizerSpy(validViewer,&UserRecognizer::Recognized);
+		QVERIFY(recognizerSpy.wait(5000));
 	}
 
 	void arrivalTest()
 	{
-		testWindow.AnnounceArrival(MakeViewer("Invalid Viewer")); // FIXME: This is expected to fail, but QSignalSpy doesn't realize that
+		/*testWindow.AnnounceArrival(std::make_shared<UserRecognizer>("Invalid Viewer")); // FIXME: This is expected to fail, but QSignalSpy doesn't realize that
 
 		QDir path(dataPath);
 		QVERIFY(path.cd("audio"));
 		FileRecognizer recognizer(path.absolutePath());
 		testWindow.SetArrivalSound(recognizer.Random());
-		testWindow.AnnounceArrival(MakeViewer("Valid Viewer A"));
+		testWindow.AnnounceArrival(std::make_shared<UserRecognizer>("Valid Viewer A"));
 		testWindow.SetArrivalSound(recognizer.Random());
-		testWindow.AnnounceArrival(MakeViewer("Valid Viewer B"));
+		testWindow.AnnounceArrival(std::make_shared<UserRecognizer>("Valid Viewer B"));*/
 	}
 
-	void goodSubscriptionDataTest()
+	/*void goodSubscriptionDataTest()
 	{
 		try
 		{
@@ -263,7 +279,7 @@ private slots:
 			QVERIFY(messageSpy.wait(3000));
 		}
 		QVERIFY(true);
-	}
+	}*/
 };
 
 int main(int argc, char** argv)

@@ -71,6 +71,9 @@ int FileRecognizer::RandomIndex()
 
 UserRecognizer::UserRecognizer(const QString &username) : name(username)
 {
+	connect(this,&UserRecognizer::Error,this,&UserRecognizer::deleteLater);
+	connect(this,&UserRecognizer::Recognized,this,&UserRecognizer::deleteLater);
+
 	QNetworkAccessManager* manager=new QNetworkAccessManager(this);
 	connect(manager,&QNetworkAccessManager::finished,[this,manager,username](QNetworkReply* reply) {
 		manager->deleteLater();
@@ -79,24 +82,16 @@ UserRecognizer::UserRecognizer(const QString &username) : name(username)
 		if (json.isNull() || !json.object().contains("data"))
 		{
 			emit Error(QString("Something went wrong asking Twitch for user %1's profile: %2").arg(username,jsonError.errorString()));
-			deleteLater();
 			return;
 		}
 		QJsonArray data=json.object().value("data").toArray();
 		if (data.size() < 1)
 		{
 			emit Error(QString("%1 is not a valid Twitch user").arg(username));
-			deleteLater();
 			return;
 		}
 		QJsonObject details=data.at(0).toObject();
-		id=details.value("id").toString();
-		displayName=details.value("display_name").toString();
-		description=details.value("description").toString();
-		DownloadProfileImage(data.at(0).toObject().value("profile_image_url").toString());
-		connect(this,&UserRecognizer::ProfileImageDownloaded,[this]() {
-			emit Recognized(this);
-		});
+		emit Recognized(Viewer(username,details.value("id").toString(),details.value("display_name").toString(),std::make_shared<ProfileImage>(data.at(0).toObject().value("profile_image_url").toString()),details.value("description").toString()));
 	});
 	QUrl query(TWITCH_API_ENDPOINT_USERS);
 	query.setQuery({{"login",username}});
@@ -106,45 +101,46 @@ UserRecognizer::UserRecognizer(const QString &username) : name(username)
 	manager->get(request);
 };
 
-const QString& UserRecognizer::Name() const
+const QString& Viewer::Name() const
 {
 	return name;
 }
 
-const QString& UserRecognizer::ID() const
+const QString& Viewer::ID() const
 {
 	return id;
 }
 
-const QString& UserRecognizer::DisplayName() const
+const QString& Viewer::DisplayName() const
 {
 	return displayName;
 }
 
-const QImage& UserRecognizer::ProfileImage() const
+std::shared_ptr<ProfileImage> Viewer::ProfileImage() const
 {
 	return profileImage;
 }
 
-const QString& UserRecognizer::Description() const
+const QString& Viewer::Description() const
 {
 	return description;
 }
 
-void UserRecognizer::DownloadProfileImage(const QString &url)
+ProfileImage::ProfileImage(const QUrl &profileImageURL)
 {
 	QNetworkAccessManager* manager=new QNetworkAccessManager(this);
-	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+	manager->connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
 		manager->deleteLater();
 		if (reply->error())
-		{
-			emit Error(QString("Something went wrong user %1's profile image: %2").arg(name,reply->errorString()));
-		}
+			emit Error(QString("Something went wrong downloading profile image: %2").arg(reply->errorString()));
 		else
-		{
-			profileImage=QImage::fromData(reply->readAll());
-			emit ProfileImageDownloaded();
-		}
-	});
-	manager->get(QNetworkRequest(url));
+			image=QImage::fromData(reply->readAll());
+			emit ProfileImageDownloaded(image);
+		});
+	manager->get(QNetworkRequest(profileImageURL));
+}
+
+ProfileImage::operator QImage() const
+{
+	return image;
 }

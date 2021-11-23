@@ -133,9 +133,9 @@ bool Window::event(QEvent *event)
 void Window::BuildEventSubscriber()
 {
 	UserRecognizer *userRecognizer=new UserRecognizer(channel->Name());
-	connect(userRecognizer,&UserRecognizer::Recognized,[this](UserRecognizer* recognizer) {
-		EventSubscriber* subscriber=CreateEventSubscriber(recognizer->Name());
-		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"eventsub",QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
+	connect(userRecognizer,&UserRecognizer::Recognized,[this](Viewer viewer) {
+		EventSubscriber* subscriber=CreateEventSubscriber(viewer.Name());
+		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"eventsub",QString("Event subscriber created for user ID: %1").arg(viewer.ID())));
 		connect(subscriber, &EventSubscriber::Print, this, &Window::Log);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
@@ -174,7 +174,6 @@ void Window::BuildEventSubscriber()
 				{"has subscribed!",1}
 			},settingSubscriptionSound));
 		});
-		recognizer->deleteLater();
 	});
 	connect(userRecognizer,&UserRecognizer::Error,[this](const QString &message) {
 		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"recognize user",message));
@@ -324,15 +323,17 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 		case Commands::SHOUTOUT:
 		{
 			UserRecognizer *user=new UserRecognizer(QString(command.Message()).remove("@"));
-			connect(user,&UserRecognizer::Recognized,[this,user]() {
-				ImageAnnouncePane *pane=new ImageAnnouncePane({
-					{"Drop a follow on<br>",1},
-					{QString("%1<br>").arg(user->DisplayName()),1.5},
-					{user->Description(),0.5}
-					},user->ProfileImage());
-				pane->AccentColor(settingAccentColor);
-				pane->Duration(10000);
-				StageEphemeralPane(pane);
+			connect(user,&UserRecognizer::Recognized,[this](Viewer viewer) {
+				connect(viewer.ProfileImage().get(),&ProfileImage::ProfileImageDownloaded,[this,viewer](const QImage &profileImage) {
+					ImageAnnouncePane *pane=new ImageAnnouncePane({
+						{"Drop a follow on<br>",1},
+						{QString("%1<br>").arg(viewer.DisplayName()),1.5},
+						{viewer.Description(),0.5}
+					},*viewer.ProfileImage().get());
+					pane->AccentColor(settingAccentColor);
+					pane->Duration(10000);
+					StageEphemeralPane(pane);
+				});
 			});
 			connect(user,&UserRecognizer::Error,[this](const QString &message) {
 				emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"recognize user",message));
@@ -507,13 +508,15 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 
 void Window::AnnounceArrival(Viewer viewer)
 {
-	if (settingAdministrator != viewer->Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
+	if (settingAdministrator != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
 	{
-		emit RequestEphemeralPane(new MultimediaAnnouncePane({
-			{"Please welcome<br>",1},
-			{QString("%1<br>").arg(viewer->DisplayName()),1.5},
-			{"to the chat",1}
-		},viewer->ProfileImage(),ArrivalSound()));
+		connect(viewer.ProfileImage().get(),&ProfileImage::ProfileImageDownloaded,[this,viewer](const QImage &profileImage) {
+			emit RequestEphemeralPane(new MultimediaAnnouncePane({
+				{"Please welcome<br>",1},
+				{QString("%1<br>").arg(viewer.DisplayName()),1.5},
+				{"to the chat",1}
+			},*viewer.ProfileImage().get(),ArrivalSound()));
+		});
 	}
 }
 

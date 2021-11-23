@@ -140,8 +140,8 @@ void ChatMessageReceiver::Process(const QString data)
 	// determine if this is a command, and if so, process it as such
 	if (messageSegments.at(0).at(0) == "!")
 	{
-		auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
-		if (Command *command=FindCommand(commandName); command)
+		std::optional<Command> command=FindCommand(ParseCommandCandidate(messageSegments.at(0)));
+		if (command)
 		{
 			if (command->Protected() && settingAdministrator != user)
 			{
@@ -171,7 +171,7 @@ void ChatMessageReceiver::Process(const QString data)
 				emit PlayAudio(user,command->Message(),command->Path());
 				break;
 			case CommandType::FORWARD:
-				ForwardCommand({*command,parameter});
+				emit ForwardCommand(command.value());
 				break;
 			};
 			return;
@@ -269,31 +269,28 @@ QString ChatMessageReceiver::ParseHostmask(const QString &mask)
 	return hostmaskSegments.front();
 }
 
-std::tuple<QString,QString> ChatMessageReceiver::ParseCommand(const QString &message)
+CommandCandidate ChatMessageReceiver::ParseCommandCandidate(const QString &message)
 {
 	QStringList commandSegments=message.trimmed().split(" ");
 	QString commandName=commandSegments.takeFirst().mid(1);
-	QString parameter=commandSegments.join(" ");
-	return std::make_tuple(commandName,parameter);
+	QString commandMessage=commandSegments.join(" ");
+	return CommandCandidate(commandName,commandMessage);
 }
 
 void ChatMessageReceiver::IdentifyViewer(const QString &name)
 {
-	Viewer viewer=std::make_shared<UserRecognizer>(name);
 	if (viewers.find(name) == viewers.end())
 	{
-		connect(viewer.get(),&UserRecognizer::Recognized,[this,viewer]() {
-			emit ArrivalConfirmed(viewer);
-		});
-		viewers.emplace(name,viewer);
+		UserRecognizer *recognizer=new UserRecognizer(name);
+		connect(recognizer,&UserRecognizer::Recognized,this,&ChatMessageReceiver::ArrivalConfirmed);
+		viewers.emplace(name);
 	}
 }
 
-Command* ChatMessageReceiver::FindCommand(const QString &name)
+std::optional<Command> ChatMessageReceiver::FindCommand(const CommandCandidate &candidate)
 {
-	if (commands.find(name) != commands.end()) return &commands.at(name);
-	if (commandAliases.find(name) != commandAliases.end()) return &commandAliases.at(name).get();
-	return nullptr;
+	if (commands.find(candidate.Name()) != commands.end()) return Command(commands.at(candidate.Name()),candidate);
+	return std::nullopt;
 }
 
 const QString ChatMessageReceiver::DownloadEmote(const Emote &emote)

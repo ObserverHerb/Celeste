@@ -1,4 +1,5 @@
 #include "window.h"
+#include "command.h"
 
 #include <QApplication>
 #include <globals.h>
@@ -18,6 +19,8 @@ int main(int argc,char *argv[])
 	application.setOrganizationName(ORGANIZATION_NAME);
 	application.setApplicationName(APPLICATION_NAME);
 	application.setWindowIcon(QIcon(":/celeste_256.png"));
+
+	ChatCommands::caseSensitive=ApplicationSetting("Commands","CaseSensitive",true).Enabled();
 
 	try
 	{

@@ -2,6 +2,7 @@
 
 #include <QString>
 #include <unordered_map>
+#include "settings.h"
 
 enum class CommandType
 {
@@ -16,14 +17,32 @@ const CommandTypeLookup COMMAND_TYPES={
 	{"announce",CommandType::AUDIO}
 };
 
+namespace ChatCommands
+{
+	inline bool caseSensitive=false;
+}
+
+class CommandCandidate
+{
+public:
+	CommandCandidate(const QString &name,const QString &message) : name(name), message(message) { }
+	const QString Name() const { return ChatCommands::caseSensitive ? name : name.toLower(); }
+	const QString& Message() const { return message; }
+protected:
+	QString name;
+	QString message;
+};
+
 class Command
 {
 public:
 	Command() : Command(QString(),QString(),CommandType::FORWARD,false,QString(),QString()) { }
+	Command(const QString &name,const QString &message) : Command(name,message,CommandType::FORWARD,false,QString(),QString()) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), path(path), message(message), protect(protect) { }
 	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), path(command.path), message(message), protect(command.protect) { }
-	const QString& Name() const { return name; }
+	Command(const Command &command,const CommandCandidate &candidate) : name(command.name), description(command.description), type(command.type), random(command.random), path(command.path), message(candidate.Message()), protect(command.protect) { }
+	const QString Name() const { return ChatCommands::caseSensitive ? name : name.toLower(); }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
 	bool Random() const { return random; }

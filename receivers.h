@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QNetworkAccessManager>
 #include <vector>
+#include <unordered_set>
 #include "command.h"
 #include "emote.h"
 #include "recognizers.h"
@@ -57,33 +58,34 @@ class ChatMessageReceiver : public MessageReceiver // must catch std::runtime_er
 {
 	Q_OBJECT
 	using TagMap=std::unordered_map<QString,QString>;
+	using CommandMap=std::unordered_map<QString,Command>;
 public:
 	ChatMessageReceiver(QObject *parent=nullptr);
 	void AttachCommand(const Command &command);
 	const Command RandomCommand() const;
-	const std::unordered_map<QString,Command>& Commands() const { return commands; }
+	const CommandMap& Commands() const { return commands; }
 protected:
-	std::unordered_map<QString,Command> commands;
+	CommandMap commands;
 	std::unordered_map<QString,std::reference_wrapper<Command>> commandAliases;
 	std::vector<Command> userCommands;
-	Viewers viewers;
+	std::unordered_set<QString> viewers;
 	QNetworkAccessManager *downloadManager;
 	void IdentifyViewer(const QString &name);
-	Command* FindCommand(const QString &name);
+	std::optional<Command> FindCommand(const CommandCandidate &candidate);
 	TagMap ParseTags(const QString &tags);
 	QString ParseHostmask(const QString &mask);
-	std::tuple<QString,QString> ParseCommand(const QString &message);
+	CommandCandidate ParseCommandCandidate(const QString &message);
 	const QString DownloadEmote(const Emote &emote);
 	void Fail(const QString &reason);
 signals:
 	void Refresh();
 	void Alert(const QString &text);
-	void ArrivalConfirmed(const Viewer &viewer);
+	void ArrivalConfirmed(const Viewer viewer);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &user,const QString &message,const QString &path);
 	void Speak(const QString sentence);
 	void ShowVoices();
-	void ForwardCommand(const Command &command);
+	void ForwardCommand(const Command command);
 	void MessageProcessed();
 public slots:
 	void Process(const QString data) override;
