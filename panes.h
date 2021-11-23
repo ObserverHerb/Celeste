@@ -130,8 +130,8 @@ class ImageAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent=nullptr);
-	ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent=nullptr);
+	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
+	ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent);
 	void Polish() override;
 protected:
 	QGraphicsScene *scene;
@@ -145,8 +145,8 @@ class MultimediaAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent=nullptr);
-	MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent=nullptr);
+	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
+	MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent);
 	void Polish() override;
 	void Show() override;
 protected:

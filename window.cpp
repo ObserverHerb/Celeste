@@ -329,7 +329,7 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 					{"Drop a follow on<br>",1},
 					{QString("%1<br>").arg(user->DisplayName()),1.5},
 					{user->Description(),0.5}
-					},user->ProfileImage());
+					},user->ProfileImage(),this);
 				pane->AccentColor(settingAccentColor);
 				pane->Duration(10000);
 				StageEphemeralPane(pane);
@@ -341,7 +341,10 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 		}
 		case Commands::SONG:
 		{
-			ImageAnnouncePane *pane=Tuple::New<ImageAnnouncePane,QString,QImage>(CurrentSong());
+			QString message;
+			QImage coverArt;
+			std::tie(message,coverArt)=CurrentSong();
+			ImageAnnouncePane *pane=new ImageAnnouncePane(message,coverArt,this);
 			pane->AccentColor(settingAccentColor);
 			StageEphemeralPane(pane);
 			break;
@@ -513,7 +516,7 @@ void Window::AnnounceArrival(Viewer viewer)
 			{"Please welcome<br>",1},
 			{QString("%1<br>").arg(viewer->DisplayName()),1.5},
 			{"to the chat",1}
-		},viewer->ProfileImage(),ArrivalSound()));
+		},viewer->ProfileImage(),ArrivalSound(),this));
 	}
 }
 

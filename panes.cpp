@@ -486,7 +486,7 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 	dynamic_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
 
 	scene=new QGraphicsScene(this);
-	int coverSize=std::max(qApp->focusWindow()->size().width(),qApp->focusWindow()->size().height());
+	int coverSize=std::max(parent->size().width(),parent->size().height());
 	if (!image.isNull()) scene->addPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
 	view=new QGraphicsView(scene);
 	view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
