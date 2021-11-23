@@ -228,6 +228,40 @@ private slots:
 		}
 	}
 
+	void chatMesageTest()
+	{
+		QStringList lines=QString(DataFromFile("chat_message.txt")).split("\r\n",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));;
+		ChatMessageReceiver chatMessageReceiver;
+		connect(&chatMessageReceiver,&ChatMessageReceiver::Alert,this,[](const QString &message) {
+			qWarning() << message; // but we do want to see why processing failed for context
+		});
+		QSignalSpy messageSpy(&chatMessageReceiver,&ChatMessageReceiver::Print);
+		QMetaObject::invokeMethod(this,[&chatMessageReceiver,data=lines.at(0)]() {
+			// trigger using event loop so it doesn't fire before we wait for a response
+			chatMessageReceiver.Process(data);
+		},Qt::QueuedConnection);
+		QVERIFY(messageSpy.wait(3000));
+		QList<QVariant> results=messageSpy.takeFirst();
+		QVERIFY(results.at(0).toString().trimmed() == lines.at(1).trimmed());
+	}
+
+	void chatActionTest()
+	{
+		QStringList lines=QString(DataFromFile("chat_action.txt")).split("\r\n",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+		ChatMessageReceiver chatMessageReceiver;
+		connect(&chatMessageReceiver,&ChatMessageReceiver::Alert,this,[](const QString &message) {
+			qWarning() << message; // but we do want to see why processing failed for context
+		});
+		QSignalSpy messageSpy(&chatMessageReceiver,&ChatMessageReceiver::Print);
+		QMetaObject::invokeMethod(this,[&chatMessageReceiver,data=lines.at(0)]() {
+			// trigger using event loop so it doesn't fire before we wait for a response
+			chatMessageReceiver.Process(data);
+		},Qt::QueuedConnection);
+		QVERIFY(messageSpy.wait(3000));
+		QList<QVariant> results=messageSpy.takeFirst();
+		QVERIFY(results.at(0).toString().trimmed() == lines.at(1).trimmed());
+	}
+
 	void multipleMessagesTest()
 	{
 		TestIRCSocket socket;

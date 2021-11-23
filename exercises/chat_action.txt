@@ -1,0 +1,2 @@
+@badge-info=subscriber/1;badges=subscriber/0,bits-leader/3;color=#FF4500;display-name=qtmousie;emotes=;first-msg=0;flags=21-25:S.5;id=b8cb2539-3ae4-4571-a93a-5e9289f57c25;mod=0;room-id=523304124;subscriber=1;tmi-sent-ts=1637688304812;turbo=0;user-id=590835361;user-type= :qtmousie!qtmousie@qtmousie.tmi.twitch.tv PRIVMSG #observerherb :ACTION motoar boats zee the bewbs
+<div class='user' style='color: #FF4500;'>qtmousie <span class='message'>motoar boats zee the bewbs</span><br></div>
