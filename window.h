@@ -56,6 +56,7 @@ protected:
 	ApplicationSetting settingAccentColor;
 	ApplicationSetting settingArrivalSound;
 	ApplicationSetting settingSubscriptionSound;
+	ApplicationSetting settingCheerSound;
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
 	ApplicationSetting settingPortraitVideo;

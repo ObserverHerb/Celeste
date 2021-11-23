@@ -53,6 +53,7 @@ Window::Window() : QWidget(nullptr),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
+	settingCheerSound(SETTINGS_CATEGORY_EVENTS,"Cheer"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
 	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait")
@@ -173,6 +174,14 @@ void Window::BuildEventSubscriber()
 				{QString("%1<br>").arg(viewer),1.5},
 				{"has subscribed!",1}
 			},settingSubscriptionSound));
+		});
+		connect(subscriber,&EventSubscriber::Cheer,[this](const QString &viewer,const unsigned int count,const QString &message) {
+			StageEphemeralPane(new AudioAnnouncePane({
+				{QString("%1<br>").arg(viewer),1.5},
+				{"has cheered<br>",1},
+				{QString("%1<br>").arg(message),1.5},
+				{QString("for %1 bits").arg(QString::number(count)),0.8}
+			},settingCheerSound));
 		});
 		recognizer->deleteLater();
 	});

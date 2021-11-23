@@ -179,6 +179,7 @@ const QByteArray EventSubscriber::ProcessRequest(const SubscriptionType type,con
 	}
 	case SubscriptionType::CHANNEL_CHEER:
 		emit Cheer(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),event.value(JSON_KEY_EVENT_MESSAGE).toString());
+		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Cheer","A viewer has cheered"));
 		return StringConvert::ByteArray(BuildResponse());
 	case SubscriptionType::CHANNEL_RAID:
 		Print(Console::GenerateMessage(SUBSYSTEM_NAME,"Channel Raid","You have been raided!"));
