@@ -138,7 +138,7 @@ void ChatMessageReceiver::Process(const QString data)
 	IdentifyViewer(user);
 
 	// determine if this is a command, and if so, process it as such
-	if (messageSegments.at(0).at(0) == "!")
+	if ((messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS))).at(0).at(0) == "!")
 	{
 		auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
 		if (Command *command=FindCommand(commandName); command)
@@ -188,7 +188,7 @@ void ChatMessageReceiver::Process(const QString data)
 		messageSegments.back().remove('\001');
 		action=true;
 	}
-	QString message=messageSegments.join(":");
+	QString message=messageSegments.join(" ");
 
 	// look for emotes if they exist
 	if (tags.find("emotes") != tags.end())
