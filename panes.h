@@ -11,6 +11,7 @@
 #include <QMediaPlayer>
 #include <QVideoWidget>
 #include <QTimer>
+#include <QEvent>
 #include <queue>
 #include <unordered_map>
 #include "relay.h"
@@ -101,6 +102,7 @@ public:
 	AnnouncePane(const QString &text,QWidget *parent=nullptr);
 	AnnouncePane(const std::vector<std::pair<QString,double>> &lines,QWidget *parent=nullptr);
 	void Show() override;
+	bool event(QEvent *event) override;
 	virtual void Polish();
 	void AccentColor(const QColor &color) { accentColor=color; }
 	void Duration(const int duration) { clock.setInterval(duration); }

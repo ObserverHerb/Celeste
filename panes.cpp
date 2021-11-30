@@ -389,6 +389,11 @@ AnnouncePane::AnnouncePane(const std::vector<std::pair<QString,double>> &lines,Q
 	output->setText(BuildParagraph(lines));
 }
 
+bool AnnouncePane::event(QEvent *event)
+{
+	if (event->type() == QEvent::Polish) Polish();
+	return QWidget::event(event);
+}
 
 /*!
  * \fn AnnouncePane::Show
@@ -400,7 +405,6 @@ AnnouncePane::AnnouncePane(const std::vector<std::pair<QString,double>> &lines,Q
  */
 void AnnouncePane::Show()
 {
-	Polish();
 	show();
 	clock.start();
 }
@@ -469,7 +473,6 @@ AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>
  */
 void AudioAnnouncePane::Show()
 {
-	Polish();
 	show();
 	audioPlayer->play();
 }
@@ -558,7 +561,6 @@ void MultimediaAnnouncePane::Polish()
 
 void MultimediaAnnouncePane::Show()
 {
-	Polish();
 	imagePane->Show();
 	audioPane->Show();
 	show();
