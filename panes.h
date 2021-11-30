@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsDropShadowEffect>
+#include <QGraphicsPixmapItem>
 #include <QMediaPlayer>
 #include <QVideoWidget>
 #include <QTimer>
@@ -74,6 +75,9 @@ class EphemeralPane : public QWidget
 public:
 	EphemeralPane(QWidget *parent=nullptr);
 	virtual void Show()=0;
+	bool Expired();
+protected:
+	bool expired;
 signals:
 	void Finished();
 	void Error(const QString &description);
@@ -133,12 +137,14 @@ public:
 	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent=nullptr);
 	ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent=nullptr);
 	void Polish() override;
+	void resizeEvent(QResizeEvent *event) override;
 protected:
 	QGraphicsScene *scene;
 	QGraphicsView *view;
 	QStackedWidget *stack;
 	QGraphicsDropShadowEffect *shadow;
 	QImage image;
+	QGraphicsPixmapItem *pixmap;
 };
 
 class MultimediaAnnouncePane : public AnnouncePane

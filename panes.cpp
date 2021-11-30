@@ -3,8 +3,7 @@
 #include <QVBoxLayout>
 #include <QStackedLayout>
 #include <QLabel>
-#include <QApplication>
-#include <QWindow>
+#include <QResizeEvent>
 
 /*!
  * \class PersistentPane
@@ -293,10 +292,18 @@ void ChatPane::DismissAlert()
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent)
+EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent), expired(false)
 {
 	setVisible(false);
+	connect(this,&ImageAnnouncePane::Finished,[this]() {
+		expired=true;
+	});
 	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::deleteLater);
+}
+
+bool EphemeralPane::Expired()
+{
+	return expired;
 }
 
 /*!
@@ -480,17 +487,17 @@ void AudioAnnouncePane::Show()
  * \param parent This pane will be destroyed when the QWidget pointed to by
  * this pointer is destroyed.
  */
-ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image)
+ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
 {
 	stack=new QStackedWidget(this);
 	dynamic_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
 
 	scene=new QGraphicsScene(this);
-	int coverSize=std::max(qApp->focusWindow()->size().width(),qApp->focusWindow()->size().height());
-	if (!image.isNull()) scene->addPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
 	view=new QGraphicsView(scene);
 	view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	pixmap=new QGraphicsPixmapItem();
+	scene->addItem(pixmap);
 
 	shadow=new QGraphicsDropShadowEffect();
 	shadow->setBlurRadius(50); // TODO: abstract this out to a setting
@@ -501,6 +508,15 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 ImageAnnouncePane::ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent) : ImageAnnouncePane("",image,parent)
 {
 	output->setText(BuildParagraph(lines));
+}
+
+void ImageAnnouncePane::resizeEvent(QResizeEvent *event)
+{
+	if (!expired)
+	{
+		int coverSize=std::max(event->size().width(),event->size().height());
+		if (!image.isNull()) pixmap->setPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
+	}
 }
 
 /*!
