@@ -138,45 +138,8 @@ void ChatMessageReceiver::Process(const QString data)
 	IdentifyViewer(user);
 
 	// determine if this is a command, and if so, process it as such
-	if ((messageSegments=messageSegments.join(":").split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS))).at(0).at(0) == "!")
-	{
-		auto [commandName,parameter]=ParseCommand(messageSegments.at(0));
-		if (Command *command=FindCommand(commandName); command)
-		{
-			if (command->Protected() && settingAdministrator != user)
-			{
-				emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
-				return;
-			}
-			switch (command->Type())
-			{
-			case CommandType::VIDEO:
-				if (command->Random())
-				{
-					QDir directory(command->Path());
-					QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
-					if (videos.size() < 1)
-					{
-						Print("No videos found");
-						break;
-					}
-					emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(0,videos.size()))));
-				}
-				else
-				{
-					emit PlayVideo(command->Path());
-				}
-				break;
-			case CommandType::AUDIO:
-				emit PlayAudio(user,command->Message(),command->Path());
-				break;
-			case CommandType::FORWARD:
-				ForwardCommand({*command,parameter});
-				break;
-			};
-			return;
-		}
-	}
+	messageSegments=messageSegments.join(":").trimmed().split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
+	if (messageSegments.at(0).at(0) == "!" && ProcessCommand(messageSegments,user)) return;
 
 	// determine if the message is an action
 	// have to do this here, because the ACTION tag
@@ -239,6 +202,49 @@ void ChatMessageReceiver::Process(const QString data)
 	emit MessageProcessed();
 }
 
+bool ChatMessageReceiver::ProcessCommand(QStringList &messageSegments,const QString &user)
+{
+	QString commandName=messageSegments.front().mid(1);
+	std::optional<Command> command=FindCommand(commandName);
+	if (!command) return false;
+	if (command->Protected() && settingAdministrator != user)
+	{
+		emit Alert(QString("The command %1 is protected but %2 is not the broadcaster").arg(command->Name(),user));
+		return true;
+	}
+
+	messageSegments.pop_front();
+	QString parameter=messageSegments.join(" ");
+	switch (command->Type())
+	{
+	case CommandType::VIDEO:
+		if (command->Random())
+		{
+			QDir directory(command->Path());
+			QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
+			if (videos.size() < 1)
+			{
+				Print("No videos found");
+				break;
+			}
+			emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(0,videos.size()))));
+		}
+		else
+		{
+			emit PlayVideo(command->Path());
+		}
+		break;
+	case CommandType::AUDIO:
+		emit PlayAudio(user,command->Message(),command->Path());
+		break;
+	case CommandType::FORWARD:
+		emit ForwardCommand({*command,parameter});
+		break;
+	};
+
+	return true;
+}
+
 ChatMessageReceiver::TagMap ChatMessageReceiver::ParseTags(const QString &tags)
 {
 	TagMap result;
@@ -269,14 +275,6 @@ QString ChatMessageReceiver::ParseHostmask(const QString &mask)
 	return hostmaskSegments.front();
 }
 
-std::tuple<QString,QString> ChatMessageReceiver::ParseCommand(const QString &message)
-{
-	QStringList commandSegments=message.trimmed().split(" ");
-	QString commandName=commandSegments.takeFirst().mid(1);
-	QString parameter=commandSegments.join(" ");
-	return std::make_tuple(commandName,parameter);
-}
-
 void ChatMessageReceiver::IdentifyViewer(const QString &name)
 {
 	Viewer viewer=std::make_shared<UserRecognizer>(name);
@@ -289,11 +287,11 @@ void ChatMessageReceiver::IdentifyViewer(const QString &name)
 	}
 }
 
-Command* ChatMessageReceiver::FindCommand(const QString &name)
+std::optional<Command> ChatMessageReceiver::FindCommand(const QString &name)
 {
-	if (commands.find(name) != commands.end()) return &commands.at(name);
-	if (commandAliases.find(name) != commandAliases.end()) return &commandAliases.at(name).get();
-	return nullptr;
+	if (commands.find(name) != commands.end()) return commands.at(name);
+	if (commandAliases.find(name) != commandAliases.end()) return commandAliases.at(name).get();
+	return std::nullopt;
 }
 
 const QString ChatMessageReceiver::DownloadEmote(const Emote &emote)

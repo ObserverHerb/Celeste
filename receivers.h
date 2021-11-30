@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QNetworkAccessManager>
 #include <vector>
+#include <optional>
 #include "command.h"
 #include "emote.h"
 #include "recognizers.h"
@@ -69,10 +70,10 @@ protected:
 	Viewers viewers;
 	QNetworkAccessManager *downloadManager;
 	void IdentifyViewer(const QString &name);
-	Command* FindCommand(const QString &name);
+	std::optional<Command> FindCommand(const QString &name);
 	TagMap ParseTags(const QString &tags);
 	QString ParseHostmask(const QString &mask);
-	std::tuple<QString,QString> ParseCommand(const QString &message);
+	bool ProcessCommand(QStringList &messageSegments,const QString &user);
 	const QString DownloadEmote(const Emote &emote);
 	void Fail(const QString &reason);
 signals:
@@ -83,7 +84,7 @@ signals:
 	void PlayAudio(const QString &user,const QString &message,const QString &path);
 	void Speak(const QString sentence);
 	void ShowVoices();
-	void ForwardCommand(const Command &command);
+	void ForwardCommand(const Command command);
 	void MessageProcessed();
 public slots:
 	void Process(const QString data) override;
