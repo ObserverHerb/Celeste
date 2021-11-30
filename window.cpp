@@ -529,12 +529,7 @@ void Window::AnnounceArrival(Viewer viewer)
  */
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
-	QMetaObject::Connection *finishedTrigger=new QMetaObject::Connection;
-	*finishedTrigger=connect(pane,&EphemeralPane::Finished,[this,pane,finishedTrigger]() {
-		disconnect(*finishedTrigger);
-		delete finishedTrigger;
-		ReleaseLiveEphemeralPane();
-	});
+	connect(pane,&EphemeralPane::Finished,this,&Window::ReleaseLiveEphemeralPane);
 	background->layout()->addWidget(pane);
 	if (ephemeralPanes.size() > 0)
 	{
@@ -559,7 +554,7 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 void Window::ReleaseLiveEphemeralPane()
 {
 	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
-	ephemeralPanes.pop();
+	if (ephemeralPanes.front()->Expired()) ephemeralPanes.pop();
 	if (ephemeralPanes.empty()) visiblePane->show();
 }
 
