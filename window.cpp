@@ -102,9 +102,6 @@ bool Window::event(QEvent *event)
 		const char *OPERATION="Initialize";
 		try
 		{
-			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Creating data directory %1").arg(Filesystem::DataPath().absolutePath())));
-			if (!Filesystem::DataPath().exists() && !Filesystem::DataPath().mkpath(Filesystem::DataPath().absolutePath())) throw std::runtime_error("Failed to create data directory");
-			emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION,QString("Creating log directory %1").arg(Filesystem::LogPath().absolutePath())));
 			connect(this,&Window::Print,this,&Window::Log);
 
 			BuildEventSubscriber();
@@ -136,7 +133,7 @@ void Window::BuildEventSubscriber()
 	connect(userRecognizer,&UserRecognizer::Recognized,[this](UserRecognizer* recognizer) {
 		EventSubscriber* subscriber=CreateEventSubscriber(recognizer->Name());
 		emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),"eventsub",QString("Event subscriber created for user ID: %1").arg(recognizer->ID())));
-		connect(subscriber, &EventSubscriber::Print, this, &Window::Log);
+		connect(subscriber,&EventSubscriber::Print,this,&Window::Log);
 		subscriber->Listen();
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_FOLLOW);
 		subscriber->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);

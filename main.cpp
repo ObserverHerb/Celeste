@@ -1,7 +1,9 @@
 #include "window.h"
 
 #include <QApplication>
-#include <globals.h>
+#include <QMessageBox>
+#include "globals.h"
+#include "log.h"
 
 enum
 {
@@ -9,6 +11,13 @@ enum
 	FATAL_ERROR,
 	UNKNOWN_ERROR
 };
+
+void DisplayError(const QString &message)
+{
+	QMessageBox messageBox;
+	messageBox.setText(message);
+	messageBox.exec();
+}
 
 int main(int argc,char *argv[])
 {
@@ -21,40 +30,19 @@ int main(int argc,char *argv[])
 
 	try
 	{
-		if (!Filesystem::LogPath().exists() && !Filesystem::LogPath().mkpath(Filesystem::LogPath().absolutePath())) throw std::runtime_error("Failed to create log directory");
-		QFile logFile(Filesystem::LogPath().absoluteFilePath("current"));
-		if (!logFile.open(QIODevice::ReadWrite)) throw std::runtime_error("Failed to open log file");
-
+		Log log;
 #ifdef Q_OS_WIN
 		Win32Window window;
 #else
 		Window window;
 #endif
-
-		QObject::connect(&window,&Window::Log,[&logFile](const QString &text) {
-			logFile.write(StringConvert::ByteArray(QString("%1\n").arg(text)));
-			logFile.flush();
+		window.connect(&window,&Window::Log,&log,&Log::Write);
+		application.connect(&application,&QApplication::aboutToQuit,&log,&Log::Archive);
+		log.connect(&log,&Log::Error,&window,&Window::close);
+		log.connect(&log,&Log::Error,[](const QString &message) {
+			DisplayError(message);
 		});
-		QObject::connect(&application,&QApplication::aboutToQuit,[&logFile]() {
-			if (logFile.exists())
-			{
-				logFile.reset();
-				QFile datedFile(Filesystem::LogPath().absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
-				if (datedFile.exists())
-				{
-					if (datedFile.open(QIODevice::WriteOnly|QIODevice::Append))
-					{
-						while (!logFile.atEnd()) datedFile.write(logFile.read(4096));
-					}
-				}
-				else
-				{
-					logFile.rename(QFileInfo(datedFile).absoluteFilePath());
-				}
-				logFile.close();
-			}
-		});
-
+		log.Open();
 		window.show();
 		return application.exec();
 	}

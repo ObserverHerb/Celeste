@@ -41,6 +41,8 @@ if(BUILD_TESTING)
 		panes.cpp
 		platform.h
 		platform.cpp
+		log.h
+		log.cpp
 		window.h
 		window.cpp
 		testing.cpp
@@ -75,6 +77,8 @@ add_executable(Celeste
 	panes.cpp
 	platform.h
 	platform.cpp
+	log.h
+	log.cpp
 	window.h
 	window.cpp
 	main.cpp
