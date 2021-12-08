@@ -1,6 +1,5 @@
 #include <QDate>
 #include "log.h"
-#include "globals.h"
 
 const char *SETTINGS_CATEGORY_LOGGING="Logging";
 
@@ -8,9 +7,6 @@ Log::Log(QObject *parent) : QObject(parent),
 	settingLogDirectory(SETTINGS_CATEGORY_LOGGING,"Directory",Filesystem::DataPath().absoluteFilePath("logs"))
 {
 	file.setFileName(Directory().absoluteFilePath("current"));
-	connect(this,&Log::Error,this,[this]() {
-		file.close();
-	});
 }
 
 Log::~Log()
@@ -20,11 +16,11 @@ Log::~Log()
 
 bool Log::CreateDirectory()
 {
-	QDir logDirectory(settingLogDirectory);
-	emit Print(QString("Creating log directory: %1").arg(logDirectory.absolutePath()));
-	if (!logDirectory.exists() && !logDirectory.mkpath(logDirectory.absolutePath()))
+	const char *operation="creating log directory";
+	emit Print({Directory().absolutePath(),operation});
+	if (!Directory().exists() && !Directory().mkpath(Directory().absolutePath()))
 	{
-		emit Error(QString("Failed to create log directory: %1").arg(logDirectory.absolutePath()));
+		emit Print({QString("Failed: %1").arg(Directory().absolutePath()),operation});
 		return false;
 	}
 	return true;
@@ -37,48 +33,47 @@ QDir Log::Directory()
 
 bool Log::Open()
 {
-	emit Print("Creating log file.");
+	const char *operation="create log file";
+	emit Print({Directory().absolutePath(),operation});
+	if (!CreateDirectory()) return false;
 	if (!file.open(QIODevice::ReadWrite))
 	{
-		emit Error("Failed to create log file");
-		 return false;
-	}
-	return true;
-}
-
-bool Log::Write(const QString &entry)
-{
-	if (file.write(StringConvert::ByteArray(QString("%1\n").arg(entry))) < 0 || !file.flush())
-	{
-		emit Error("Failed writing to log file.");
+		emit Print({"Failed",operation});
 		return false;
 	}
 	return true;
 }
 
-bool Log::Archive()
+void Log::Write(const QString &message,const QString &operation,const QString &subsystem)
 {
+	Entry entry(message,operation,subsystem);
+	emit Print(entry);
+	if (file.write(entry) < 0 || !file.flush()) emit Print({"Failed","write to log file"});
+}
+
+void Log::Archive()
+{
+	const char *operation="archive log";
 	if (!file.reset())
 	{
-		emit Error("Failed to archive log file.");
-		return false;
+		emit Print({"Failed to seek to beginning of file",operation});
+		return;
 	}
 
 	QFile datedFile(Directory().absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
 	if (datedFile.exists())
 	{
-		const QString appendingError="Failed appending to archived log file.";
 		if (!datedFile.open(QIODevice::WriteOnly|QIODevice::Append))
 		{
-			emit Error(appendingError);
-			return false;
+			emit Print({"Could not open log file for today's date",operation});
+			return;
 		}
 		while (!file.atEnd())
 		{
 			if (datedFile.write(file.read(4096)) < 0)
 			{
-				emit Error(appendingError);
-				return false;
+				emit Print({"Could not append to archived log file",operation});
+				return;
 			}
 		}
 	}
@@ -86,10 +81,9 @@ bool Log::Archive()
 	{
 		if (!file.rename(QFileInfo(datedFile).absoluteFilePath()))
 		{
-			emit Error("Failed to archive log file.");
-			return false;
+			emit Print({"Could not save log as archive file",operation});
+			return;
 		}
 	}
 	file.close();
-	return true;
 }

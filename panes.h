@@ -14,9 +14,9 @@
 #include <QEvent>
 #include <queue>
 #include <unordered_map>
-#include "relay.h"
 #include "settings.h"
 #include "widgets.h"
+#include "entities.h"
 
 class PersistentPane : public QWidget
 {
@@ -53,21 +53,20 @@ protected:
 	QLabel *agenda;
 	ScrollingTextEdit *chat;
 	QLabel *status;
-	std::queue<Relay::Status::Package> statusUpdates;
 	QTimer statusClock;
+	std::queue<QString> statuses;
 	ApplicationSetting settingFont;
 	ApplicationSetting settingFontSize;
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
-	void ResetStatusClock();
 public slots:
 	void Refresh();
 	void Print(const QString &text) override;
-	Relay::Status::Context* Alert(const QString &text);
+	void Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QColor color,bool action) const;
 protected slots:
-	void DismissAlert();
+	void DismissStatus();
 };
 
 class EphemeralPane : public QWidget

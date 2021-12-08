@@ -1,87 +1,51 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QMediaPlayer>
-#include <QMediaPlaylist>
 #include <QtConcurrent>
 #include <queue>
 #include <unordered_map>
-#include "channel.h"
-#include "command.h"
 #include "globals.h"
 #include "panes.h"
 #include "settings.h"
 #include "subscribers.h"
-#include "volume.h"
-
-enum class Commands
-{
-	AGENDA,
-	COMMANDS,
-	PANIC,
-	SHOUTOUT,
-	SONG,
-	TIMEZONE,
-	UPDATE,
-	UPTIME,
-	VIBE,
-	VOLUME
-};
 
 class Window : public QWidget
 {
 	Q_OBJECT
 public:
 	Window();
-	bool event(QEvent *event) override;
 protected:
-	Channel *channel;
 	PersistentPane *visiblePane;
-	ChatPane *chatPane;
-	Volume::Fader *vibeFader;
 	QWidget *background;
-	QMediaPlayer *vibeKeeper;
-	QMediaPlaylist vibeSources;
-	QMediaPlayer *roaster;
-	QMediaPlaylist roastSources;
-	QTimer helpClock;
-	QTimer inactivityClock;
-	QDateTime lastRaid;
 	ApplicationSetting settingWindowSize;
-	ApplicationSetting settingHelpCooldown;
-	ApplicationSetting settingInactivityCooldown;
-	ApplicationSetting settingVibePlaylist;
-	ApplicationSetting settingRoasts;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingAccentColor;
-	ApplicationSetting settingArrivalSound;
-	ApplicationSetting settingSubscriptionSound;
-	ApplicationSetting settingRaidSound;
-	ApplicationSetting settingRaidInterruptDuration;
-	ApplicationSetting settingPortraitVideo;
 	std::queue<EphemeralPane*> ephemeralPanes;
-	QFuture<void> worker;
-	static std::chrono::milliseconds uptime;
-	static const char *SETTINGS_CATEGORY_VIBE;
-	static const char *SETTINGS_CATEGORY_WINDOW;
-	static const char *SETTINGS_CATEGORY_EVENTS;
-	void BuildEventSubscriber();
 	void SwapPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
-	std::tuple<QString,QImage> CurrentSong() const;
-	const QString Uptime() const;
 	const QSize ScreenThird();
-	virtual EventSubscriber* CreateEventSubscriber(const QString &administratorID);
-	virtual const QString ArrivalSound() const;
 signals:
-	void Log(const QString &text);
-	void Print(const QString text);
-	void RequestEphemeralPane(EphemeralPane *pane);
+	void Print(const QString &message);
+	void ChatMessage(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QColor color,bool action);
+	void SetAgenda(const QString &agenda);
+	void RefreshChat();
 public slots:
-	void AnnounceArrival(Viewer viewer);
+	void ShowChat();
+	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
+	void AnnounceRedemption(const QString &viewer,const QString &rewardTitle,const QString &message);
+	void AnnounceSubscription(const QString &viewer);
+	void AnnounceRaid(const QString& viewer,const unsigned int viewers);
+	void PlayVideo(const QString &path);
+	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
+	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
+	void ShowCommand(const QString &name,const QString &description);
+	void ShowPanicText(const QString &text);
+	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
+	void ShowTimezone(const QString &timezone);
+	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
-	void FollowChat(ChatMessageReceiver *chatMessageReceiver);
+	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 };
 
 #ifdef Q_OS_WIN

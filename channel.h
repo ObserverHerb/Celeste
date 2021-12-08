@@ -1,8 +1,9 @@
 #pragma once
 
 #include <QTcpSocket>
-#include "receivers.h"
+#include <QTimer>
 #include "settings.h"
+#include "entities.h"
 
 class IRCSocket : public QTcpSocket
 {
@@ -15,41 +16,46 @@ public:
 class Channel : public QObject
 {
 	Q_OBJECT
+	enum class Phase
+	{
+		CONNECT,
+		AUTHENTICATE,
+		JOIN_CHANNEL,
+		DISPATCH
+	};
 public:
-	Channel(QObject *parent=nullptr) : Channel(nullptr,parent) { }
-	Channel(IRCSocket *socket,QObject *parent=nullptr);
+	Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,QObject *parent=nullptr) : Channel(settingAdministrator,settingOAuthToken,nullptr,parent) { }
+	Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,IRCSocket *socket,QObject *parent=nullptr);
 	~Channel();
 	void Connect();
 	const QString Name() const { return settingChannel; }
 	const std::chrono::milliseconds JoinDelay() const { return static_cast<std::chrono::milliseconds>(settingJoinDelay); }
 protected:
+	Phase phase;
+	PrivateSetting &settingAdministrator;
+	PrivateSetting &settingOAuthToken;
 	ApplicationSetting settingChannel;
 	ApplicationSetting settingJoinDelay;
 	IRCSocket *ircSocket;
-	AuthenticationReceiver *authenticationReceiver;
-	ChannelJoinReceiver *channelJoinReceiver;
-	ChatMessageReceiver *chatMessageReceiver;
-	QMetaObject::Connection dispatch;
 	static const char *OPERATION_CHANNEL;
 	static const char *OPERATION_CONNECTION;
 	static const char *OPERATION_AUTHORIZATION;
 	static const char *OPERATION_SEND;
 	static const char *OPERATION_RECEIVE;
-	void Authorize();
+	void RequestAuthentication();
+	void AuthenticationResponse(const QString &data);
+	void RequestJoin();
+	void JoinResponse(const QString &data);
 signals:
-	void Print(const QString text);
-	void Log(const QString &message);
-	void Dispatch(const QString data);
-	void Joined(ChatMessageReceiver *chatMessageReceiver);
+	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("channel socket"));
+	void Dispatch(const QString &data);
+	void Joined();
 	void Ping();
 protected slots:
+	void Dump(const QString &data);
 	void DataAvailable();
 	void SocketError(QAbstractSocket::SocketError error);
-	virtual void Join();
 	void Connected();
 	void Disconnected();
-	void Authorized();
-	void Joined();
-	void Follow();
 	void Pong();
 };

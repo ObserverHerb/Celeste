@@ -5,6 +5,22 @@
 #include "globals.h"
 #include "settings.h"
 
+class Entry
+{
+public:
+	Entry(const QString &message,const QString &operation,const QString &subsystem="logger")
+	{
+		data=QString("== %1").arg(subsystem.toUpper());
+		if (!operation.isEmpty()) data.append(QString(" (%1)").arg(operation.toUpper()));
+		data.append(QString("\n%1").arg(message));
+		if (data.back() != "\n") data.append("\n");
+	}
+	operator QString() const { return data; }
+	operator QByteArray() const { return StringConvert::ByteArray(data); }
+protected:
+	QString data;
+};
+
 class Log : public QObject
 {
 	Q_OBJECT
@@ -17,10 +33,9 @@ protected:
 	bool CreateDirectory();
 	QDir Directory();
 signals:
-	void Print(const QString &message);
-	void Error(const QString &message);
+	void Print(const Entry &entry);
 public slots:
 	bool Open();
-	bool Write(const QString &entry);
-	bool Archive();
+	void Write(const QString &message,const QString &operation,const QString &subsystem);
+	void Archive();
 };

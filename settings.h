@@ -3,17 +3,16 @@
 #include <QSettings>
 #include <QColor>
 #include <QSize>
+#include <QApplication>
 #include <memory>
 #include "globals.h"
-
-inline const char *SETTINGS_CATEGORY_AUTHORIZATION="Authorization";
 
 class BasicSetting
 {
 public:
 	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value)
 	{
-		source=std::make_unique<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,ORGANIZATION_NAME,applicationName);
+		source=std::make_unique<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName);
 	}
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source->value(name,defaultValue); }
@@ -41,20 +40,16 @@ protected:
 class ApplicationSetting : public BasicSetting
 {
 public:
-	ApplicationSetting(const QString &category,const QString &name,const QVariant &value=QVariant()) : BasicSetting(APPLICATION_NAME,category,name,value) { }
+	ApplicationSetting(const QString &category,const QString &name,const QVariant &value=QVariant()) : BasicSetting(qApp->applicationName(),category,name,value) { }
 };
 
-class AuthorizationSetting : public BasicSetting
+class PrivateSetting : public BasicSetting
 {
 public:
-	AuthorizationSetting(const QString &name,const QVariant &value=QVariant()) : BasicSetting(SETTINGS_CATEGORY_AUTHORIZATION,APPLICATION_NAME,name,value)
+	PrivateSetting(const QString &name,const QVariant &value=QVariant()) : BasicSetting("Private",qApp->applicationName(),name,value)
 	{
 		std::optional<QString> filePath=Filesystem::CreateHiddenFile(source->fileName());
 		if (!filePath) throw std::runtime_error("Could not create file for private settings"); // FIXME: don't create settings objects below before main() function
 		source=std::make_unique<QSettings>(*filePath,source->format());
 	}
 };
-
-inline AuthorizationSetting settingAdministrator("Administrator");
-inline AuthorizationSetting settingClientID("ClientID");
-inline AuthorizationSetting settingOAuthToken("Token");

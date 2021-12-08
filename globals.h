@@ -12,22 +12,8 @@
 
 inline const char *ORGANIZATION_NAME="Sky-Meyg";
 inline const char *APPLICATION_NAME="Celeste";
-inline const char *TWITCH_HOST="irc.chat.twitch.tv";
-inline const unsigned int TWITCH_PORT=6667;
-inline const char *TWITCH_PING="PING :tmi.twitch.tv\n";
-inline const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
-inline const char *TWITCH_API_ENDPOINT_EMOTE_LIST="https://api.twitch.tv/kraken/chat/emoticons";
-inline const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
-inline const char *TWITCH_API_ENDPOINT_USERS="https://api.twitch.tv/helix/users";
-inline const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
+
 inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
-inline const char *IRC_COMMAND_USER="NICK %1\n";
-inline const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
-inline const char *IRC_COMMAND_JOIN="JOIN #%1\n";
-inline const char *IRC_VALIDATION_AUTHENTICATION="You are in a maze of twisty passages, all alike.";
-inline const char *IRC_VALIDATION_JOIN="End of /NAMES list";
-inline const char *COMMANDS_LIST_FILENAME="commands.json";
-inline const char *EMOTE_FILENAME="emoticons.json";
 inline const short KEY=0;
 inline const short VALUE=1;
 
@@ -129,6 +115,11 @@ namespace Filesystem
 	{
 		return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 	}
+
+	inline const QDir TemporaryPath()
+	{
+		return QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+	}
 }
 
 namespace Random
@@ -149,6 +140,18 @@ namespace Random
 	{
 		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
 		return Bounded(static_cast<std::size_t>(0),container.size()-1);
+	}
+	template<typename K,typename V>
+	inline int Bounded(const std::unordered_map<K,V> &container) // TODO: good candidate for concepts/constraints here when they land, so we can use any type of container with a size
+	{
+		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
+		return Bounded(static_cast<std::size_t>(0),container.size()-1);
+	}
+	template<typename T>
+	inline int Bounded(const QList<T> &container)
+	{
+		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
+		return Bounded(0,container.size()-1);
 	}
 }
 

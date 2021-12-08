@@ -2,6 +2,7 @@
 
 #include <QTcpServer>
 #include "settings.h"
+#include "entities.h"
 
 inline const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
 inline const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_reward_redemption.add";
@@ -24,7 +25,7 @@ class EventSubscriber : public QTcpServer
 	using Headers=std::unordered_map<QString,QString>;
 	using SubscriptionTypes=std::unordered_map<QString,SubscriptionType>;
 public:
-	EventSubscriber(const QString &channelOwnerID,QObject *parent=nullptr);
+	EventSubscriber(Viewer::Local broadcaster,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent=nullptr);
 	~EventSubscriber();
 	void Listen();
 	void Subscribe(const QString &type);
@@ -33,9 +34,9 @@ protected:
 	static const QString SUBSYSTEM_NAME;
 	static const QString LINE_BREAK;
 	static const char *SETTINGS_CATEGORY_EVENTSUB;
-	const QString channelOwnerID;
-	AuthorizationSetting settingClientID;
-	AuthorizationSetting settingOAuthToken;
+	Viewer::Local broadcaster;
+	PrivateSetting &settingClientID;
+	PrivateSetting &settingOAuthToken;
 	ApplicationSetting settingListenPort;
 	ApplicationSetting settingCallbackURL;
 	const QString secret;

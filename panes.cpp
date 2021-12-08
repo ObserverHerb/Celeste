@@ -5,61 +5,8 @@
 #include <QLabel>
 #include <QResizeEvent>
 
-/*!
- * \class PersistentPane
- * \brief Abstract base class that forms the foundation of long lived panes in
- * the system
- *
- * A pane fills the primary viewing area with a group of related content,
- * similar to the way a fullscreen window does on a desktop system or an
- * activity does on Android.
- *
- * Panes are organized into stacks, the top most always being the one that
- * is visible. All panes must ultimately derives from this interface and
- * provide implementations for the pure virtual functions.
- */
-
-/*!
- * \fn PersistentPane::PersistentPane
- * \brief Default constructor
- *
- * You won't be able to manually construct a pane. It serves solely as an
- * interface.
- *
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
-
-/*!
- * \fn PersistentPane::Print
- * \brief Default text output for a pane
- *
- * Most panes will use this to display text on screen in some manner.
- *
- * \param text The message to display
- */
-
-/*!
- * \class StatusPane
- * \brief A terminal-like pane that displays scrolling text
- *
- * This pane is useful for displaying system or configuration information
- * in realtime.
- */
-
-//! QSettings category for any settings pertaining to the ChatPane
 const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
 
-/*!
- * \fn StatusPane::StatusPane
- * \brief Default constructor
- *
- * Sets some basic formatting, the Qt layout, and initializes the text box
- * control that will display the content.
- *
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
 	settingFont(SETTINGS_CATEGORY,"Font","Droid Sans Mono"),
 	settingFontSize(SETTINGS_CATEGORY,"FontSize",10),
@@ -80,11 +27,6 @@ StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
 	layout()->addWidget(output);
 }
 
-/*!
- * \fn StatusPane::Print
- * \brief Adds a string of text to the end of the text currently being displayed
- * \param text The text to add
- */
 void StatusPane::Print(const QString &text)
 {
 	output->insertPlainText(text);
@@ -92,31 +34,8 @@ void StatusPane::Print(const QString &text)
 	output->ensureCursorVisible();
 }
 
-/*!
- * \class ChatPane
- * \brief Displays a scrolling chat history
- *
- * This is likely the main pane that will be visible most of the time the
- * bot is operational. It consists of a main chat message area, an agenda
- * banner at the top that is meant to communicate the current objective of the
- * stream, and a status area at the bottom that can communicate the type of
- * information that would normally be placed in a StatusPane
- */
-
-//! QSettings category for any settings pertaining to the ChatPane
 const QString ChatPane::SETTINGS_CATEGORY="ChatPane";
 
-/*!
- * \fn ChatPane::ChatPane
- * \brief Default constructor
- *
- * Creates three control that display output in a vertical layout and set
- * initial formatting of those control. Also initializes the QTimer that
- * manages how long text in the bottom status control is visible.
- *
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	agenda(nullptr),
 	chat(nullptr),
@@ -162,20 +81,10 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	status->hide();
 	layout()->addWidget(status);
 
-	ResetStatusClock();
-	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissAlert);
-}
-
-void ChatPane::ResetStatusClock()
-{
 	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
+	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissStatus);
 }
 
-/*!
- * \fn ChatPane::SetAgenda
- * \brief Sets an objective in the top section of the ChatPane
- * \param text Agenda to display
- */
 void ChatPane::SetAgenda(const QString &text)
 {
 	if (text.isEmpty())
@@ -195,103 +104,41 @@ void ChatPane::Refresh()
 	chat->viewport()->update();
 }
 
-/*!
- * \fn ChatPane::Print
- * \brief Adds a message to the end of the messages in the middle section of
- * the ChatPane
- * \param text The message to add
- */
+void ChatPane::Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QColor color,bool action) const
+{
+	QString emotedMessage;
+	unsigned int position=0;
+	for (const Media::Emote &emote : emotes)
+	{
+		if (position < emote.StartPosition()) emotedMessage+=message.midRef(position,emote.StartPosition()-position);
+		emotedMessage+=QString("<img style='vertical-align: middle;' src='%1' />").arg(emote.Path());
+		position=emote.EndPosition()+1;
+	}
+	if (position < static_cast<unsigned int>(message.size())) emotedMessage+=message.midRef(position,message.size()-position);
+
+	if (action)
+		chat->Append(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : QColor(settingForegroundColor).name()));
+	else
+		chat->Append(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : QColor(settingForegroundColor).name()));
+}
+
 void ChatPane::Print(const QString &text)
 {
-	chat->Append(text);
-}
-
-/*!
- * \fn ChatPane::Alert
- * \brief Adds a message to be displayed in the bottom section of the ChatPane
- *
- * The message will be displayed immediately unless another message is already
- * visible. If another message is visible, this message will be added to a
- * queue until the statusClock has triggered the removal of the message in
- * front of it in the queue. This way, all messages are displayed in order,
- * long enough for them to be read.
- *
- * \param text The message to be displayed
- * \return Relay::Status::Context* A pointer to a context for this message
- * which can be used to alter the message before it's removed.
- */
-Relay::Status::Context* ChatPane::Alert(const QString &text)
-{
+	statuses.push(text);
+	status->setText(statuses.front());
 	status->show();
-	Relay::Status::Context *statusUpdate=new Relay::Status::Context(text,this);
-	connect(statusUpdate,&Relay::Status::Context::ResetClock,this,&ChatPane::ResetStatusClock);
-	statusUpdates.push(Relay::Status::Package(statusUpdate,&Relay::Status::Dismiss));
-	if (statusUpdates.size() == 1)
-	{
-		connect(statusUpdate,&Relay::Status::Context::Updated,status,&QLabel::setText);
-		statusClock.start();
-		statusUpdate->Trigger();
-	}
-	return statusUpdate;
+	if (!statusClock.isActive()) statusClock.start();
 }
 
-/*!
- * \fn ChatPane::DismissAlert
- * \brief Removes the visible status from the queue and displays the next one
- * if one exists.
- */
-void ChatPane::DismissAlert()
+void ChatPane::DismissStatus()
 {
-	statusUpdates.pop();
-	if (statusUpdates.empty())
-	{
-		status->clear();
-		status->hide();
-		statusClock.stop();
-		return;
-	}
-	connect(statusUpdates.front().get(),&Relay::Status::Context::Updated,status,&QLabel::setText);
-	statusUpdates.front()->Trigger();
+	statuses.pop();
+	if (!statuses.empty()) return;
+	status->clear();
+	status->hide();
+	statusClock.stop();
 }
 
-/*!
- * \class EphemeralPane
- * \brief Abstract base class that forms the foundation for all panes which
- * are displayed for a finite period of time.
- *
- * Ephemeral panes the are only visible for a set period of time or until
- * another event is triggered. Any pane which is only temporarily visible
- * and does not constitute a context switch of some kind, like switching from
- * authorization to chatting, qualifies as an ephemeral pane.
- */
-
-/*!
- * \fn EphemeralPane::Show
- * \brief Displays the pane
- *
- * Note that the pane may not immediately become visible if other panes are
- * ahead of it in the queue of panes to be displayed.
- */
-
-/*!
- * \fn EhpemeralPane::Finished
- * \brief Provides a way to clean up after the pane when it has completed its
- * operation.
- *
- * This is primary used to deallocate the object when all of its messages have
- * been processed from Qt's message queue.
- */
-
-/*!
- * \fn EphemeralPane::EphemeralPane
- * \brief Default constructor
- *
- * Creates a pane that is initially not visible and configures it to deallocate
- * itself once it is finished with its operation.
- *
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent), expired(false)
 {
 	setVisible(false);
@@ -306,18 +153,6 @@ bool EphemeralPane::Expired()
 	return expired;
 }
 
-/*!
- * \class VideoPane
- * \brief Displays a video
- */
-
-/*!
- * \fn VideoPane::VideoPane
- * \brief Primary constructor
- * \param path File path or URL to the video to be played
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(new QMediaPlayer(this)), viewport(new QVideoWidget(this))
 {
 	videoPlayer->setVideoOutput(viewport);
@@ -331,35 +166,14 @@ VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent
 	layout()->addWidget(viewport);
 }
 
-/*!
- * \fn VideoPane::Show
- * \brief Makes the pane visible and starts the assigned video.
- */
 void VideoPane::Show()
 {
 	show();
 	videoPlayer->play();
 }
 
-
-/*!
- * \class AnnouncePane
- * \brief Briefly displays a message that fills the pane
- *
- * Use this for significant notifications that are best served by large,
- * attention-grabbing text.
- */
-
-//! QSettings category for any settings pertaining to the AnnouncePane
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
 
-/*!
- * \fn AnnouncePane::AnnouncePane
- * \brief Primary constructor
- * \param text Message to be displayed
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(parent),
 	output(new QLabel(text,this)),
 	settingDuration(SETTINGS_CATEGORY,"Duration",5000),
@@ -395,27 +209,12 @@ bool AnnouncePane::event(QEvent *event)
 	return QWidget::event(event);
 }
 
-/*!
- * \fn AnnouncePane::Show
- * \brief Displays the pane
- *
- * This override of the EphemeralPane::Show() function starts a timer that
- * triggers the eventual removal of the pane from view, as well as allowing an
- * opportunity to do some last moment initialization.
- */
 void AnnouncePane::Show()
 {
 	show();
 	clock.start();
 }
 
-/*!
- * \fn AnnouncePane::Polish
- * \brief Performs and last moment initialization just before the pane is displayed.
- *
- * This is ideal for initialization that cannot be performed at construction of
- * the pane object, but must be completed before the pane is visible.
- */
 void AnnouncePane::Polish()
 {
 	layout()->addWidget(output);
@@ -434,21 +233,6 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 	return QString("<div style='line-height: 1.25;'>%1</div>").arg(paragraph);
 }
 
-/*!
- * \class AudioAnnouncePane
- * \brief Similar to an AnnouncePane, but plays audio along with the message
- * displayed
- */
-
-/*!
- * \fn AudioAnnouncePane::AudioAnnouncePane
- * \brief Primary constructor
- * \param text The message to be displayed
- * \param path Path or URL to an audio file that will accompany the message
- * that is displayed
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const StringConvert::Valid &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
 {
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
@@ -467,29 +251,12 @@ AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>
 	output->setText(BuildParagraph(lines));
 }
 
-/*!
- * \fn AudioAnnouncePane::Show
- * \brief Displays the pane and starts playing the assigned audio
- */
 void AudioAnnouncePane::Show()
 {
 	show();
 	audioPlayer->play();
 }
 
-/*!
- * \class ImageAnnouncePane
- * \brief Similar to an AnnouncePane, but displays an image behind the message
- */
-
-/*!
- * \fn ImageAnnouncePane::ImageAnnouncePane
- * \brief Primary constructor
- * \param text The message to be displayed
- * \param image Reference to a QImage to be displayed behind the text
- * \param parent This pane will be destroyed when the QWidget pointed to by
- * this pointer is destroyed.
- */
 ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
 {
 	stack=new QStackedWidget(this);
@@ -522,14 +289,6 @@ void ImageAnnouncePane::resizeEvent(QResizeEvent *event)
 	}
 }
 
-/*!
- * \fn ImageAnnouncePane::Polish
- * \brief Performs and last moment initialization just before the pane is displayed.
- *
- * Sets some intricate details such as drop shadows and adds the initialized
- * text to a stacked layout so the text appears to be layered on top of the
- * image.
- */
 void ImageAnnouncePane::Polish()
 {
 	shadow->setColor(accentColor);

@@ -12,6 +12,8 @@ const char *HEADER_DELIMITER=":";
 
 const char *HEADER_SUBSCRIPTION_TYPE="Twitch-Eventsub-Subscription-Type";
 
+const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
+
 const char *JSON_KEY_CHALLENGE="challenge";
 const char *JSON_KEY_EVENT="event";
 const char *JSON_KEY_EVENT_REWARD="reward";
@@ -29,14 +31,15 @@ const QString EventSubscriber::SUBSYSTEM_NAME="Event Subscriber";
 const QString EventSubscriber::LINE_BREAK="\r\n";
 const char *EventSubscriber::SETTINGS_CATEGORY_EVENTSUB="Events";
 
-EventSubscriber::EventSubscriber(const QString &channelOwnerID,QObject *parent) : QTcpServer(parent),
-	channelOwnerID(channelOwnerID),
-	settingClientID("ClientID"),
-	settingOAuthToken("ServerToken"),
+EventSubscriber::EventSubscriber(Viewer::Local broadcaster,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent) : QTcpServer(parent),
+	broadcaster(broadcaster),
+	settingClientID(settingClientID),
+	settingOAuthToken(settingOAuthToken),
 	settingListenPort(SETTINGS_CATEGORY_EVENTSUB,"Port",4443),
 	settingCallbackURL(SETTINGS_CATEGORY_EVENTSUB,"CallbackURL"),
 	secret(QUuid::createUuid().toString())
 {
+	QString token=settingOAuthToken;
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_REDEMPTION,SubscriptionType::CHANNEL_REDEMPTION});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_CHEER,SubscriptionType::CHANNEL_CHEER});
@@ -84,7 +87,7 @@ void EventSubscriber::Subscribe(const QString &type)
 		{"version","1"},
 		{
 			"condition",
-			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? "to_broadcaster_user_id" : "broadcaster_user_id",channelOwnerID}})
+			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? "to_broadcaster_user_id" : "broadcaster_user_id",broadcaster.ID()}})
 		},
 		{
 			"transport",
