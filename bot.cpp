@@ -527,8 +527,8 @@ void Bot::AdjustVibeVolume(Command command)
 
 	try
 	{
-		vibeFader=new Vibe::Fader(vibeKeeper,command.Message(),this);
-		connect(vibeFader,&Vibe::Fader::Print,this,&Bot::Print);
+		vibeFader=new Volume::Fader(vibeKeeper,command.Message(),this);
+		connect(vibeFader,&Volume::Fader::Print,this,&Bot::Print);
 		vibeFader->Start();
 	}
 	catch (const std::range_error &exception)

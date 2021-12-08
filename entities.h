@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QImage>
 #include <QUrl>
+#include <QMediaPlayer>
 #include <memory>
 #include "settings.h"
 
@@ -37,6 +38,36 @@ protected:
 	QString path;
 	QString message;
 };
+
+namespace Volume
+{
+	const QString SETTINGS_CATEGORY_VOLUME="Volume";
+
+	class Fader : public QObject
+	{
+		Q_OBJECT
+	public:
+		Fader(QMediaPlayer *player,const QString &arguments,QObject *parent=nullptr);
+		Fader(QMediaPlayer *player,unsigned int volume,std::chrono::seconds duration,QObject *parent=nullptr);
+		void Parse(const QString &text);
+		void Start();
+		void Stop();
+		void Abort();
+	protected:
+		ApplicationSetting settingDefaultDuration;
+		QMediaPlayer *player;
+		unsigned int initialVolume;
+		unsigned int targetVolume;
+		std::chrono::milliseconds startTime;
+		std::chrono::milliseconds duration;
+		double Step(const double &secondsPassed);
+	signals:
+		void AdjustmentNeeded();
+		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("volume fader"));
+	public slots:
+		void Adjust();
+	};
+}
 
 namespace File
 {
