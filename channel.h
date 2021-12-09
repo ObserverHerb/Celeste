@@ -28,6 +28,7 @@ public:
 	Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,IRCSocket *socket,QObject *parent=nullptr);
 	~Channel();
 	void Connect();
+	void Disconnect();
 	const QString Name() const { return settingChannel; }
 	const std::chrono::milliseconds JoinDelay() const { return static_cast<std::chrono::milliseconds>(settingJoinDelay); }
 protected:
@@ -37,11 +38,6 @@ protected:
 	ApplicationSetting settingChannel;
 	ApplicationSetting settingJoinDelay;
 	IRCSocket *ircSocket;
-	static const char *OPERATION_CHANNEL;
-	static const char *OPERATION_CONNECTION;
-	static const char *OPERATION_AUTHORIZATION;
-	static const char *OPERATION_SEND;
-	static const char *OPERATION_RECEIVE;
 	void RequestAuthentication();
 	void AuthenticationResponse(const QString &data);
 	void RequestJoin();
@@ -49,13 +45,13 @@ protected:
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("channel socket"));
 	void Dispatch(const QString &data);
+	void Connected();
+	void Disconnected();
+	void Denied();
 	void Joined();
 	void Ping();
 protected slots:
-	void Dump(const QString &data);
 	void DataAvailable();
 	void SocketError(QAbstractSocket::SocketError error);
-	void Connected();
-	void Disconnected();
 	void Pong();
 };

@@ -47,15 +47,6 @@ namespace StringConvert
 		return result;
 	}
 
-	class Valid : public QString
-	{
-	public:
-		Valid(const QString &string) : QString(string)
-		{
-			if (string.isEmpty() || string.isNull()) throw std::runtime_error("Invalid or empty string was passed");
-		}
-	};
-
 	namespace Split
 	{
 #if QT_VERSION < QT_VERSION_CHECK(5,14,0)
@@ -73,6 +64,13 @@ namespace StringConvert
 		};
 		inline Qt::SplitBehaviorFlags Behavior(Behaviors behaviors) { return static_cast<Qt::SplitBehaviorFlags>(behaviors); }
 #endif
+	}
+
+	inline const QString Dump(const QString &data)
+	{
+		QStringList lines=data.split("\n",Split::Behavior(Split::Behaviors::SKIP_EMPTY_PARTS));
+		for (QString &line : lines) line.prepend("> ");
+		return lines.join("\n");
 	}
 }
 

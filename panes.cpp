@@ -233,20 +233,20 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 	return QString("<div style='line-height: 1.25;'>%1</div>").arg(paragraph);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const StringConvert::Valid &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
 {
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this]() {
-		emit Error(QString("Failed to load audio for pane: %1").arg(audioPlayer->errorString()));
+		emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
 		emit Finished();
 	});
 	audioPlayer->setMedia(QUrl::fromLocalFile(path));
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const StringConvert::Valid &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
+AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
 {
 	output->setText(BuildParagraph(lines));
 }

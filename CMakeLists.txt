@@ -58,12 +58,14 @@ add_executable(Celeste
 	settings.h
 	channel.h
 	channel.cpp
+	server.h
+	server.cpp
 	widgets.h
 	widgets.cpp
 	entities.h
 	entities.cpp
-	subscribers.h
-	subscribers.cpp
+	eventsub.h
+	eventsub.cpp
 	panes.h
 	panes.cpp
 	platform.h

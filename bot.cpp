@@ -41,6 +41,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
 	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
+	settingCheerVideo(SETTINGS_CATEGORY_EVENTS,"Cheer"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000)
@@ -209,8 +210,39 @@ void Bot::Ping()
 		Print("Letting Twitch server know we're still here...");
 }
 
+void Bot::Subscription(const QString &viewer)
+{
+	if (static_cast<QString>(settingSubscriptionSound).isEmpty())
+	{
+		emit Print("No audio path set for subscriptions","announce subscription");
+		return;
+	}
+	emit AnnounceSubscription(viewer,settingSubscriptionSound);
+}
+
+void Bot::Raid(const QString &viewer,const unsigned int viewers)
+{
+	lastRaid=QDateTime::currentDateTime();
+	emit AnnounceRaid(viewer,viewers,settingRaidSound);
+}
+
+void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &message)
+{
+	if (static_cast<QString>(settingCheerVideo).isEmpty())
+	{
+		emit Print("No video path set for cheers","announce cheer");
+		return;
+	}
+	emit AnnounceCheer(viewer,count,message,settingCheerVideo);
+}
+
 void Bot::DispatchArrival(Viewer::Local viewer)
 {
+	if (static_cast<QString>(settingArrivalSound).isEmpty())
+	{
+		emit Print("No audio path set for arrivals","announce arrival");
+		return;
+	}
 	if (settingAdministrator != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
 	{
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
@@ -333,12 +365,12 @@ std::optional<QStringList> Bot::TakeHostmask(QStringList &messageSegments)
 
 void Bot::DownloadEmote(const Media::Emote &emote)
 {
-	emit Print(QString("Downloading emote %1").arg(emote.Name()));
 	if (!QFile(emote.Path()).exists())
 	{
 		QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.ID()));
 		QNetworkReply *downloadReply=downloadManager->get(request);
 		connect(downloadReply,&QNetworkReply::finished,[this,downloadReply,emote]() {
+			downloadReply->deleteLater();
 			if (downloadReply->error())
 			{
 				emit Print(QString("Failed to download emote %1: %2").arg(emote.Name(),downloadReply->errorString()));
@@ -372,7 +404,7 @@ const std::vector<Media::Emote> Bot::ParseEmotes(const TagMap &tags,const QStrin
 			}
 			unsigned int start=StringConvert::PositiveInteger(indicies.at(0));
 			unsigned int end=StringConvert::PositiveInteger(indicies.at(1));
-			const Media::Emote emote({message.mid(start,end),details.at(0),Filesystem::TemporaryPath().filePath(QString("%1.png").arg(details.at(0))),start,end});
+			const Media::Emote emote({message.mid(start,end-start),details.at(0),Filesystem::TemporaryPath().filePath(QString("%1.png").arg(details.at(0))),start,end});
 			DownloadEmote(emote);
 			emotes.push_back(emote);
 		}

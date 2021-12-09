@@ -52,6 +52,7 @@ protected:
 	ApplicationSetting settingRoasts;
 	ApplicationSetting settingPortraitVideo;
 	ApplicationSetting settingArrivalSound;
+	ApplicationSetting settingCheerVideo;
 	ApplicationSetting settingSubscriptionSound;
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
@@ -78,12 +79,11 @@ protected:
 	void AdjustVibeVolume(Command command);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
-	void DispatchCommand(Command command,const Viewer::Local viewer);
 	void ChatMessage(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QColor color,bool action);
 	void RefreshChat();
 	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
 	void PlayVideo(const QString &path);
-	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
+	void PlayAudio(const QString &name,const QString &message,const QString &path);
 	void SetAgenda(const QString &agenda);
 	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
@@ -93,7 +93,13 @@ signals:
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void ShowPortraitVideo(const QString &path);
+	void AnnounceSubscription(const QString &name,const QString &audioPath);
+	void AnnounceRaid(const QString &viewer,const unsigned int viewers,const QString &audioPath);
+	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
 public slots:
 	void ParseChatMessage(const QString &message);
 	void Ping();
+	void Subscription(const QString &viewer);
+	void Raid(const QString &viewer,const unsigned int viewers);
+	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 };

@@ -7,7 +7,6 @@
 #include "globals.h"
 #include "panes.h"
 #include "settings.h"
-#include "subscribers.h"
 
 class Window : public QWidget
 {
@@ -32,9 +31,10 @@ signals:
 public slots:
 	void ShowChat();
 	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
-	void AnnounceRedemption(const QString &viewer,const QString &rewardTitle,const QString &message);
-	void AnnounceSubscription(const QString &viewer);
-	void AnnounceRaid(const QString& viewer,const unsigned int viewers);
+	void AnnounceRedemption(const QString &name,const QString &rewardTitle,const QString &message);
+	void AnnounceSubscription(const QString &name,const QString &audioPath);
+	void AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath);
+	void AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);

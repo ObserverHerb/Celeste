@@ -63,44 +63,58 @@ void Window::AnnounceArrival(const QString &name,QImage profileImage,const QStri
 	},profileImage,audioPath));
 }
 
-void Window::AnnounceRedemption(const QString &viewer,const QString& rewardTitle,const QString& message)
+void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,const QString& message)
 {
 	StageEphemeralPane(new AnnouncePane({
-		{QString("%1<br>").arg(viewer),1.5},
+		{QString("%1<br>").arg(name),1.5},
 		{"has redeemed<br>",1},
 		{QString("%1<br>").arg(rewardTitle),1.5},
 		{message,1}
 	}));
 }
 
-void Window::AnnounceSubscription(const QString &viewer)
+void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 {
-	/*StageEphemeralPane(new AudioAnnouncePane({
-		{QString("%1<br>").arg(viewer),1.5},
+	AudioAnnouncePane *pane=new AudioAnnouncePane({
+		{QString("%1<br>").arg(name),1.5},
 		{"has subscribed!",1}
-	},settingSubscriptionSound));*/
+	},audioPath);
+	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
-void Window::AnnounceRaid(const QString &viewer,const unsigned int viewers)
+void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath)
 {
-	/*StageEphemeralPane(new AudioAnnouncePane({
-		{QString("%1<br>").arg(viewer),1.5},
+	AudioAnnouncePane *pane=new AudioAnnouncePane({
+		{QString("%1<br>").arg(name),1.5},
 		{"is raiding with<br>",1},
 		{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
 		{"viewers",1}
-	},settingRaidSound));
-	lastRaid=QDateTime::currentDateTime();*/
-	// FIXME: finish this
+	},audioPath);
+	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
+}
+
+void Window::AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath)
+{
+	VideoPane *pane=new VideoPane(videoPath);
+	connect(pane,&VideoPane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
+	StageEphemeralPane(new AnnouncePane({
+		{QString("%1 has cheered<br>").arg(name),0.5},
+		{QString("%1<br>").arg(message),1.5},
+		{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
+	}));
 }
 
 void Window::ShowChat()
 {
-	/*ChatPane *chatPane=new ChatPane(this);
+	ChatPane *chatPane=new ChatPane(this);
 	SwapPane(chatPane);
 	connect(this,&Window::Print,chatPane,&ChatPane::Print);
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
-	connect(this,&Window::SetAgenda,chatPane,&ChatPane::SetAgenda);*/
+	connect(this,&Window::SetAgenda,chatPane,&ChatPane::SetAgenda);
 }
 
 void Window::PlayVideo(const QString &path)

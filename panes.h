@@ -80,7 +80,7 @@ protected:
 	bool expired;
 signals:
 	void Finished();
-	void Error(const QString &description);
+	virtual void Print(const QString &text);
 };
 
 class VideoPane : public EphemeralPane
@@ -122,8 +122,8 @@ class AudioAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	AudioAnnouncePane(const QString &text,const StringConvert::Valid &path,QWidget *parent=nullptr);
-	AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const StringConvert::Valid &path,QWidget *parent=nullptr);
+	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent=nullptr);
+	AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent=nullptr);
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;

@@ -2,11 +2,11 @@
 #include "channel.h"
 #include "globals.h"
 
-const char *Channel::OPERATION_CHANNEL="channel";
-const char *Channel::OPERATION_CONNECTION="connection";
-const char *Channel::OPERATION_AUTHORIZATION="authentication";
-const char *Channel::OPERATION_SEND="sending data";
-const char *Channel::OPERATION_RECEIVE="receiving data";
+const char *OPERATION_CHANNEL="channel";
+const char *OPERATION_CONNECTION="connection";
+const char *OPERATION_AUTHENTICATION="authentication";
+const char *OPERATION_SEND="sending data";
+const char *OPERATION_RECEIVE="receiving data";
 
 const char *TWITCH_HOST="irc.chat.twitch.tv";
 const unsigned int TWITCH_PORT=6667;
@@ -30,8 +30,15 @@ Channel::Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAu
 	ircSocket(socket)
 {
 	if (!ircSocket) ircSocket=new IRCSocket(this);
-	connect(ircSocket,&IRCSocket::connected,this,&Channel::Connected);
-	connect(ircSocket,&IRCSocket::disconnected,this,&Channel::Disconnected);
+	connect(ircSocket,&IRCSocket::connected,[this]() {
+		emit Print("Connected!",OPERATION_CONNECTION);
+		emit Connected();
+		RequestAuthentication();
+	});
+	connect(ircSocket,&IRCSocket::disconnected,[this]() {
+		emit Disconnected();
+		emit Print("Disconnected",OPERATION_CONNECTION);
+	});
 	connect(ircSocket,&IRCSocket::readyRead,this,&Channel::DataAvailable);
 	connect(ircSocket,&IRCSocket::errorOccurred,this,&Channel::SocketError);
 	connect(this,&Channel::Ping,this,&Channel::Pong);
@@ -39,21 +46,13 @@ Channel::Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAu
 
 Channel::~Channel()
 {
-	ircSocket->disconnectFromHost();
-}
-
-
-void Channel::Dump(const QString &data)
-{
-	QStringList lines=data.split("\n",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	for (QString &line : lines) line.prepend("> ");
-	emit Print(lines.join("\n"),OPERATION_RECEIVE);
+	Disconnect();
 }
 
 void Channel::DataAvailable()
 {
 	const QString data=ircSocket->Read();
-	emit Dump(data);
+	emit Print(StringConvert::Dump(data));
 
 	switch (phase)
 	{
@@ -83,26 +82,20 @@ void Channel::Connect()
 	emit Print("Connecting to IRC...",OPERATION_CONNECTION);
 }
 
-void Channel::Connected()
+void Channel::Disconnect()
 {
-	emit Print("Connected!",OPERATION_CONNECTION);
-	RequestAuthentication();
-}
-
-void Channel::Disconnected()
-{
-	emit Print("Disconnected",OPERATION_CONNECTION);
+	ircSocket->disconnectFromHost();
 }
 
 void Channel::RequestAuthentication()
 {
 	if (!settingAdministrator)
 	{
-		emit Print("Please set the Administrator under the Authorization section in your settings file",OPERATION_AUTHORIZATION);
+		emit Print("Please set the Administrator under the Authorization section in your settings file",OPERATION_AUTHENTICATION);
 		return;
 	}
 	phase=Phase::AUTHENTICATE;
-	emit Print(QString("Sending credentials: %1").arg(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))),OPERATION_AUTHORIZATION);
+	emit Print(QString("Sending credentials: %1").arg(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))),OPERATION_AUTHENTICATION);
 	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken))));
 	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
 }
@@ -111,12 +104,13 @@ void Channel::AuthenticationResponse(const QString &data)
 {
 	if (data.contains(IRC_VALIDATION_AUTHENTICATION))
 	{
-		emit Print("Server accepted authentication");
+		emit Print("Server accepted authentication",OPERATION_AUTHENTICATION);
 		RequestJoin();
 	}
 	else
 	{
-		emit Print("Server did not accept authentication");
+		emit Print("Server did not accept authentication",OPERATION_AUTHENTICATION);
+		emit Denied();
 	}
 }
 

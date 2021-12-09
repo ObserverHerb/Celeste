@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QTcpServer>
+#include <QDateTime>
 #include "settings.h"
 #include "entities.h"
 
@@ -19,42 +19,31 @@ enum class SubscriptionType
 	CHANNEL_SUBSCRIPTION
 };
 
-class EventSubscriber : public QTcpServer
+class EventSub : public QObject
 {
 	Q_OBJECT
-	using Headers=std::unordered_map<QString,QString>;
 	using SubscriptionTypes=std::unordered_map<QString,SubscriptionType>;
 public:
-	EventSubscriber(Viewer::Local broadcaster,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent=nullptr);
-	~EventSubscriber();
-	void Listen();
+	EventSub(Viewer::Local broadcaster,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,PrivateSetting &settingCallbackURL,QObject *parent=nullptr);
 	void Subscribe(const QString &type);
-	void DataAvailable();
 protected:
-	static const QString SUBSYSTEM_NAME;
-	static const QString LINE_BREAK;
-	static const char *SETTINGS_CATEGORY_EVENTSUB;
 	Viewer::Local broadcaster;
 	PrivateSetting &settingClientID;
 	PrivateSetting &settingOAuthToken;
-	ApplicationSetting settingListenPort;
-	ApplicationSetting settingCallbackURL;
+	PrivateSetting &settingCallbackURL;
 	const QString secret;
 	QString buffer;
 	SubscriptionTypes subscriptionTypes; // TODO: find a better name for this
-	const Headers ParseHeaders(const QString &data);
 	const QByteArray ProcessRequest(const SubscriptionType type,const QString &data);
 	const QString BuildResponse(const QString &data=QString()) const;
-	virtual QTcpSocket* SocketFromSignalSender() const;
-	virtual QByteArray ReadFromSocket(QTcpSocket *socket=nullptr) const;
-	virtual bool WriteToSocket(const QByteArray &data,QTcpSocket *socket=nullptr) const;
 signals:
-	void Print(const QString &message) const;
+	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub")) const;
+	void Response(qintptr socketID,const QString &content=QString("Acknowledged: %1").arg(QDateTime::currentDateTime().toString()));
 	void Follow();
 	void Redemption(const QString &viewer,const QString &rewardTitle,const QString &message);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void Raid(const QString &raider,const unsigned int viewers);
 	void Subscription(const QString &viewer);
-protected slots:
-	void ConnectionAvailable();
+public slots:
+	void ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content);
 };

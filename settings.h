@@ -19,7 +19,6 @@ public:
 	void Set(const QVariant &value) { source->setValue(name,value); }
 	operator bool() const { return source->contains(name); }
 	operator QString() const { return Value().toString(); }
-	operator StringConvert::Valid() const { return Value().toString(); }
 	operator unsigned int() const { return Value().toUInt(); }
 	operator int() const { return Value().toInt(); }
 	operator quint16() const { return Value().toUInt(); }
@@ -29,7 +28,6 @@ public:
 	operator std::chrono::seconds() const { return std::chrono::seconds(Value().toUInt()); }
 	operator QColor() const { return source->value(name,defaultValue).value<QColor>(); }
 	operator QSize() const { return source->value(name,defaultValue).toSize(); }
-	void operator=(const QSize &size) { source->setValue(name,size); }
 	operator QByteArray() const { return Value().toString().toLocal8Bit(); }
 protected:
 	QString name;
