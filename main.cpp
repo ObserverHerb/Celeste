@@ -1,5 +1,10 @@
 #include <QApplication>
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QDialogButtonBox>
+#include <QPushButton>
+#include <QGridLayout>
+#include <QListWidget>
 #include <QDesktopServices>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
@@ -31,12 +36,40 @@ int main(int argc,char *argv[])
 	application.setWindowIcon(QIcon(":/celeste_256.png"));
 
 	PrivateSetting settingAdministrator("Administrator");
+	if (!settingAdministrator) settingAdministrator.Set(QInputDialog::getText(nullptr,"Administrator","Please provide the account name of the Twitch user who will serve as the bot's administrator.").toLower());
 	PrivateSetting settingClientID("ClientID");
+	if (!settingClientID) settingClientID.Set(QInputDialog::getText(nullptr,"Client ID","A client ID has not yet been set. Please provide your bot's client ID.",QLineEdit::Password));
 	PrivateSetting settingClientSecret("ClientSecret");
+	if (!settingClientSecret) settingClientSecret.Set(QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret.",QLineEdit::Password));
 	PrivateSetting settingOAuthToken("Token");
 	PrivateSetting settingServerToken("ServerToken");
 	PrivateSetting settingCallbackURL("CallbackURL");
+	if (!settingCallbackURL) settingCallbackURL.Set(QInputDialog::getText(nullptr,"Callback URL","EventSub requires the URL at which your bot's server can reached. Please provide a callback URL."));
 	PrivateSetting settingScope("Permissions");
+	if (!settingScope)
+	{
+		QDialog scopeDialog;
+		QGridLayout *layout=new QGridLayout(&scopeDialog);
+		scopeDialog.setLayout(layout);
+		QListWidget *listBox=new QListWidget(&scopeDialog);
+		listBox->setSelectionMode(QAbstractItemView::ExtendedSelection);
+		listBox->addItems({"analytics:read:extensions","analytics:read:games","bits:read","channel:edit:commercial","channel:manage:broadcast","channel:manage:extensions","channel:manage:polls","channel:manage:predictions","channel:manage:redemptions","channel:manage:schedule","channel:manage:videos","channel:moderate","channel:read:editors","channel:read:goals","channel:read:hype_train","channel:read:polls","channel:read:predictions","channel:read:redemptions","channel:read:stream_key","channel:read:subscriptions","chat:edit","clips:edit","moderation:read","moderator:manage:banned_users","moderator:read:blocked_terms","moderator:manage:blocked_terms","moderator:manage:automod","moderator:read:automod_settings","moderator:manage:automod_settings","moderator:read:chat_settings","moderator:manage:chat_settings","user:edit","user:edit:follows","user:manage:blocked_users","user:read:blocked_users","user:read:broadcast","user:read:email","user:read:follows","user:read:subscriptions","whispers:edit","whispers:read"});
+		scopeDialog.layout()->addWidget(listBox);
+		QDialogButtonBox *buttons=new QDialogButtonBox(&scopeDialog);
+		QPushButton *okay=buttons->addButton(QDialogButtonBox::Ok);
+		okay->setDefault(true);
+		okay->connect(okay,&QPushButton::clicked,&scopeDialog,&QDialog::accept);
+		QPushButton *cancel=buttons->addButton(QDialogButtonBox::Cancel);
+		okay->connect(cancel,&QPushButton::clicked,&scopeDialog,&QDialog::reject);
+		scopeDialog.layout()->addWidget(buttons);
+		if (scopeDialog.exec() == QDialog::Accepted)
+		{
+			QStringList scopes({"chat:read"});
+			for (QListWidgetItem *item : listBox->selectedItems()) scopes.append(item->text());
+			settingScope.Set(scopes.join(" "));
+		}
+		settingOAuthToken.Unset();
+	}
 
 	try
 	{

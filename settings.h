@@ -17,6 +17,7 @@ public:
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source->value(name,defaultValue); }
 	void Set(const QVariant &value) { source->setValue(name,value); }
+	void Unset() { source->remove(name); }
 	operator bool() const { return source->contains(name); }
 	operator QString() const { return Value().toString(); }
 	operator unsigned int() const { return Value().toUInt(); }
