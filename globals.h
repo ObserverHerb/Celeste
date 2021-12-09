@@ -68,9 +68,13 @@ namespace StringConvert
 
 	inline const QString Dump(const QString &data)
 	{
+#ifdef DEVELOPER_MODE
 		QStringList lines=data.split("\n",Split::Behavior(Split::Behaviors::SKIP_EMPTY_PARTS));
 		for (QString &line : lines) line.prepend("> ");
 		return lines.join("\n");
+#else
+		return QString("> (data)");
+#endif
 	}
 }
 

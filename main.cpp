@@ -35,6 +35,10 @@ int main(int argc,char *argv[])
 	application.setApplicationName(APPLICATION_NAME);
 	application.setWindowIcon(QIcon(":/celeste_256.png"));
 
+#ifdef DEVELOPER_MODE
+	if (QMessageBox(QMessageBox::Warning,"DEVELOPER MODE","**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?",QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::No) return OK;
+#endif
+
 	PrivateSetting settingAdministrator("Administrator");
 	if (!settingAdministrator) settingAdministrator.Set(QInputDialog::getText(nullptr,"Administrator","Please provide the account name of the Twitch user who will serve as the bot's administrator.").toLower());
 	PrivateSetting settingClientID("ClientID");
