@@ -134,13 +134,12 @@ namespace Viewer
 	{
 		Remote::Remote(const QUrl &profileImageURL)
 		{
-			const char *operation="profile image retrieval";
 			QNetworkAccessManager* manager=new QNetworkAccessManager(this);
 			manager->connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
 				manager->deleteLater();
 				this->deleteLater();
 				if (reply->error())
-					emit Print(QString("Failed: %1").arg(reply->errorString()));
+					emit Print(QString("Failed: %1").arg(reply->errorString()),"profile image retrieval");
 				else
 					emit Retrieved(QImage::fromData(reply->readAll()));
 			});
@@ -175,22 +174,22 @@ namespace Viewer
 
 	Remote::Remote(const QString &username,const PrivateSetting &settingOAuthToken,const PrivateSetting &settingClientID) : name(username)
 	{
-		const char *operation="request viewer information";
 		QNetworkAccessManager* manager=new QNetworkAccessManager(this);
-		connect(manager,&QNetworkAccessManager::finished,[this,operation,manager](QNetworkReply* reply) {
+		connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply* reply) {
+			const char *OPERATION="request viewer information";
 			manager->deleteLater();
 			this->deleteLater();
 			QJsonParseError jsonError;
 			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
 			if (json.isNull())
 			{
-				emit Print(QString("Failed: %1").arg(jsonError.errorString()));
+				emit Print(QString("Failed: %1").arg(jsonError.errorString()),OPERATION);
 				return;
 			}
 			QJsonArray data=json.object().value("data").toArray();
 			if (data.size() < 1)
 			{
-				emit Print("Invalid user");
+				emit Print("Invalid user",OPERATION);
 				return;
 			}
 			QJsonObject details=data.at(0).toObject();
