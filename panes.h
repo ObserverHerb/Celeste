@@ -80,7 +80,7 @@ protected:
 	bool expired;
 signals:
 	void Finished();
-	virtual void Print(const QString &text);
+	void Print(const QString &text);
 };
 
 class VideoPane : public EphemeralPane

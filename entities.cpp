@@ -144,7 +144,6 @@ namespace Viewer
 				else
 					emit Retrieved(QImage::fromData(reply->readAll()));
 			});
-			emit Print(QString("Sending request: %1").arg(profileImageURL.toString()));
 			manager->get(QNetworkRequest(profileImageURL));
 		}
 	}
@@ -199,7 +198,6 @@ namespace Viewer
 		});
 		QUrl query(TWITCH_API_ENDPOINT_USERS);
 		query.setQuery({{"login",username}});
-		emit Print(QString("Sending request: %1").arg(query.toString(),operation));
 		QNetworkRequest request(query);
 		request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
 		request.setRawHeader("Client-ID",settingClientID);
