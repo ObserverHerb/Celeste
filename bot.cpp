@@ -418,7 +418,7 @@ const std::vector<Media::Emote> Bot::ParseEmotes(const TagMap &tags,const QStrin
 bool Bot::DispatchCommand(const QString name,const QString parameters,const Viewer::Local viewer,bool broadcaster)
 {
 	if (commands.find(name) == commands.end()) return false;
-	Command command=Command(commands.at(name),parameters);
+	Command command=parameters.isEmpty() ? commands.at(name) : Command(commands.at(name),parameters);
 
 	if (command.Protected() && !broadcaster)
 	{
