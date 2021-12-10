@@ -92,6 +92,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
 		celeste.connect(&celeste,&Bot::Print,&log,&Log::Write);
+		celeste.connect(&celeste,&Bot::AnnounceArrival,&window,&Window::AnnounceArrival);
 		celeste.connect(&celeste,&Bot::AnnounceSubscription,&window,&Window::AnnounceSubscription);
 		celeste.connect(&celeste,&Bot::AnnounceRaid,&window,&Window::AnnounceRaid);
 		celeste.connect(&celeste,&Bot::AnnounceCheer,&window,&Window::AnnounceCheer);

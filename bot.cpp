@@ -249,7 +249,7 @@ void Bot::DispatchArrival(Viewer::Local viewer)
 	{
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
-			emit AnnounceArrival(viewer.DisplayName(),profileImage,settingArrivalSound);
+			emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
 		});
 		connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 	}
