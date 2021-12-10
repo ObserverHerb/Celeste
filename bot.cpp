@@ -82,6 +82,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 
 	if (settingVibePlaylist) LoadVibePlaylist();
 	if (settingRoasts) LoadRoasts();
+	StartClocks();
 
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
 	vibeKeeper->setVolume(0);
