@@ -18,6 +18,7 @@ enum class Commands
 {
 	AGENDA,
 	COMMANDS,
+	EMOTE,
 	PANIC,
 	SHOUTOUT,
 	SONG,
@@ -26,6 +27,13 @@ enum class Commands
 	UPTIME,
 	VIBE,
 	VOLUME
+};
+
+enum class SettingState
+{
+	ENABLE,
+	DISABLE,
+	TOGGLE
 };
 
 class Window : public QWidget
@@ -73,6 +81,7 @@ protected:
 	const QSize ScreenThird();
 	virtual EventSubscriber* CreateEventSubscriber(const QString &administratorID);
 	virtual const QString ArrivalSound() const;
+	void EmoteOnly(SettingState state);
 signals:
 	void Log(const QString &text);
 	void Print(const QString text);

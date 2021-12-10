@@ -9,6 +9,7 @@
 #include <QTimeZone>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QHttpMultiPart>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -127,6 +128,11 @@ bool Window::event(QEvent *event)
 		}
 	}
 
+	if (event->type() == QEvent::Close)
+	{
+		EmoteOnly(SettingState::ENABLE);
+	}
+
 	return QWidget::event(event);
 }
 
@@ -232,6 +238,8 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 	chatMessageReceiver->AttachCommand(AgendaCommand);
 	Command CommandsCommand("commands","List all of the commands Celeste recognizes",CommandType::FORWARD,false);
 	chatMessageReceiver->AttachCommand(CommandsCommand);
+	Command EmoteCommand("emote","Toggle emote only mode in chat",CommandType::FORWARD,true);
+	chatMessageReceiver->AttachCommand(EmoteCommand);
 	Command PanicCommand("panic","Crash Celeste",CommandType::FORWARD,true);
 	chatMessageReceiver->AttachCommand(PanicCommand);
 	Command ShoutOutCommand("so","Call attention to another streamer's channel",CommandType::FORWARD,false);
@@ -251,6 +259,7 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 	const std::unordered_map<QString,Commands> commands={
 		{AgendaCommand.Name(),Commands::AGENDA},
 		{CommandsCommand.Name(),Commands::COMMANDS},
+		{EmoteCommand.Name(),Commands::EMOTE},
 		{PanicCommand.Name(),Commands::PANIC},
 		{ShoutOutCommand.Name(),Commands::SHOUTOUT},
 		{SongCommand.Name(),Commands::SONG},
@@ -303,6 +312,11 @@ void Window::FollowChat(ChatMessageReceiver *chatMessageReceiver)
 			pane=new AnnouncePane(admin);
 			pane->Duration(duration);
 			StageEphemeralPane(pane);
+			break;
+		}
+		case Commands::EMOTE:
+		{
+			EmoteOnly(SettingState::TOGGLE);
 			break;
 		}
 		case Commands::PANIC:
@@ -604,4 +618,55 @@ EventSubscriber* Window::CreateEventSubscriber(const QString &channelOwnerID)
 const QString Window::ArrivalSound() const
 {
 	return FileRecognizer(settingArrivalSound).Random();
+}
+
+void Window::EmoteOnly(SettingState state)
+{
+	Relay::Status::Context *statusContext=chatPane->Alert("Setting chat to emote-only mode...");
+	UserRecognizer *userRecognizer=new UserRecognizer(channel->Name());
+	connect(userRecognizer,&UserRecognizer::Recognized,[this,state](UserRecognizer* recognizer) {
+		QNetworkAccessManager *manager=new QNetworkAccessManager(this);
+		QString queryText=QString(TWITCH_API_ENDPOINT_CHAT_SETTINGS).arg(recognizer->ID(),recognizer->ID());
+		QUrl query(QString(TWITCH_API_ENDPOINT_CHAT_SETTINGS).arg(recognizer->ID(),recognizer->ID()));
+		QNetworkRequest request(query);
+		request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
+		request.setRawHeader("Client-Id",settingClientID);
+		request.setRawHeader("Content-Type","application/json");
+		QNetworkReply *getReply=manager->get(request);
+		connect(getReply,&QNetworkReply::finished,[this,state,reply=getReply]() {
+			QJsonParseError jsonError;
+			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+			if (json.isNull() || !json.object().contains("data"))
+			{
+				chatPane->Alert("Something went wrong changing emote only mode");
+				return;
+			}
+			QJsonArray data=json.object().value("data").toArray();
+			if (data.size() < 1)
+			{
+				chatPane->Alert("Response was incomplete changing emote only mode");
+				return;
+			}
+			QJsonObject details=data.at(0).toObject();
+			bool currentMode=details.value("emote_mode").toBool();
+			bool newMode;
+			switch (state)
+			{
+			case SettingState::ENABLE:
+				newMode=true;
+				break;
+			case SettingState::DISABLE:
+				newMode=false;
+				break;
+			case SettingState::TOGGLE:
+				newMode=!currentMode;
+				break;
+			}
+			QJsonDocument payload(QJsonObject({{"emote_mode",newMode}}));
+			QNetworkReply *setReply=reply->manager()->sendCustomRequest(reply->request(),"PATCH",payload.toJson(QJsonDocument::Compact));
+			connect(setReply,&QNetworkReply::finished,[this,reply=setReply]() {
+				reply->manager()->deleteLater();
+			});
+		});
+	});
 }

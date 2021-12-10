@@ -18,6 +18,7 @@ inline const char *TWITCH_PING="PING :tmi.twitch.tv\n";
 inline const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
 inline const char *TWITCH_API_ENDPOINT_EMOTE_LIST="https://api.twitch.tv/kraken/chat/emoticons";
 inline const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
+inline const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings?broadcaster_id=%1&moderator_id=%2";
 inline const char *TWITCH_API_ENDPOINT_USERS="https://api.twitch.tv/helix/users";
 inline const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
 inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
