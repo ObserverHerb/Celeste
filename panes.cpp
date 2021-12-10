@@ -117,9 +117,9 @@ void ChatPane::Message(const QString &name,const QString &message,const std::vec
 	if (position < static_cast<unsigned int>(message.size())) emotedMessage+=message.midRef(position,message.size()-position);
 
 	if (action)
-		chat->Append(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : QColor(settingForegroundColor).name()));
+		chat->Append(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor));
 	else
-		chat->Append(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : QColor(settingForegroundColor).name()));
+		chat->Append(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor));
 }
 
 void ChatPane::Print(const QString &text)
