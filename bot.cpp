@@ -415,6 +415,23 @@ const std::vector<Media::Emote> Bot::ParseEmotes(const TagMap &tags,const QStrin
 	return emotes;
 }
 
+const Bot::BadgeMap Bot::ParseBadges(const TagMap &tags)
+{
+	const char *KEY_BADGES="badges";
+	BadgeMap badges;
+	if (tags.find(KEY_BADGES) != tags.end())
+	{
+		QStringList entries=tags.at(KEY_BADGES).split(',');
+		for (const QString &entry : entries)
+		{
+			QStringList components=entry.split('/');
+			if (components.size() < 2) continue;
+			badges.insert({components.at(0),StringConvert::PositiveInteger(components.at(1))});
+		}
+	}
+	return badges;
+}
+
 bool Bot::DispatchCommand(const QString name,const QString parameters,const Viewer::Local viewer,bool broadcaster)
 {
 	if (commands.find(name) == commands.end()) return false;

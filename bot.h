@@ -28,6 +28,7 @@ class Bot : public QObject
 {
 	Q_OBJECT
 	using TagMap=std::unordered_map<QString,QString>;
+	using BadgeMap=std::unordered_map<QString,unsigned int>;
 public:
 	Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent=nullptr);
 protected:
@@ -67,6 +68,7 @@ protected:
 	Viewer::Remote* TakeViewer(QStringList &hostmaskSegments);
 	const std::vector<Media::Emote> ParseEmotes(const TagMap &tags,const QString &message);
 	void DownloadEmote(const Media::Emote &emote);
+	const BadgeMap ParseBadges(const TagMap &tags);
 	bool DispatchCommand(const QString name,const QString parameters,const Viewer::Local viewer,bool broadcaster);
 	void DispatchArrival(Viewer::Local viewer);
 	void DispatchVideo(Command command);
