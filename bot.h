@@ -62,7 +62,6 @@ protected:
 	void LoadVibePlaylist();
 	void LoadRoasts();
 	void StartClocks();
-	bool Broadcaster(TagMap &tags);
 	TagMap TakeTags(QStringList &messageSegments);
 	std::optional<QStringList> TakeHostmask(QStringList &messageSegments);
 	Viewer::Remote* TakeViewer(QStringList &hostmaskSegments);

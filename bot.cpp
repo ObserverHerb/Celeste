@@ -287,7 +287,11 @@ void Bot::ParseChatMessage(const QString &message)
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,messageSegments,tags](Viewer::Local viewer) mutable {
 		inactivityClock.start();
 
-		if (viewers.find(viewer.Name()) == viewers.end())
+		std::unordered_map<QString,unsigned int> badges=ParseBadges(tags);
+		const char *BADGE_BROADCASTER="broadcaster";
+		bool broadcaster=badges.find(BADGE_BROADCASTER) != badges.end() && badges.at(BADGE_BROADCASTER) > 0;
+
+		if (viewers.find(viewer.Name()) == viewers.end() && !broadcaster)
 		{
 			DispatchArrival(viewer);
 			viewers.emplace(viewer.Name(),viewer);
@@ -298,7 +302,7 @@ void Bot::ParseChatMessage(const QString &message)
 		if (messageSegments.at(0).at(0) == '!')
 		{
 			QString commandName=messageSegments.takeFirst();
-			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,Broadcaster(tags))) return;
+			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,broadcaster)) return;
 			messageSegments.prepend(commandName);
 		}
 
@@ -325,14 +329,6 @@ void Bot::ParseChatMessage(const QString &message)
 		const QString &color=tags.at("color");
 		emit ChatMessage(viewer.DisplayName(),message,emotes,color.isNull() ? QColor() : QColor(color),action);
 	});
-}
-
-bool Bot::Broadcaster(TagMap &tags)
-{
-	if (tags.find("badges") == tags.end()) return false;
-	QString badges=tags.at("badges");
-	// FIXME: finish this
-	return true;
 }
 
 Bot::TagMap Bot::TakeTags(QStringList &messageSegments)
