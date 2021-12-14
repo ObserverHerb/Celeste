@@ -78,18 +78,6 @@ namespace StringConvert
 	}
 }
 
-namespace Console
-{
-	inline const QString GenerateMessage(const QString &subsystem,const QString &message)
-	{
-		return QString("== %1\n%2").arg(subsystem.toUpper(),message);
-	}
-
-	inline const QString GenerateMessage(const QString &subsystem,const QString &operation,const QString &message)
-	{
-		return GenerateMessage(QString("%1 (%2)").arg(subsystem,operation),message);
-	}
-}
 namespace TimeConvert
 {
 	constexpr std::chrono::seconds Seconds(const std::chrono::milliseconds &value) { return std::chrono::duration_cast<std::chrono::seconds>(value); }
@@ -98,17 +86,6 @@ namespace TimeConvert
 	constexpr int Interval(const std::chrono::milliseconds &value) { return value.count(); }
 	constexpr std::chrono::seconds OneSecond() { return static_cast<std::chrono::seconds>(1); }
 	inline const std::chrono::milliseconds Now() { return std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch(); }
-}
-
-namespace Tuple
-{
-	template<typename Type,typename... Arguments>
-	Type* New(std::tuple<Arguments...> tuple)
-	{
-		return std::apply([](Arguments... arguments)->Type* {
-			return new Type(arguments...);
-		},tuple);
-	}
 }
 
 namespace Filesystem

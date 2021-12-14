@@ -138,7 +138,7 @@ void Channel::JoinResponse(const QString &data)
 
 void Channel::SocketError(QAbstractSocket::SocketError error)
 {
-	emit Print(Console::GenerateMessage(QCoreApplication::applicationName(),OPERATION_CONNECTION,QString("Failed to connect to server (%1)").arg(ircSocket->errorString())));
+	emit Print(QString("Failed to connect to server (%1)").arg(ircSocket->errorString()),OPERATION_CONNECTION);
 }
 
 void Channel::Pong()
