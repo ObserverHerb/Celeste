@@ -106,28 +106,15 @@ namespace Random
 	inline std::random_device generator;
 	inline int Bounded(int lower,int upper)
 	{
+		if (upper > std::numeric_limits<int>::max()) throw std::range_error("Range is larger than integer type");
 		std::uniform_int_distribution<int> distribution(lower,upper);
 		return distribution(generator);
 	}
-	inline int Bounded(std::size_t lower,std::size_t upper)
-	{
-		if (upper > std::numeric_limits<int>::max()) throw std::range_error("Range is larger than integer type");
-		return Bounded(static_cast<int>(lower),static_cast<int>(upper));
+	template<typename T> requires requires(T m) {
+		m.empty();
+		m.size();
 	}
-	template<typename T>
-	inline int Bounded(const std::vector<T> &container) // TODO: good candidate for concepts/constraints here when they land, so we can use any type of container with a size
-	{
-		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
-		return Bounded(static_cast<std::size_t>(0),container.size()-1);
-	}
-	template<typename K,typename V>
-	inline int Bounded(const std::unordered_map<K,V> &container) // TODO: good candidate for concepts/constraints here when they land, so we can use any type of container with a size
-	{
-		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
-		return Bounded(static_cast<std::size_t>(0),container.size()-1);
-	}
-	template<typename T>
-	inline int Bounded(const QList<T> &container)
+	inline int Bounded(const T &container)
 	{
 		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
 		return Bounded(0,container.size()-1);
