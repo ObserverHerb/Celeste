@@ -367,10 +367,7 @@ void Bot::DownloadEmote(const Media::Emote &emote)
 {
 	if (!QFile(emote.Path()).exists())
 	{
-		QNetworkRequest request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.ID()));
-		QNetworkReply *downloadReply=downloadManager->get(request);
-		connect(downloadReply,&QNetworkReply::finished,[this,downloadReply,emote]() {
-			downloadReply->deleteLater();
+		Network::Request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.ID()),downloadManager,Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
 			if (downloadReply->error())
 			{
 				emit Print(QString("Failed to download emote %1: %2").arg(emote.Name(),downloadReply->errorString()));

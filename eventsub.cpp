@@ -44,17 +44,15 @@ void EventSub::Subscribe(const QString &type)
 	const char *OPERATION="subscribe";
 	emit Print(QString("Requesting subscription to %1").arg(type),OPERATION);
 	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-	connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},manager,Network::Method::POST,[this,manager](QNetworkReply *reply) {
 		// FIXME: check the validity of this reply!
 		emit Print(StringConvert::Dump(reply->readAll()),"twitch");
-		manager->disconnect();
-	});
-	QUrl query(TWITCH_API_ENDPOINT_EVENTSUB);
-	QNetworkRequest request(query);
-	request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
-	request.setRawHeader("Client-ID",settingClientID);
-	request.setRawHeader("Content-Type","application/json");
-	QJsonDocument payload(QJsonObject({
+		manager->deleteLater();
+	},{},{
+		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{"Client-ID",settingClientID},
+		{"Content-Type","application/json"}
+	},QJsonDocument(QJsonObject({
 		{"type",type},
 		{"version","1"},
 		{
@@ -69,9 +67,7 @@ void EventSub::Subscribe(const QString &type)
 				{"secret",secret}
 			})
 		}
-	}));
-	emit Print(QString("Sending subscription request: %1").arg(StringConvert::Dump(payload.toJson(QJsonDocument::Indented))),OPERATION);
-	manager->post(request,payload.toJson(QJsonDocument::Compact));
+	})).toJson(QJsonDocument::Compact));
 }
 
 void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content)

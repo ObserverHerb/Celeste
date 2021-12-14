@@ -135,7 +135,7 @@ namespace Viewer
 		Remote::Remote(const QUrl &profileImageURL)
 		{
 			QNetworkAccessManager* manager=new QNetworkAccessManager(this);
-			manager->connect(manager,&QNetworkAccessManager::finished,[this,manager](QNetworkReply *reply) {
+			Network::Request(profileImageURL,manager,Network::Method::GET,[this,manager](QNetworkReply *reply) {
 				manager->deleteLater();
 				this->deleteLater();
 				if (reply->error())
@@ -143,7 +143,6 @@ namespace Viewer
 				else
 					emit Retrieved(QImage::fromData(reply->readAll()));
 			});
-			manager->get(QNetworkRequest(profileImageURL));
 		}
 	}
 
@@ -175,15 +174,8 @@ namespace Viewer
 	Remote::Remote(const QString &username,const PrivateSetting &settingOAuthToken,const PrivateSetting &settingClientID) : name(username)
 	{
 		QNetworkAccessManager* manager=new QNetworkAccessManager(this);
-		QUrl query(TWITCH_API_ENDPOINT_USERS);
-		query.setQuery({{"login",username}});
-		QNetworkRequest request(query);
-		request.setRawHeader("Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken))));
-		request.setRawHeader("Client-ID",settingClientID);
-		manager->get(request);
-		Network::Request(manager,request,[this,manager](QNetworkReply* reply) {
+		Network::Request({TWITCH_API_ENDPOINT_USERS},manager,Network::Method::GET,[this,manager](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
-			reply->deleteLater();
 			manager->deleteLater();
 			this->deleteLater();
 			QJsonParseError jsonError;
@@ -201,6 +193,11 @@ namespace Viewer
 			}
 			QJsonObject details=data.at(0).toObject();
 			emit Recognized(Local(details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),data.at(0).toObject().value("profile_image_url").toString(),details.value("description").toString()));
+		},{
+			{"login",username}
+		},{
+			{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+			{"Client-ID",settingClientID}
 		});
 	};
 }

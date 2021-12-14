@@ -137,18 +137,7 @@ int main(int argc,char *argv[])
 					{QUERY_KEY_SCOPE,query.queryItemValue(QUERY_KEY_SCOPE)}
 				})).toJson(QJsonDocument::Compact));
 				QNetworkAccessManager *manager=new QNetworkAccessManager();
-				QNetworkRequest request({"https://id.twitch.tv/oauth2/token"});
-				request.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-				QUrlQuery payload({
-					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
-					{"client_id",settingClientID},
-					{"client_secret",settingClientSecret},
-					{"grant_type","authorization_code"},
-					{"redirect_uri",settingCallbackURL}
-				});
-				QNetworkReply *reply=manager->post(request,StringConvert::ByteArray(payload.query()));
-				manager->connect(reply,&QNetworkReply::finished,[manager,reply,&settingOAuthToken]() {
-					reply->deleteLater();
+				Network::Request({"https://id.twitch.tv/oauth2/token"},manager,Network::Method::POST,[manager,&settingOAuthToken](QNetworkReply *reply) {
 					manager->deleteLater();
 					QMessageBox failureDialog;
 					failureDialog.setWindowTitle("Re-Authentication Failed");
@@ -173,6 +162,14 @@ int main(int argc,char *argv[])
 						return;
 					}
 					settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
+				},{
+					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
+					{"client_id",settingClientID},
+					{"client_secret",settingClientSecret},
+					{"grant_type","authorization_code"},
+					{"redirect_uri",settingCallbackURL}
+				},{
+					{"Content-Type","application/x-www-form-urlencoded"}
 				});
 			});
 			QUrl request("https://id.twitch.tv/oauth2/authorize");

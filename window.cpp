@@ -7,8 +7,6 @@
 #include <QGridLayout>
 #include <QDateTime>
 #include <QTimeZone>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>

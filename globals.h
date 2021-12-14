@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QUrlQuery>
 #include <chrono>
 #include <optional>
 #include <random>
@@ -123,13 +124,32 @@ namespace Random
 
 namespace Network
 {
+	enum class Method
+	{
+		GET,
+		POST,
+		PATCH
+	};
+
 	template <typename F> requires std::invocable<F,QNetworkReply*>
-	inline void Request(QNetworkAccessManager *manager,const QNetworkRequest &request,F callback)
+	inline void Request(QUrl url,QNetworkAccessManager *manager,Method method,F callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
 	{
 		manager->connect(manager,&QNetworkAccessManager::finished,[manager](QNetworkReply *reply) {
-			manager->deleteLater();
 			reply->deleteLater();
 		});
-		manager->connect(manager,&QNetworkAccessManager::finished,manager->get(request),callback);
+
+		QNetworkRequest request(url);
+		for (const std::pair<QByteArray,QByteArray> header : headers) request.setRawHeader(header.first,header.second);
+		switch (method)
+		{
+		case Method::GET:
+			url.setQuery(queryParameters);
+			manager->connect(manager,&QNetworkAccessManager::finished,manager->get(request),callback);
+			break;
+		case Method::POST:
+			manager->connect(manager,&QNetworkAccessManager::finished,manager->post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
+		case Method::PATCH:
+			break;
+		}
 	}
 }
