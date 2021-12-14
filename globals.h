@@ -10,9 +10,6 @@
 #include <stdexcept>
 #include "platform.h"
 
-inline const char *ORGANIZATION_NAME="Sky-Meyg";
-inline const char *APPLICATION_NAME="Celeste";
-
 inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
 inline const short KEY=0;
 inline const short VALUE=1;

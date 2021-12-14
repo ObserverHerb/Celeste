@@ -19,6 +19,9 @@
 #include "server.h"
 #include "globals.h"
 
+inline const char *ORGANIZATION_NAME="Sky-Meyg";
+inline const char *APPLICATION_NAME="Celeste";
+
 enum
 {
 	OK,
