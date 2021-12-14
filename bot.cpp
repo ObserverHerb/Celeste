@@ -295,7 +295,7 @@ void Bot::ParseChatMessage(const QString &message)
 
 		// determine if this is a command, and if so, process it as such
 		messageSegments=messageSegments.join(":").trimmed().split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-		if (messageSegments.at(0).at(0) == "!")
+		if (messageSegments.at(0).at(0) == '!')
 		{
 			QString commandName=messageSegments.takeFirst();
 			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,Broadcaster(tags))) return;
