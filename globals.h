@@ -3,10 +3,13 @@
 #include <QString>
 #include <QStandardPaths>
 #include <QDir>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <chrono>
 #include <optional>
 #include <random>
 #include <functional>
+#include <concepts>
 #include <stdexcept>
 #include "platform.h"
 
@@ -131,13 +134,15 @@ namespace Random
 	}
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
-template<>
-struct std::hash<QString>
+namespace Network
 {
-	std::size_t operator()(const QString &string) const noexcept
+	template <typename F> requires std::invocable<F,QNetworkReply*>
+	inline void Request(QNetworkAccessManager *manager,const QNetworkRequest &request,F callback)
 	{
-		return qHash(string);
+		manager->connect(manager,&QNetworkAccessManager::finished,[manager](QNetworkReply *reply) {
+			manager->deleteLater();
+			reply->deleteLater();
+		});
+		manager->connect(manager,&QNetworkAccessManager::finished,manager->get(request),callback);
 	}
-};
-#endif
+}
