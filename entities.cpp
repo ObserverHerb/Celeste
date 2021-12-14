@@ -193,7 +193,7 @@ namespace Viewer
 				return;
 			}
 			QJsonObject details=data.at(0).toObject();
-			emit Recognized(Local(details.value("name").toString(),details.value("id").toString(),details.value("display_name").toString(),data.at(0).toObject().value("profile_image_url").toString(),details.value("description").toString()));
+			emit Recognized(Local(details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),data.at(0).toObject().value("profile_image_url").toString(),details.value("description").toString()));
 		});
 		QUrl query(TWITCH_API_ENDPOINT_USERS);
 		query.setQuery({{"login",username}});
