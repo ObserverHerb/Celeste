@@ -19,6 +19,8 @@ const char *JSON_KEY_COMMAND_MESSAGE="message";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
+const char *CHAT_BADGE_BROADCASTER="broadcaster";
+const char *CHAT_BADGE_MODERATOR="moderator";
 
 const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 	{"native",CommandType::NATIVE},
@@ -288,8 +290,7 @@ void Bot::ParseChatMessage(const QString &message)
 		inactivityClock.start();
 
 		std::unordered_map<QString,unsigned int> badges=ParseBadges(tags);
-		const char *BADGE_BROADCASTER="broadcaster";
-		bool broadcaster=badges.find(BADGE_BROADCASTER) != badges.end() && badges.at(BADGE_BROADCASTER) > 0;
+		bool broadcaster=badges.find(CHAT_BADGE_BROADCASTER) != badges.end() && badges.at(CHAT_BADGE_BROADCASTER) > 0;
 
 		if (viewers.find(viewer.Name()) == viewers.end() && !broadcaster)
 		{
@@ -302,7 +303,8 @@ void Bot::ParseChatMessage(const QString &message)
 		if (messageSegments.at(0).at(0) == '!')
 		{
 			QString commandName=messageSegments.takeFirst();
-			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,broadcaster)) return;
+			bool moderator=badges.find(CHAT_BADGE_MODERATOR) != badges.end() && badges.at(CHAT_BADGE_MODERATOR) > 0;
+			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,broadcaster || moderator)) return;
 			messageSegments.prepend(commandName);
 		}
 
