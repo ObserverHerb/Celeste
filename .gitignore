@@ -5,3 +5,5 @@ latex/
 .kateproject
 *.kdev4
 kdevelopbuild/
+.vs
+CMakeSettings.json
