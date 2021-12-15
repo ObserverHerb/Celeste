@@ -112,8 +112,9 @@ namespace Random
 		return distribution(generator);
 	}
 	template<typename T> requires requires(T m) {
-		m.empty();
-		m.size();
+		requires std::forward_iterator<typename T::iterator>;
+		{ m.empty() }->std::same_as<bool>;
+		{ m.size() }->std::same_as<typename T::size_type>;
 	}
 	inline int Bounded(const T &container)
 	{
