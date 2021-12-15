@@ -124,14 +124,14 @@ namespace Random
 
 namespace Network
 {
+	static QNetworkAccessManager networkManager;
+
 	enum class Method
 	{
 		GET,
 		POST,
 		PATCH
 	};
-
-	inline QNetworkAccessManager networkManager;
 
 	template <typename F> requires std::invocable<F,QNetworkReply*>
 	inline void Request(QUrl url,Method method,const F &callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
