@@ -120,7 +120,7 @@ void Channel::RequestJoin()
 	emit Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))),OPERATION_CHANNEL);
 	QTimer::singleShot(TimeConvert::Interval(JoinDelay()),this,[this]() {
 		ircSocket->write("CAP REQ :twitch.tv/tags :twitch.tv/commands\n");
-		ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel) : static_cast<QString>(settingAdministrator))));
+		ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel).toLower() : static_cast<QString>(settingAdministrator).toLower())));
 	});
 }
 
