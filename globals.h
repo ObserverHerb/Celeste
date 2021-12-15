@@ -138,15 +138,16 @@ namespace Network
 			reply->deleteLater();
 		});
 
+		url.setQuery(queryParameters);
 		QNetworkRequest request(url);
 		for (const std::pair<QByteArray,QByteArray> header : headers) request.setRawHeader(header.first,header.second);
 		switch (method)
 		{
 		case Method::GET:
-			url.setQuery(queryParameters);
 			manager->connect(manager,&QNetworkAccessManager::finished,manager->get(request),callback);
 			break;
 		case Method::POST:
+			// TODO: don't set query parameters on POST
 			manager->connect(manager,&QNetworkAccessManager::finished,manager->post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
 		case Method::PATCH:
 			break;
