@@ -6,7 +6,6 @@
 #include <QMediaPlaylist>
 #include <QDateTime>
 #include <QTimer>
-#include <QNetworkAccessManager>
 #include <unordered_map>
 #include "entities.h"
 #include "settings.h"
@@ -35,7 +34,6 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Local> viewers;
-	QNetworkAccessManager *downloadManager;
 	QMediaPlayer *vibeKeeper;
 	Volume::Fader *vibeFader;
 	QMediaPlaylist vibeSources;

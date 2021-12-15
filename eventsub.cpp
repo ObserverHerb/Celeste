@@ -1,5 +1,3 @@
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QNetworkInterface>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -43,11 +41,9 @@ void EventSub::Subscribe(const QString &type)
 {
 	const char *OPERATION="subscribe";
 	emit Print(QString("Requesting subscription to %1").arg(type),OPERATION);
-	QNetworkAccessManager *manager=new QNetworkAccessManager(this);
-	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},manager,Network::Method::POST,[this,manager](QNetworkReply *reply) {
+	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},Network::Method::POST,[this](QNetworkReply *reply) {
 		// FIXME: check the validity of this reply!
 		emit Print(StringConvert::Dump(reply->readAll()),"twitch");
-		manager->deleteLater();
 	},{},{
 		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
 		{"Client-ID",settingClientID},

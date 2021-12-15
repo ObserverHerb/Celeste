@@ -31,7 +31,6 @@ const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent) : QObject(parent),
-	downloadManager(new QNetworkAccessManager(this)),
 	vibeKeeper(new QMediaPlayer(this)),
 	vibeFader(nullptr),
 	roaster(new QMediaPlayer(this)),
@@ -367,7 +366,7 @@ void Bot::DownloadEmote(const Media::Emote &emote)
 {
 	if (!QFile(emote.Path()).exists())
 	{
-		Network::Request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.ID()),downloadManager,Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
+		Network::Request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.ID()),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
 			if (downloadReply->error())
 			{
 				emit Print(QString("Failed to download emote %1: %2").arg(emote.Name(),downloadReply->errorString()));

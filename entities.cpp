@@ -1,8 +1,5 @@
 #include <QFileInfo>
 #include <QDir>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QUrlQuery>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -134,9 +131,7 @@ namespace Viewer
 	{
 		Remote::Remote(const QUrl &profileImageURL)
 		{
-			QNetworkAccessManager* manager=new QNetworkAccessManager(this);
-			Network::Request(profileImageURL,manager,Network::Method::GET,[this,manager](QNetworkReply *reply) {
-				manager->deleteLater();
+			Network::Request(profileImageURL,Network::Method::GET,[this](QNetworkReply *reply) {
 				this->deleteLater();
 				if (reply->error())
 					emit Print(QString("Failed: %1").arg(reply->errorString()),"profile image retrieval");
@@ -173,10 +168,8 @@ namespace Viewer
 
 	Remote::Remote(const QString &username,const PrivateSetting &settingOAuthToken,const PrivateSetting &settingClientID) : name(username)
 	{
-		QNetworkAccessManager* manager=new QNetworkAccessManager(this);
-		Network::Request({TWITCH_API_ENDPOINT_USERS},manager,Network::Method::GET,[this,manager](QNetworkReply* reply) {
+		Network::Request({TWITCH_API_ENDPOINT_USERS},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
-			manager->deleteLater();
 			this->deleteLater();
 			QJsonParseError jsonError;
 			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);

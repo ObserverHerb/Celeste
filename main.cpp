@@ -6,9 +6,6 @@
 #include <QGridLayout>
 #include <QListWidget>
 #include <QDesktopServices>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "window.h"
@@ -136,9 +133,7 @@ int main(int argc,char *argv[])
 					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
 					{QUERY_KEY_SCOPE,query.queryItemValue(QUERY_KEY_SCOPE)}
 				})).toJson(QJsonDocument::Compact));
-				QNetworkAccessManager *manager=new QNetworkAccessManager();
-				Network::Request({"https://id.twitch.tv/oauth2/token"},manager,Network::Method::POST,[manager,&settingOAuthToken](QNetworkReply *reply) {
-					manager->deleteLater();
+				Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingOAuthToken](QNetworkReply *reply) {
 					QMessageBox failureDialog;
 					failureDialog.setWindowTitle("Re-Authentication Failed");
 					failureDialog.setText("Attempt to obtain OAuth token failed.");

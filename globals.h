@@ -131,10 +131,12 @@ namespace Network
 		PATCH
 	};
 
+	inline QNetworkAccessManager networkManager;
+
 	template <typename F> requires std::invocable<F,QNetworkReply*>
-	inline void Request(QUrl url,QNetworkAccessManager *manager,Method method,F callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
+	inline void Request(QUrl url,Method method,F callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
 	{
-		manager->connect(manager,&QNetworkAccessManager::finished,[manager](QNetworkReply *reply) {
+		networkManager.connect(&networkManager,&QNetworkAccessManager::finished,[](QNetworkReply *reply) {
 			reply->deleteLater();
 		});
 
@@ -144,11 +146,11 @@ namespace Network
 		switch (method)
 		{
 		case Method::GET:
-			manager->connect(manager,&QNetworkAccessManager::finished,manager->get(request),callback);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.get(request),callback);
 			break;
 		case Method::POST:
 			// TODO: don't set query parameters on POST
-			manager->connect(manager,&QNetworkAccessManager::finished,manager->post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
 		case Method::PATCH:
 			break;
 		}
