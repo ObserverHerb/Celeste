@@ -16,9 +16,11 @@ const char *JSON_KEY_COMMAND_TYPE="type";
 const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
+const char *JSON_KEY_DATA="data";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
+const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
 const char *CHAT_BADGE_BROADCASTER="broadcaster";
 const char *CHAT_BADGE_MODERATOR="moderator";
 
@@ -83,6 +85,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 
 	if (settingVibePlaylist) LoadVibePlaylist();
 	if (settingRoasts) LoadRoasts();
+	LoadBadgeIconURLs();
 	StartClocks();
 
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
@@ -183,6 +186,39 @@ void Bot::LoadRoasts()
 			roaster->stop();
 			roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
 		}
+	});
+}
+
+void Bot::LoadBadgeIconURLs()
+{
+	Network::Request({TWITCH_API_ENDPOINT_BADGES},Network::Method::GET,[this](QNetworkReply *reply) {
+		const char *JSON_KEY_ID="id";
+		const char *JSON_KEY_SET_ID="set_id";
+		const char *JSON_KEY_VERSIONS="versions";
+		const char *JSON_KEY_IMAGE_URL="image_url_1x";
+
+		const QJsonDocument json=QJsonDocument::fromJson(reply->readAll());
+		if (json.isNull()) return;
+		const QJsonObject object=json.object();
+		if (object.isEmpty() || !object.contains(JSON_KEY_DATA)) return;
+		const QJsonArray sets=object.value(JSON_KEY_DATA).toArray();
+		for (const QJsonValue &set : sets)
+		{
+			const QJsonObject object=set.toObject();
+			if (!object.contains(JSON_KEY_SET_ID) || !object.contains(JSON_KEY_VERSIONS)) continue;
+			const QString setID=object.value(JSON_KEY_SET_ID).toString();
+			for (const QJsonValue &version : object.value(JSON_KEY_VERSIONS).toArray())
+			{
+				const QJsonObject object=version.toObject();
+				if (!object.contains(JSON_KEY_ID) || !object.contains(JSON_KEY_IMAGE_URL)) continue;
+				const unsigned int setVersion=object.value(JSON_KEY_ID).toVariant().toUInt();
+				const QString versionURL=object.value(JSON_KEY_IMAGE_URL).toString();
+				badgeIconURLs[setID][setVersion]=versionURL;
+			}
+		}
+	},{},{
+		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{"Client-ID",settingClientID}
 	});
 }
 
@@ -289,8 +325,16 @@ void Bot::ParseChatMessage(const QString &message)
 		inactivityClock.start();
 
 		std::unordered_map<QString,unsigned int> badges=ParseBadges(tags);
-		bool broadcaster=badges.find(CHAT_BADGE_BROADCASTER) != badges.end() && badges.at(CHAT_BADGE_BROADCASTER) > 0;
+		QStringList badgeIconPaths;
+		for (std::unordered_map<QString,unsigned int>::iterator candidate=badges.begin(); candidate != badges.end(); ++candidate)
+		{
+			if (!badgeIconURLs.contains(candidate->first) || !badgeIconURLs.at(candidate->first).contains(candidate->second)) continue;
+			const QString badgeIconPath=Filesystem::TemporaryPath().filePath(QString("%1_%2.png").arg(candidate->first,StringConvert::PositiveInteger(candidate->second)));
+			badgeIconPaths.append(badgeIconPath);
+			DownloadBadgeIcon(badgeIconURLs.at(candidate->first).at(candidate->second),badgeIconPath);
+		}
 
+		bool broadcaster=badges.find(CHAT_BADGE_BROADCASTER) != badges.end() && badges.at(CHAT_BADGE_BROADCASTER) > 0;
 		if (viewers.find(viewer.Name()) == viewers.end() && !broadcaster)
 		{
 			DispatchArrival(viewer);
@@ -328,7 +372,7 @@ void Bot::ParseChatMessage(const QString &message)
 
 		// print the final message
 		const QString &color=tags.at("color");
-		emit ChatMessage(viewer.DisplayName(),message,emotes,color.isNull() ? QColor() : QColor(color),action);
+		emit ChatMessage(viewer.DisplayName(),message,emotes,badgeIconPaths,color.isNull() ? QColor() : QColor(color),action);
 	});
 }
 
@@ -424,6 +468,22 @@ const Bot::BadgeMap Bot::ParseBadges(const TagMap &tags)
 		}
 	}
 	return badges;
+}
+
+void Bot::DownloadBadgeIcon(const QString &badgeURL,const QString &badgePath)
+{
+	if (!QFile(badgePath).exists())
+	{
+		Network::Request(badgeURL,Network::Method::GET,[this,badgeURL,badgePath](QNetworkReply *downloadReply) {
+			if (downloadReply->error())
+			{
+				emit Print(QString("Failed to download badge %1: %2").arg(badgeURL,downloadReply->errorString()));
+				return;
+			}
+			if (!QImage::fromData(downloadReply->readAll()).save(badgePath)) emit Print(QString("Failed to save badge %2").arg(badgePath));
+			emit RefreshChat();
+		});
+	}
 }
 
 bool Bot::DispatchCommand(const QString name,const QString parameters,const Viewer::Local viewer,bool broadcaster)

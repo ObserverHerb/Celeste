@@ -104,9 +104,11 @@ void ChatPane::Refresh()
 	chat->viewport()->update();
 }
 
-void ChatPane::Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QColor color,bool action) const
+void ChatPane::Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action) const
 {
 	QString emotedMessage;
+	for (const QString &icon : badgeIcons) emotedMessage.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
+
 	unsigned int position=0;
 	for (const Media::Emote &emote : emotes)
 	{

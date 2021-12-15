@@ -64,7 +64,7 @@ protected:
 public slots:
 	void Refresh();
 	void Print(const QString &text) override;
-	void Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QColor color,bool action) const;
+	void Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action) const;
 protected slots:
 	void DismissStatus();
 };
