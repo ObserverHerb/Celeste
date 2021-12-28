@@ -10,6 +10,7 @@
 #include <optional>
 #include <random>
 #include <functional>
+#include <queue>
 #include <concepts>
 #include <stdexcept>
 #include "platform.h"
@@ -134,8 +135,10 @@ namespace Network
 		PATCH
 	};
 
-	template <typename F> requires std::invocable<F,QNetworkReply*>
-	inline void Request(QUrl url,Method method,const F &callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
+	using Reply=std::function<void(QNetworkReply*)>;
+	static std::queue<std::pair<std::function<void()>,Reply>> queue;
+
+	inline void Request(QUrl url,Method method,Reply callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
 	{
 		networkManager.connect(&networkManager,&QNetworkAccessManager::finished,[](QNetworkReply *reply) {
 			reply->deleteLater();
@@ -146,13 +149,27 @@ namespace Network
 		switch (method)
 		{
 		case Method::GET:
+		{
 			url.setQuery(queryParameters);
 			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.get(request),callback);
+			auto sendRequest=[request,callback]() {
+				QNetworkReply *reply=networkManager.get(request);
+				networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback);
+				reply->connect(reply,&QNetworkReply::finished,[]() {
+					queue.pop();
+					if (queue.size() > 0) queue.front().first();
+				});
+			};
+			if (queue.size() == 0) sendRequest();
+			queue.push({sendRequest,callback});
 			break;
+		}
 		case Method::POST:
+		{
 			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
+			QNetworkReply *reply=networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback);
+		}
 		case Method::PATCH:
 			break;
 		}
