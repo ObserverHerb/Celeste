@@ -106,9 +106,10 @@ void ChatPane::Refresh()
 
 void ChatPane::Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action) const
 {
-	QString emotedMessage;
-	for (const QString &icon : badgeIcons) emotedMessage.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
+	QString badges;
+	for (const QString &icon : badgeIcons) badges.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
 
+	QString emotedMessage;
 	unsigned int position=0;
 	for (const Media::Emote &emote : emotes)
 	{
@@ -119,9 +120,9 @@ void ChatPane::Message(const QString &name,const QString &message,const std::vec
 	if (position < static_cast<unsigned int>(message.size())) emotedMessage+=message.midRef(position,message.size()-position);
 
 	if (action)
-		chat->Append(QString("<div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor,badges));
 	else
-		chat->Append(QString("<div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor,badges));
 }
 
 void ChatPane::Print(const QString &text)
