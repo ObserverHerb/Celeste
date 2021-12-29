@@ -21,6 +21,7 @@ const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
+const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
 const char *CHAT_BADGE_BROADCASTER="broadcaster";
 const char *CHAT_BADGE_MODERATOR="moderator";
 
@@ -52,6 +53,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 {
 	Command agendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true);
 	Command commandsCommand("commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false);
+	Command emoteCommand("emote","Toggle emote only mode in chat",CommandType::NATIVE,true);
 	Command panicCommand("panic","Crash Celeste",CommandType::NATIVE,true);
 	Command shoutOutCommand("so","Call attention to another streamer's channel",CommandType::NATIVE,false);
 	Command songCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false);
@@ -62,6 +64,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	commands.insert({
 		{agendaCommand.Name(),agendaCommand},
 		{commandsCommand.Name(),commandsCommand},
+		{emoteCommand.Name(),emoteCommand},
 		{panicCommand.Name(),panicCommand},
 		{shoutOutCommand.Name(),shoutOutCommand},
 		{songCommand.Name(),songCommand},
@@ -73,6 +76,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	nativeCommandFlags.insert({
 		{agendaCommand.Name(),NativeCommandFlag::AGENDA},
 		{commandsCommand.Name(),NativeCommandFlag::COMMANDS},
+		{emoteCommand.Name(),NativeCommandFlag::EMOTE},
 		{panicCommand.Name(),NativeCommandFlag::PANIC},
 		{shoutOutCommand.Name(),NativeCommandFlag::SHOUTOUT},
 		{songCommand.Name(),NativeCommandFlag::SONG},
@@ -514,6 +518,9 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const View
 		case NativeCommandFlag::COMMANDS:
 			DispatchCommandList();
 			break;
+		case NativeCommandFlag::EMOTE:
+			ToggleEmoteOnly();
+			break;
 		case NativeCommandFlag::PANIC:
 			DispatchPanic();
 			break;
@@ -640,4 +647,57 @@ void Bot::AdjustVibeVolume(Command command)
 	{
 		emit Print(QString("%1: %2").arg("Failed to adjust volume",exception.what()));
 	}
+}
+
+void Bot::ToggleEmoteOnly()
+{
+	Viewer::Remote *broadcaster=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
+	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this](Viewer::Local broadcaster) {
+		Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this,broadcaster](QNetworkReply *reply) {
+			QJsonParseError jsonError;
+			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+			if (json.isNull() || !json.object().contains("data"))
+			{
+				emit Print("Something went wrong changing emote only mode");
+				return;
+			}
+			QJsonArray data=json.object().value("data").toArray();
+			if (data.size() < 1)
+			{
+				emit Print("Response was incomplete changing emote only mode");
+				return;
+			}
+			QJsonObject details=data.at(0).toObject();
+			if (details.value("emote_mode").toBool())
+				EmoteOnly(false,broadcaster.ID());
+			else
+				EmoteOnly(true,broadcaster.ID());
+		},{
+			{"broadcaster_id",broadcaster.ID()},
+			{"moderator_id",broadcaster.ID()}
+		},{
+			{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+			{"Client-Id",settingClientID},
+			{"Content-Type","application/json"},
+		});
+	});
+}
+
+void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
+{
+	// just use broadcasterID for both
+	// this is for authorizing the moderator at the API-level, which we're not worried about here
+	// it's always going to be the broadcaster running the bot and access is protected through
+	// DispatchCommand()
+	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::PATCH,[this](QNetworkReply *reply) {
+		if (reply->error()) emit Print(QString("Something went wrong setting emote only: %1").arg(reply->errorString()));
+	},{
+		{"broadcaster_id",broadcasterID},
+		{"moderator_id",broadcasterID}
+	},{
+		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{"Client-Id",settingClientID},
+		{"Content-Type","application/json"},
+	},QJsonDocument(QJsonObject({{"emote_mode",enable}})).toJson(QJsonDocument::Compact));
 }

@@ -167,11 +167,16 @@ namespace Network
 		case Method::POST:
 		{
 			request.setUrl(url);
-			QNetworkReply *reply=networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
+			break;
 		}
 		case Method::PATCH:
+		{
+			url.setQuery(queryParameters);
+			request.setUrl(url);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"PATCH",payload),callback);
 			break;
+		}
 		}
 	}
 }
