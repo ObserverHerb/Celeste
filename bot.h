@@ -14,6 +14,7 @@ enum class NativeCommandFlag
 {
 	AGENDA,
 	COMMANDS,
+	EMOTE,
 	PANIC,
 	SHOUTOUT,
 	SONG,
@@ -30,6 +31,8 @@ class Bot : public QObject
 	using BadgeMap=std::unordered_map<QString,unsigned int>;
 public:
 	Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent=nullptr);
+	void ToggleEmoteOnly();
+	void EmoteOnly(bool enable,const QString &broadcasterID);
 protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
