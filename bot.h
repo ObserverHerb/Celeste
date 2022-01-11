@@ -77,7 +77,7 @@ protected:
 	void DispatchVideo(Command command);
 	void DispatchRandomVideo(Command command);
 	void DispatchCommandList();
-	void DispatchPanic();
+	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
 	void DispatchUptime();
 	void ToggleVibeKeeper();
@@ -98,6 +98,7 @@ signals:
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void ShowPortraitVideo(const QString &path);
+	void AnnounceRedemption(const QString &name,const QString &rewardTitle,const QString &message);
 	void AnnounceSubscription(const QString &name,const QString &audioPath);
 	void AnnounceRaid(const QString &viewer,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
@@ -105,6 +106,7 @@ public slots:
 	void ParseChatMessage(const QString &message);
 	void Ping();
 	void Subscription(const QString &viewer);
+	void Redemption(const QString &name,const QString &rewardTitle,const QString &message);
 	void Raid(const QString &viewer,const unsigned int viewers);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 };
