@@ -93,6 +93,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
 		celeste.connect(&celeste,&Bot::Print,&log,&Log::Write);
 		celeste.connect(&celeste,&Bot::AnnounceArrival,&window,&Window::AnnounceArrival);
+		celeste.connect(&celeste,&Bot::AnnounceRedemption,&window,&Window::AnnounceRedemption);
 		celeste.connect(&celeste,&Bot::AnnounceSubscription,&window,&Window::AnnounceSubscription);
 		celeste.connect(&celeste,&Bot::AnnounceRaid,&window,&Window::AnnounceRaid);
 		celeste.connect(&celeste,&Bot::AnnounceCheer,&window,&Window::AnnounceCheer);
@@ -101,6 +102,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::Shoutout,&window,&Window::Shoutout);
 		celeste.connect(&celeste,&Bot::PlayVideo,&window,&Window::PlayVideo);
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
+		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
 		channel->connect(channel,&Channel::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
@@ -190,7 +192,7 @@ int main(int argc,char *argv[])
 			eventSub=new EventSub(viewer,settingServerToken,settingClientID,settingCallbackURL);
 			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
 			eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
-			eventSub->connect(eventSub,&EventSub::Redemption,&window,&Window::AnnounceRedemption);
+			eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
 			eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
 			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 			eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);

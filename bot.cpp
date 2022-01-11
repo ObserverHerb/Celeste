@@ -54,7 +54,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	Command agendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true);
 	Command commandsCommand("commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false);
 	Command emoteCommand("emote","Toggle emote only mode in chat",CommandType::NATIVE,true);
-	Command panicCommand("panic","Crash Celeste",CommandType::NATIVE,true);
+	Command panicCommand("panic_test","Crash Celeste",CommandType::NATIVE,true);
 	Command shoutOutCommand("so","Call attention to another streamer's channel",CommandType::NATIVE,false);
 	Command songCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false);
 	Command timezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::NATIVE,false);
@@ -251,6 +251,16 @@ void Bot::Ping()
 		ShowPortraitVideo(settingPortraitVideo);
 	else
 		Print("Letting Twitch server know we're still here...");
+}
+
+void Bot::Redemption(const QString &name,const QString &rewardTitle,const QString &message)
+{
+	if (rewardTitle == "Crash Celeste")
+	{
+		DispatchPanic(name);
+		return;
+	}
+	emit AnnounceRedemption(name,rewardTitle,message);
 }
 
 void Bot::Subscription(const QString &viewer)
@@ -522,7 +532,7 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const View
 			ToggleEmoteOnly();
 			break;
 		case NativeCommandFlag::PANIC:
-			DispatchPanic();
+			DispatchPanic(viewer.DisplayName());
 			break;
 		case NativeCommandFlag::SHOUTOUT:
 			DispatchShoutout(command);
@@ -579,19 +589,16 @@ void Bot::DispatchCommandList()
 	emit ShowCommandList(descriptions);
 }
 
-void Bot::DispatchPanic()
+void Bot::DispatchPanic(const QString &name)
 {
 	QFile outputFile(Filesystem::DataPath().absoluteFilePath("panic.txt"));
 	QString outputText;
-	if (outputFile.open(QIODevice::ReadOnly))
-	{
-		outputText=outputFile.readAll();
-		outputFile.close();
-	}
+	if (!outputFile.open(QIODevice::ReadOnly)) return;
+	outputText=QString(outputFile.readAll()).arg(name);
+	outputFile.close();
 	QString date=QDateTime::currentDateTime().toString("ddd d hh:mm:ss");
 	outputText=outputText.split("\n").join(QString("\n%1 ").arg(date));
 	emit Panic(date+"\n"+outputText);
-	// FIXME: figure out how to shut the bot down without closing the window
 }
 
 void Bot::DispatchShoutout(Command command)
