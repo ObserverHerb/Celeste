@@ -16,8 +16,9 @@
 #include "server.h"
 #include "globals.h"
 
-inline const char *ORGANIZATION_NAME="Sky-Meyg";
-inline const char *APPLICATION_NAME="Celeste";
+const char *ORGANIZATION_NAME="Sky-Meyg";
+const char *APPLICATION_NAME="Celeste";
+const char *JSON_KEY_REFRESH_TOKEN="refresh_token";
 
 enum
 {
@@ -46,6 +47,7 @@ int main(int argc,char *argv[])
 	PrivateSetting settingClientSecret("ClientSecret");
 	if (!settingClientSecret) settingClientSecret.Set(QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret.",QLineEdit::Password));
 	PrivateSetting settingOAuthToken("Token");
+	PrivateSetting settingRefreshToken("RefreshToken");
 	PrivateSetting settingServerToken("ServerToken");
 	PrivateSetting settingCallbackURL("CallbackURL");
 	if (!settingCallbackURL) settingCallbackURL.Set(QInputDialog::getText(nullptr,"Callback URL","EventSub requires the URL at which your bot's server can reached. Please provide a callback URL."));
@@ -88,6 +90,27 @@ int main(int argc,char *argv[])
 		Window window;
 #endif
 
+		QTimer tokenTimer;
+		tokenTimer.setInterval(3600000); // 1 hour
+		tokenTimer.connect(&tokenTimer,&QTimer::timeout,[&settingRefreshToken,&settingClientID,&settingClientSecret]() {
+			Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingRefreshToken,&settingClientID,&settingClientSecret](QNetworkReply *reply) {
+				// TODO: can I implement more intelligent error handling here?
+				if (reply->error()) return;
+				QString uhoh=reply->readAll();
+				QJsonDocument json=QJsonDocument::fromJson(StringConvert::ByteArray(uhoh));
+				if (json.isNull()) return;
+				if (!json.object().contains(JSON_KEY_REFRESH_TOKEN)) return;
+				settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
+			},{
+				{"client_id",settingClientID},
+				{"client_secret",settingClientSecret},
+				{"grant_type","refresh_token"},
+				{"refresh_token",settingRefreshToken}
+			},{
+				{"Content-Type","application/x-www-form-urlencoded"}
+			});
+		});
+
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
@@ -120,7 +143,7 @@ int main(int argc,char *argv[])
 			if (retryDialog.exec() == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&server,&window,&celeste,&log,&settingAdministrator,&settingOAuthToken,&settingServerToken,&settingClientID,&settingCallbackURL]() {
+		channel->connect(channel,&Channel::Connected,[&server,&window,&celeste,&log,&settingAdministrator,&settingOAuthToken,&settingServerToken,&settingClientID,&settingCallbackURL,&tokenTimer]() {
 			EventSub *eventSub=nullptr;
 			Viewer::Remote *viewer=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
 			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&log,&server,&window,&celeste,eventSub,&settingServerToken,&settingClientID,&settingCallbackURL](Viewer::Local viewer) mutable {
@@ -137,15 +160,16 @@ int main(int argc,char *argv[])
 				eventSub->Subscribe(SUBSCRIPTION_TYPE_CHEER);
 				server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
 			});
+			tokenTimer.start();
 		});
-		channel->connect(channel,&Channel::Denied,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingCallbackURL,&settingScope,channel,&server]() {
+		channel->connect(channel,&Channel::Denied,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingRefreshToken,&settingCallbackURL,&settingScope,channel,&server]() {
 			QMessageBox authenticateDialog;
 			authenticateDialog.setWindowTitle("Authentication Failed");
 			authenticateDialog.setText("Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?");
 			authenticateDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
 			authenticateDialog.setDefaultButton(QMessageBox::Yes);
 			if (authenticateDialog.exec() == QMessageBox::No) return;
-			QMetaObject::Connection authenticate=server.connect(&server,&Server::Dispatch,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingCallbackURL,&settingScope,&server](qintptr socketID,const QUrlQuery &query) {
+			QMetaObject::Connection authenticate=server.connect(&server,&Server::Dispatch,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingRefreshToken,&settingCallbackURL,&settingScope,&server](qintptr socketID,const QUrlQuery &query) {
 				const char *QUERY_KEY_CODE="code";
 				const char *QUERY_KEY_SCOPE="scope";
 				if (!query.hasQueryItem(QUERY_KEY_CODE) || !query.hasQueryItem(QUERY_KEY_SCOPE)) return;
@@ -153,7 +177,7 @@ int main(int argc,char *argv[])
 					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
 					{QUERY_KEY_SCOPE,query.queryItemValue(QUERY_KEY_SCOPE)}
 				})).toJson(QJsonDocument::Compact));
-				Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingOAuthToken](QNetworkReply *reply) {
+				Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingOAuthToken,&settingRefreshToken](QNetworkReply *reply) {
 					QMessageBox failureDialog;
 					failureDialog.setWindowTitle("Re-Authentication Failed");
 					failureDialog.setText("Attempt to obtain OAuth token failed.");
@@ -171,12 +195,13 @@ int main(int argc,char *argv[])
 						return;
 					}
 					const char *JSON_KEY_ACCESS_TOKEN="access_token";
-					if (!json.object().contains(JSON_KEY_ACCESS_TOKEN))
+					if (!json.object().contains(JSON_KEY_ACCESS_TOKEN) || !json.object().contains(JSON_KEY_REFRESH_TOKEN))
 					{
 						failureDialog.exec();
 						return;
 					}
 					settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
+					settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
 				},{
 					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
 					{"client_id",settingClientID},
