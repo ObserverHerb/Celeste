@@ -37,6 +37,7 @@ public slots:
 	void AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
+	void ShowPortraitVideo(const QString &path);
 	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void ShowPanicText(const QString &text);

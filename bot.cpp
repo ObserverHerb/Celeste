@@ -248,7 +248,7 @@ void Bot::StartClocks()
 void Bot::Ping()
 {
 	if (settingPortraitVideo)
-		ShowPortraitVideo(settingPortraitVideo);
+		emit ShowPortraitVideo(settingPortraitVideo);
 	else
 		Print("Letting Twitch server know we're still here...");
 }

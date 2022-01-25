@@ -128,6 +128,11 @@ void Window::PlayAudio(const QString &viewer,const QString &message,const QStrin
 	},path));
 }
 
+void Window::ShowPortraitVideo(const QString &path)
+{
+	StageEphemeralPane(new VideoPane(path));
+}
+
 void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
 {
 	AnnouncePane *pane;
