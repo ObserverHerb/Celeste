@@ -105,7 +105,7 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 		return;
 	}
 	case SubscriptionType::CHANNEL_CHEER:
-		emit Cheer(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),event.value(JSON_KEY_EVENT_MESSAGE).toString());
+		emit Cheer(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),event.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
 		emit Response(socketID);
 		return;
 	case SubscriptionType::CHANNEL_RAID:
