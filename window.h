@@ -38,6 +38,7 @@ public slots:
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);
+	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void ShowPanicText(const QString &text);
@@ -46,7 +47,6 @@ public slots:
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
-	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 };
 
 #ifdef Q_OS_WIN
