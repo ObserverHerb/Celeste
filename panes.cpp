@@ -263,7 +263,7 @@ void AudioAnnouncePane::Show()
 ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
 {
 	stack=new QStackedWidget(this);
-	dynamic_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
+	qobject_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
 
 	scene=new QGraphicsScene(this);
 	view=new QGraphicsView(scene);
