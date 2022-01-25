@@ -32,7 +32,6 @@ Channel::Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAu
 	if (!ircSocket) ircSocket=new IRCSocket(this);
 	connect(ircSocket,&IRCSocket::connected,[this]() {
 		emit Print("Connected!",OPERATION_CONNECTION);
-		emit Connected();
 		RequestAuthentication();
 	});
 	connect(ircSocket,&IRCSocket::disconnected,[this]() {
@@ -104,6 +103,7 @@ void Channel::AuthenticationResponse(const QString &data)
 {
 	if (data.contains(IRC_VALIDATION_AUTHENTICATION))
 	{
+		emit Connected(); // socket must be connected and authentication must succeed before considering bot connected to the channel
 		emit Print("Server accepted authentication",OPERATION_AUTHENTICATION);
 		RequestJoin();
 	}

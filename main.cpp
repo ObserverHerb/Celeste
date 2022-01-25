@@ -120,6 +120,24 @@ int main(int argc,char *argv[])
 			if (retryDialog.exec() == QMessageBox::No) return;
 			channel->Connect();
 		});
+		channel->connect(channel,&Channel::Connected,[&server,&window,&celeste,&log,&settingAdministrator,&settingOAuthToken,&settingServerToken,&settingClientID,&settingCallbackURL]() {
+			EventSub *eventSub=nullptr;
+			Viewer::Remote *viewer=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
+			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&log,&server,&window,&celeste,eventSub,&settingServerToken,&settingClientID,&settingCallbackURL](Viewer::Local viewer) mutable {
+				eventSub=new EventSub(viewer,settingServerToken,settingClientID,settingCallbackURL);
+				eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
+				eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
+				eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
+				eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
+				eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
+				eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
+				eventSub->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);
+				eventSub->Subscribe(SUBSCRIPTION_TYPE_RAID);
+				eventSub->Subscribe(SUBSCRIPTION_TYPE_SUBSCRIPTION);
+				eventSub->Subscribe(SUBSCRIPTION_TYPE_CHEER);
+				server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
+			});
+		});
 		channel->connect(channel,&Channel::Denied,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingCallbackURL,&settingScope,channel,&server]() {
 			QMessageBox authenticateDialog;
 			authenticateDialog.setWindowTitle("Authentication Failed");
@@ -183,24 +201,6 @@ int main(int argc,char *argv[])
 			QObject::disconnect(retry);
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
 			channel->deleteLater();
-		});
-
-		PrivateSetting settingServerToken("ServerToken");
-		EventSub *eventSub=nullptr;
-		Viewer::Remote *viewer=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
-		viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&log,&server,&window,&celeste,eventSub,&settingServerToken,&settingClientID,&settingCallbackURL](Viewer::Local viewer) mutable {
-			eventSub=new EventSub(viewer,settingServerToken,settingClientID,settingCallbackURL);
-			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
-			eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
-			eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
-			eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
-			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
-			eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
-			eventSub->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);
-			eventSub->Subscribe(SUBSCRIPTION_TYPE_RAID);
-			eventSub->Subscribe(SUBSCRIPTION_TYPE_SUBSCRIPTION);
-			eventSub->Subscribe(SUBSCRIPTION_TYPE_CHEER);
-			server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
 		});
 
 		if (!log.Open()) throw std::runtime_error("Could not open log file!");
