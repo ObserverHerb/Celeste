@@ -226,11 +226,12 @@ void Window::ReleaseLiveEphemeralPane()
 void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
-		{QString("Now playing %1").arg(song),1.5},
-		{"by",0.5},
-		{QString("%2").arg(artist),1},
-		{"from the ablum",0.5},
-		{QString("%3").arg(album),1}
+		{QString("Now playing<br>"),0.5},
+		{QString("%1<br>").arg(song),1.0},
+		{"by<br>",0.5},
+		{QString("%2<br>").arg(artist),0.75},
+		{"from the ablum<br>",0.5},
+		{QString("%3").arg(album),0.75}
 	},coverArt);
 	pane->AccentColor(settingAccentColor);
 	StageEphemeralPane(pane);
