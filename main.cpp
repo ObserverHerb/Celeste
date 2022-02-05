@@ -18,6 +18,7 @@
 
 const char *ORGANIZATION_NAME="Sky-Meyg";
 const char *APPLICATION_NAME="Celeste";
+const char *JSON_KEY_ACCESS_TOKEN="access_token";
 const char *JSON_KEY_REFRESH_TOKEN="refresh_token";
 
 enum
@@ -92,14 +93,15 @@ int main(int argc,char *argv[])
 
 		QTimer tokenTimer;
 		tokenTimer.setInterval(3600000); // 1 hour
-		tokenTimer.connect(&tokenTimer,&QTimer::timeout,[&settingRefreshToken,&settingClientID,&settingClientSecret]() {
-			Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingRefreshToken,&settingClientID,&settingClientSecret](QNetworkReply *reply) {
+		tokenTimer.connect(&tokenTimer,&QTimer::timeout,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret]() {
+			Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret](QNetworkReply *reply) {
 				// TODO: can I implement more intelligent error handling here?
 				if (reply->error()) return;
 				QString uhoh=reply->readAll();
 				QJsonDocument json=QJsonDocument::fromJson(StringConvert::ByteArray(uhoh));
 				if (json.isNull()) return;
-				if (!json.object().contains(JSON_KEY_REFRESH_TOKEN)) return;
+				if (!json.object().contains(JSON_KEY_REFRESH_TOKEN) || !json.object().contains(JSON_KEY_ACCESS_TOKEN)) return;
+				settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
 				settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
 			},{
 				{"client_id",settingClientID},
@@ -196,7 +198,6 @@ int main(int argc,char *argv[])
 						failureDialog.exec();
 						return;
 					}
-					const char *JSON_KEY_ACCESS_TOKEN="access_token";
 					if (!json.object().contains(JSON_KEY_ACCESS_TOKEN) || !json.object().contains(JSON_KEY_REFRESH_TOKEN))
 					{
 						failureDialog.exec();
