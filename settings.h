@@ -10,10 +10,7 @@
 class BasicSetting
 {
 public:
-	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value)
-	{
-		source=std::make_unique<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName);
-	}
+	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(std::make_unique<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName)) { }
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source->value(name,defaultValue); }
 	void Set(const QVariant &value) { source->setValue(name,value); }
