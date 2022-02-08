@@ -105,6 +105,15 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 	}));
 }
 
+void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
+{
+	AudioAnnouncePane *pane=new AudioAnnouncePane({
+		{message,0.5},
+	},audioPath);
+	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
+}
+
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);

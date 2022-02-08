@@ -53,6 +53,8 @@ protected:
 	ApplicationSetting settingInactivityCooldown;
 	ApplicationSetting settingHelpCooldown;
 	ApplicationSetting settingVibePlaylist;
+	ApplicationSetting settingTextWallThreshold;
+	ApplicationSetting settingTextWallSound;
 	ApplicationSetting settingRoasts;
 	ApplicationSetting settingPortraitVideo;
 	ApplicationSetting settingArrivalSound;
@@ -70,7 +72,7 @@ protected:
 	TagMap TakeTags(QStringList &messageSegments);
 	std::optional<QStringList> TakeHostmask(QStringList &messageSegments);
 	Viewer::Remote* TakeViewer(QStringList &hostmaskSegments);
-	const std::vector<Media::Emote> ParseEmotes(const TagMap &tags,const QString &message);
+	const std::tuple<std::vector<Media::Emote>,int> ParseEmotes(const TagMap &tags,const QString &message);
 	void DownloadEmote(const Media::Emote &emote);
 	const BadgeMap ParseBadges(const TagMap &tags);
 	void DownloadBadgeIcon(const QString &badgeURL,const QString &badge);
@@ -105,6 +107,7 @@ signals:
 	void AnnounceSubscription(const QString &name,const QString &audioPath);
 	void AnnounceRaid(const QString &viewer,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
+	void AnnounceTextWall(const QString &message,const QString &audioPath);
 public slots:
 	void ParseChatMessage(const QString &message);
 	void Ping();

@@ -35,6 +35,7 @@ public slots:
 	void AnnounceSubscription(const QString &name,const QString &audioPath);
 	void AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath);
+	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);

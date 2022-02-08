@@ -49,6 +49,8 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
 	settingCheerVideo(SETTINGS_CATEGORY_EVENTS,"Cheer"),
+	settingTextWallThreshold(SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400),
+	settingTextWallSound(SETTINGS_CATEGORY_EVENTS,"TextWallSound"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
@@ -390,10 +392,12 @@ void Bot::ParseChatMessage(const QString &message)
 
 		// look for emotes if they exist
 		std::vector<Media::Emote> emotes;
-		if (tags.find("emotes") != tags.end())
-		{
-			emotes=ParseEmotes(tags,message);
-		}
+		int emoteCharacterCount=0;
+		if (tags.find("emotes") != tags.end()) std::tie(emotes,emoteCharacterCount)=ParseEmotes(tags,message);
+
+		// inspect for wall of text (not including emotes)
+		if (message.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold))
+			emit AnnounceTextWall(message,settingTextWallSound);
 
 		// print the final message
 		const QString &color=tags.at("color");
@@ -447,9 +451,10 @@ void Bot::DownloadEmote(const Media::Emote &emote)
 	}
 }
 
-const std::vector<Media::Emote> Bot::ParseEmotes(const TagMap &tags,const QString &message)
+const std::tuple<std::vector<Media::Emote>,int> Bot::ParseEmotes(const TagMap &tags,const QString &message)
 {
 	std::vector<Media::Emote> emotes;
+	int totalCharacterCount=0;
 	QStringList entries=tags.at("emotes").split("/",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
 	for (const QString &entry : entries)
 	{
@@ -472,10 +477,11 @@ const std::vector<Media::Emote> Bot::ParseEmotes(const TagMap &tags,const QStrin
 			const Media::Emote emote({message.mid(start,end-start),details.at(0),Filesystem::TemporaryPath().filePath(QString("%1.png").arg(details.at(0))),start,end});
 			DownloadEmote(emote);
 			emotes.push_back(emote);
+			totalCharacterCount+=emote.Name().size();
 		}
 	}
 	std::sort(emotes.begin(),emotes.end());
-	return emotes;
+	return {emotes,totalCharacterCount};
 }
 
 const Bot::BadgeMap Bot::ParseBadges(const TagMap &tags)
