@@ -640,7 +640,7 @@ void Bot::DispatchUptime()
 		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
 		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
 		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
-		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-minutes);
+		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-hours-minutes);
 		ShowUptime(hours,minutes,seconds);
 	},{
 		{"user_login",settingAdministrator}
