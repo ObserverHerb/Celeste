@@ -22,6 +22,7 @@ const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
 const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
+const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
 const char *CHAT_BADGE_BROADCASTER="broadcaster";
 const char *CHAT_BADGE_MODERATOR="moderator";
 
@@ -616,11 +617,34 @@ void Bot::DispatchShoutout(Command command)
 
 void Bot::DispatchUptime()
 {
-	std::chrono::milliseconds duration=TimeConvert::Now()-launchTimestamp;
-	std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
-	std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
-	std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-minutes);
-	emit ShowUptime(hours,minutes,seconds);
+	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this](QNetworkReply *reply) {
+		QJsonParseError jsonError;
+		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+		if (json.isNull() || !json.object().contains("data"))
+		{
+			emit Print("Something went wrong obtaining stream information");
+			return;
+		}
+		QJsonArray data=json.object().value("data").toArray();
+		if (data.size() < 1)
+		{
+			emit Print("Response from requesting stream informationwas incomplete ");
+			return;
+		}
+		QJsonObject details=data.at(0).toObject();
+		QDateTime start=QDateTime::fromString(details.value("started_at").toString(),Qt::ISODate);
+		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
+		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
+		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
+		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-minutes);
+		ShowUptime(hours,minutes,seconds);
+	},{
+		{"user_login",settingAdministrator}
+	},{
+		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{"Client-Id",settingClientID},
+		{"Content-Type","application/json"},
+	});
 }
 
 void Bot::ToggleVibeKeeper()

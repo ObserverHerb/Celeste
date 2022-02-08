@@ -195,8 +195,11 @@ void Window::ShowTimezone(const QString &timezone)
 
 void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds)
 {
-	// TODO: I think I wanted this to show the ticks as they're ticking, and that was the idea behind the status context
-	emit Print(QString("Connection to Twitch has been live for %1 hours, %2 minutes, and %3 seconds").arg(StringConvert::Integer(hours.count()),StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count())));
+	StageEphemeralPane(new AnnouncePane({
+		{"Stream has been live for<br>",1},
+		{QString("%1 hours<br>").arg(StringConvert::Integer(hours.count())),1.5},
+		{QString("%1 minutes, and %2 seconds<br>").arg(StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count())),1}
+	}));
 }
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
