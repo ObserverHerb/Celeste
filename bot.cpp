@@ -86,7 +86,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 		{vibeCommand.Name(),NativeCommandFlag::VIBE},
 		{volumeCommand.Name(),NativeCommandFlag::VOLUME}
 	});
-	if (!LoadDynamicCommands()) emit Print("Failed to load commands");
+	if (!LoadDynamicCommands()) emit Print("Failed to load commands"); // do this after creating native commands or aliases to native commands won't work
 
 	if (settingVibePlaylist) LoadVibePlaylist();
 	if (settingRoasts) LoadRoasts();
@@ -120,14 +120,17 @@ bool Bot::LoadDynamicCommands()
 	{
 		QJsonObject jsonObject=jsonValue.toObject();
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
-		commands[name]={
-			name,
-			jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-			COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
-			jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
-			jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-			jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
-		};
+		if (!commands.contains(name))
+		{
+			commands[name]={
+				name,
+				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
+				COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
+				jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
+				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
+				jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
+			};
+		}
 		if (jsonObject.contains(JSON_KEY_COMMAND_ALIASES))
 		{
 			for (const QJsonValue &jsonValue : jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray())
@@ -141,6 +144,7 @@ bool Bot::LoadDynamicCommands()
 					commands.at(name).Path(),
 					commands.at(name).Message(),
 				};
+				if (commands.at(alias).Type() == CommandType::NATIVE) nativeCommandFlags.insert({alias,nativeCommandFlags.at(name)});
 			}
 		}
 	}
