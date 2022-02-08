@@ -19,6 +19,7 @@ const char *JSON_KEY_COMMAND_MESSAGE="message";
 const char *JSON_KEY_DATA="data";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
+const char *SETTINGS_CATEGORY_COMMANDS="Commands";
 const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
 const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
@@ -50,7 +51,8 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	settingCheerVideo(SETTINGS_CATEGORY_EVENTS,"Cheer"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
-	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000)
+	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
+	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0)
 {
 	Command agendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true);
 	Command commandsCommand("commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false);
@@ -60,6 +62,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 	Command songCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false);
 	Command timezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::NATIVE,false);
 	Command uptimeCommand("uptime","Show how long the bot has been connected",CommandType::NATIVE,false);
+	Command totalTimeCommand("totaltime","Show how many total hours stream has ever been live",CommandType::NATIVE,false);
 	Command vibeCommand("vibe","Start the playlist of music for the stream",CommandType::NATIVE,true);
 	Command volumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true);
 	commands.insert({
@@ -70,6 +73,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 		{shoutOutCommand.Name(),shoutOutCommand},
 		{songCommand.Name(),songCommand},
 		{timezoneCommand.Name(),timezoneCommand},
+		{totalTimeCommand.Name(),totalTimeCommand},
 		{uptimeCommand.Name(),uptimeCommand},
 		{vibeCommand.Name(),vibeCommand},
 		{volumeCommand.Name(),volumeCommand}
@@ -82,6 +86,7 @@ Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,
 		{shoutOutCommand.Name(),NativeCommandFlag::SHOUTOUT},
 		{songCommand.Name(),NativeCommandFlag::SONG},
 		{timezoneCommand.Name(),NativeCommandFlag::TIMEZONE},
+		{totalTimeCommand.Name(),NativeCommandFlag::TOTAL_TIME},
 		{uptimeCommand.Name(),NativeCommandFlag::UPTIME},
 		{vibeCommand.Name(),NativeCommandFlag::VIBE},
 		{volumeCommand.Name(),NativeCommandFlag::VOLUME}
@@ -549,8 +554,11 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const View
 		case NativeCommandFlag::TIMEZONE:
 			emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 			break;
+		case NativeCommandFlag::TOTAL_TIME:
+			DispatchUptime(true);
+			break;
 		case NativeCommandFlag::UPTIME:
-			DispatchUptime();
+			DispatchUptime(false);
 			break;
 		case NativeCommandFlag::VIBE:
 			ToggleVibeKeeper();
@@ -619,9 +627,9 @@ void Bot::DispatchShoutout(Command command)
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 }
 
-void Bot::DispatchUptime()
+void Bot::DispatchUptime(bool total)
 {
-	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this,total](QNetworkReply *reply) {
 		QJsonParseError jsonError;
 		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
 		if (json.isNull() || !json.object().contains("data"))
@@ -632,16 +640,20 @@ void Bot::DispatchUptime()
 		QJsonArray data=json.object().value("data").toArray();
 		if (data.size() < 1)
 		{
-			emit Print("Response from requesting stream informationwas incomplete ");
+			emit Print("Response from requesting stream information was incomplete ");
 			return;
 		}
 		QJsonObject details=data.at(0).toObject();
 		QDateTime start=QDateTime::fromString(details.value("started_at").toString(),Qt::ISODate);
 		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
+		if (total) duration+=std::chrono::milliseconds(static_cast<qint64>(settingUptimeHistory));
 		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
 		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
 		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-hours-minutes);
-		ShowUptime(hours,minutes,seconds);
+		if (total)
+			ShowTotalTime(hours,minutes,seconds);
+		else
+			ShowUptime(hours,minutes,seconds);
 	},{
 		{"user_login",settingAdministrator}
 	},{

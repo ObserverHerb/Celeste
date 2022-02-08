@@ -19,6 +19,7 @@ enum class NativeCommandFlag
 	SHOUTOUT,
 	SONG,
 	TIMEZONE,
+	TOTAL_TIME,
 	UPTIME,
 	VIBE,
 	VOLUME
@@ -59,6 +60,7 @@ protected:
 	ApplicationSetting settingSubscriptionSound;
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
+	ApplicationSetting settingUptimeHistory;
 	static std::chrono::milliseconds launchTimestamp;
 	bool LoadDynamicCommands();
 	void LoadVibePlaylist();
@@ -79,7 +81,7 @@ protected:
 	void DispatchCommandList();
 	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
-	void DispatchUptime();
+	void DispatchUptime(bool total);
 	void ToggleVibeKeeper();
 	void AdjustVibeVolume(Command command);
 signals:
@@ -96,6 +98,7 @@ signals:
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 	void ShowTimezone(const QString &timezone);
+	void ShowTotalTime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void ShowPortraitVideo(const QString &path);
 	void AnnounceRedemption(const QString &name,const QString &rewardTitle,const QString &message);
