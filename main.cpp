@@ -5,7 +5,6 @@
 #include <QPushButton>
 #include <QGridLayout>
 #include <QListWidget>
-#include <QDesktopServices>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "window.h"
@@ -15,19 +14,10 @@
 #include "eventsub.h"
 #include "server.h"
 #include "globals.h"
+#include "security.h"
 
 const char *ORGANIZATION_NAME="Sky-Meyg";
 const char *APPLICATION_NAME="Celeste";
-const char *JSON_KEY_ACCESS_TOKEN="access_token";
-const char *JSON_KEY_REFRESH_TOKEN="refresh_token";
-const char *JSON_KEY_EXPIRY="expires_in";
-const char *QUERY_PARAMETER_CLIENT_ID="client_id";
-const char *QUERY_PARAMETER_CLIENT_SECRET="client_secret";
-const char *QUERY_PARAMETER_GRANT_TYPE="grant_type";
-const char *QUERY_PARAMETER_REDIRECT_URI="redirect_uri";
-const char *QUERY_PARAMETER_CODE="code";
-const char *QUERY_PARAMETER_SCOPE="scope";
-const char *TWITCH_API_ENDPOINT_TOKEN="https://id.twitch.tv/oauth2/token";
 
 enum
 {
@@ -49,26 +39,19 @@ int main(int argc,char *argv[])
 	if (QMessageBox(QMessageBox::Warning,"DEVELOPER MODE","**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?",QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::No) return OK;
 #endif
 
-	PrivateSetting settingAdministrator("Administrator");
-	if (!settingAdministrator) settingAdministrator.Set(QInputDialog::getText(nullptr,"Administrator","Please provide the account name of the Twitch user who will serve as the bot's administrator.").toLower());
-	PrivateSetting settingClientID("ClientID");
-	if (!settingClientID) settingClientID.Set(QInputDialog::getText(nullptr,"Client ID","A client ID has not yet been set. Please provide your bot's client ID.",QLineEdit::Password));
-	PrivateSetting settingClientSecret("ClientSecret");
-	if (!settingClientSecret) settingClientSecret.Set(QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret.",QLineEdit::Password));
-	PrivateSetting settingOAuthToken("Token");
-	PrivateSetting settingRefreshToken("RefreshToken");
-	PrivateSetting settingServerToken("ServerToken");
-	PrivateSetting settingCallbackURL("CallbackURL");
-	if (!settingCallbackURL) settingCallbackURL.Set(QInputDialog::getText(nullptr,"Callback URL","EventSub requires the URL at which your bot's server can reached. Please provide a callback URL."));
-	PrivateSetting settingScope("Permissions");
-	if (!settingScope)
+	Security security;
+	if (!security.Administrator()) security.Administrator().Set(QInputDialog::getText(nullptr,"Administrator","Please provide the account name of the Twitch user who will serve as the bot's administrator.").toLower());
+	if (!security.ClientID()) security.ClientID().Set(QInputDialog::getText(nullptr,"Client ID","A client ID has not yet been set. Please provide your bot's client ID.",QLineEdit::Password));
+	if (!security.ClientSecret()) security.ClientSecret().Set(QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret.",QLineEdit::Password));
+	if (!security.CallbackURL()) security.CallbackURL().Set(QInputDialog::getText(nullptr,"Callback URL","EventSub requires the URL at which your bot's server can reached. Please provide a callback URL."));
+	if (!security.Scope())
 	{
 		QDialog scopeDialog;
 		QGridLayout *layout=new QGridLayout(&scopeDialog);
 		scopeDialog.setLayout(layout);
 		QListWidget *listBox=new QListWidget(&scopeDialog);
 		listBox->setSelectionMode(QAbstractItemView::ExtendedSelection);
-		listBox->addItems({"analytics:read:extensions","analytics:read:games","bits:read","channel:edit:commercial","channel:manage:broadcast","channel:manage:extensions","channel:manage:polls","channel:manage:predictions","channel:manage:redemptions","channel:manage:schedule","channel:manage:videos","channel:moderate","channel:read:editors","channel:read:goals","channel:read:hype_train","channel:read:polls","channel:read:predictions","channel:read:redemptions","channel:read:stream_key","channel:read:subscriptions","chat:edit","clips:edit","moderation:read","moderator:manage:banned_users","moderator:read:blocked_terms","moderator:manage:blocked_terms","moderator:manage:automod","moderator:read:automod_settings","moderator:manage:automod_settings","moderator:read:chat_settings","moderator:manage:chat_settings","user:edit","user:edit:follows","user:manage:blocked_users","user:read:blocked_users","user:read:broadcast","user:read:email","user:read:follows","user:read:subscriptions","whispers:edit","whispers:read"});
+		listBox->addItems(Security::SCOPES);
 		scopeDialog.layout()->addWidget(listBox);
 		QDialogButtonBox *buttons=new QDialogButtonBox(&scopeDialog);
 		QPushButton *okay=buttons->addButton(QDialogButtonBox::Ok);
@@ -81,44 +64,30 @@ int main(int argc,char *argv[])
 		{
 			QStringList scopes({"chat:read"});
 			for (QListWidgetItem *item : listBox->selectedItems()) scopes.append(item->text());
-			settingScope.Set(scopes.join(" "));
+			security.Scope().Set(scopes.join(" "));
 		}
-		settingOAuthToken.Unset();
+		security.OAuthToken().Unset();
 	}
 
 	try
 	{
 		Log log;
 		IRCSocket socket;
-		Channel *channel=new Channel(settingAdministrator,settingOAuthToken,&socket);
+		Channel *channel=new Channel(security,&socket);
 		Server server;
-		Bot celeste(settingAdministrator,settingOAuthToken,settingClientID);
+		Bot celeste(security);
 #ifdef Q_OS_WIN
 		Win32Window window;
 #else
 		Window window;
 #endif
 
-		QTimer tokenTimer;
-		tokenTimer.setInterval(3600000); // 1 hour
-		tokenTimer.connect(&tokenTimer,&QTimer::timeout,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret]() {
-			Network::Request({TWITCH_API_ENDPOINT_TOKEN},Network::Method::POST,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret](QNetworkReply *reply) {
-				// TODO: can I implement more intelligent error handling here?
-				if (reply->error()) return;
-				QString uhoh=reply->readAll();
-				QJsonDocument json=QJsonDocument::fromJson(StringConvert::ByteArray(uhoh));
-				if (json.isNull()) return;
-				if (!json.object().contains(JSON_KEY_REFRESH_TOKEN) || !json.object().contains(JSON_KEY_ACCESS_TOKEN)) return;
-				settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
-				settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
-			},{
-				{QUERY_PARAMETER_CLIENT_ID,settingClientID},
-				{QUERY_PARAMETER_CLIENT_SECRET,settingClientSecret},
-				{QUERY_PARAMETER_GRANT_TYPE,"refresh_token"},
-				{"refresh_token",settingRefreshToken}
-			},{
-				{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM}
-			});
+		security.connect(&security,&Security::TokenRequestFailed,[]() {
+			QMessageBox failureDialog;
+			failureDialog.setWindowTitle("Re-Authentication Failed");
+			failureDialog.setText("Attempt to obtain OAuth token failed.");
+			failureDialog.setStandardButtons(QMessageBox::Ok);
+			failureDialog.setDefaultButton(QMessageBox::Ok);
 		});
 
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
@@ -149,7 +118,7 @@ int main(int argc,char *argv[])
 			log.disconnect(echo);
 			celeste.connect(&celeste,&Bot::Print,&window,&Window::Print);
 		});
-		QMetaObject::Connection retry=channel->connect(channel,&Channel::Disconnected,[channel]() {
+		channel->connect(channel,&Channel::Disconnected,[channel]() {
 			QMessageBox retryDialog;
 			retryDialog.setWindowTitle("Connection Failed");
 			retryDialog.setText("Failed to connect to Twitch. Would you like to try again?");
@@ -158,11 +127,11 @@ int main(int argc,char *argv[])
 			if (retryDialog.exec() == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&server,&window,&celeste,&log,&settingAdministrator,&settingOAuthToken,&settingServerToken,&settingClientID,&settingCallbackURL,&tokenTimer]() {
-			EventSub *eventSub=nullptr;
-			Viewer::Remote *viewer=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
-			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&log,&server,&window,&celeste,eventSub,&settingServerToken,&settingClientID,&settingCallbackURL](Viewer::Local viewer) mutable {
-				eventSub=new EventSub(viewer,settingServerToken,settingClientID,settingCallbackURL);
+		channel->connect(channel,&Channel::Connected,[&security,&server,&window,&celeste,&log]() {
+			server.disconnect(); // break any connection with security's slots
+			Viewer::Remote *viewer=new Viewer::Remote(security,security.Administrator());
+			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&security,&log,&server,&window,&celeste](Viewer::Local viewer) mutable {
+				EventSub *eventSub=new EventSub(security,viewer);
 				eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
 				eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
 				eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
@@ -175,68 +144,28 @@ int main(int argc,char *argv[])
 				eventSub->Subscribe(SUBSCRIPTION_TYPE_CHEER);
 				server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
 			});
-			tokenTimer.start();
 		});
-		channel->connect(channel,&Channel::Denied,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingRefreshToken,&settingCallbackURL,&settingScope,channel,&server]() {
+		channel->connect(channel,&Channel::Denied,[&security,channel,&server]() {
 			QMessageBox authenticateDialog;
 			authenticateDialog.setWindowTitle("Authentication Failed");
 			authenticateDialog.setText("Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?");
 			authenticateDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
 			authenticateDialog.setDefaultButton(QMessageBox::Yes);
 			if (authenticateDialog.exec() == QMessageBox::No) return;
-			QMetaObject::Connection authenticate=server.connect(&server,&Server::Dispatch,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingRefreshToken,&settingCallbackURL,&settingScope,&server](qintptr socketID,const QUrlQuery &query) {
-				if (!query.hasQueryItem(QUERY_PARAMETER_CODE) || !query.hasQueryItem(QUERY_PARAMETER_SCOPE)) return;
+
+			server.connect(&server,&Server::Dispatch,[&security,&server](qintptr socketID,const QUrlQuery &query) {
 				emit server.SocketWrite(socketID,QJsonDocument(QJsonObject({
 					{QUERY_PARAMETER_CODE,query.queryItemValue(QUERY_PARAMETER_CODE)},
 					{QUERY_PARAMETER_SCOPE,query.queryItemValue(QUERY_PARAMETER_SCOPE)}
 				})).toJson(QJsonDocument::Compact));
-				Network::Request({TWITCH_API_ENDPOINT_TOKEN},Network::Method::POST,[&settingOAuthToken,&settingRefreshToken](QNetworkReply *reply) {
-					QMessageBox failureDialog;
-					failureDialog.setWindowTitle("Re-Authentication Failed");
-					failureDialog.setText("Attempt to obtain OAuth token failed.");
-					failureDialog.setStandardButtons(QMessageBox::Ok);
-					failureDialog.setDefaultButton(QMessageBox::Ok);
-					if (reply->error())
-					{
-						failureDialog.exec();
-						return;
-					}
-					QJsonDocument json=QJsonDocument::fromJson(reply->readAll());
-					if (json.isNull())
-					{
-						failureDialog.exec();
-						return;
-					}
-					if (!json.object().contains(JSON_KEY_ACCESS_TOKEN) || !json.object().contains(JSON_KEY_REFRESH_TOKEN))
-					{
-						failureDialog.exec();
-						return;
-					}
-					settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
-					settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
-				},{
-					{QUERY_PARAMETER_CODE,query.queryItemValue(QUERY_PARAMETER_CODE)},
-					{QUERY_PARAMETER_CLIENT_ID,settingClientID},
-					{QUERY_PARAMETER_CLIENT_SECRET,settingClientSecret},
-					{QUERY_PARAMETER_GRANT_TYPE,"authorization_code"},
-					{QUERY_PARAMETER_REDIRECT_URI,settingCallbackURL}
-				},{
-					{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM}
-				});
+				security.RequestToken(query.queryItemValue(QUERY_PARAMETER_CODE),query.queryItemValue(QUERY_PARAMETER_SCOPE));
 			});
-			QUrl request("https://id.twitch.tv/oauth2/authorize");
-			request.setQuery(QUrlQuery({
-				{QUERY_PARAMETER_CLIENT_ID,settingClientID},
-				{QUERY_PARAMETER_REDIRECT_URI,settingCallbackURL},
-				{"response_type","code"},
-				{QUERY_PARAMETER_SCOPE,settingScope}
-			 }));
-			QDesktopServices::openUrl(request);
+			security.AuthorizeUser();
 		});
 		server.connect(&server,&Server::Print,&log,&Log::Write);
-		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel,&retry]() {
-			QObject::disconnect(retry);
+		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel]() {
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
+			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
 			channel->deleteLater();
 		});
 

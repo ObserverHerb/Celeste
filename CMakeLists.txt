@@ -56,6 +56,8 @@ endif()
 add_executable(Celeste
 	globals.h
 	settings.h
+	security.h
+	security.cpp
 	channel.h
 	channel.cpp
 	server.h

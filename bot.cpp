@@ -39,13 +39,11 @@ const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
-Bot::Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent) : QObject(parent),
+Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	vibeKeeper(new QMediaPlayer(this)),
 	vibeFader(nullptr),
 	roaster(new QMediaPlayer(this)),
-	settingAdministrator(settingAdministrator),
-	settingOAuthToken(settingOAuthToken),
-	settingClientID(settingClientID),
+	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
 	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
@@ -237,8 +235,8 @@ void Bot::LoadBadgeIconURLs()
 			}
 		}
 	},{},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{NETWORK_HEADER_CLIENT_ID,settingClientID}
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
 	});
 }
 
@@ -313,7 +311,7 @@ void Bot::DispatchArrival(Viewer::Local viewer)
 		emit Print("No audio path set for arrivals","announce arrival");
 		return;
 	}
-	if (settingAdministrator != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
+	if (security.Administrator() != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
 	{
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
@@ -348,9 +346,7 @@ void Bot::ParseChatMessage(const QString &message)
 		emit Print("Invalid message sender");
 		return;
 	}
-	QString token=settingOAuthToken;
-	QString client=settingClientID;
-	Viewer::Remote *viewer=new Viewer::Remote(hostmask->first().trimmed(),settingOAuthToken,settingClientID);
+	Viewer::Remote *viewer=new Viewer::Remote(security,hostmask->first().trimmed());
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,messageSegments,tags](Viewer::Local viewer) mutable {
 		inactivityClock.start();
@@ -627,7 +623,7 @@ void Bot::DispatchPanic(const QString &name)
 
 void Bot::DispatchShoutout(Command command)
 {
-	Viewer::Remote *viewer=new Viewer::Remote(QString(command.Message()).remove("@"),settingOAuthToken,settingClientID);
+	Viewer::Remote *viewer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
 	connect(viewer,&Viewer::Remote::Recognized,[this](Viewer::Local viewer) {
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
@@ -665,10 +661,10 @@ void Bot::DispatchUptime(bool total)
 		else
 			ShowUptime(hours,minutes,seconds);
 	},{
-		{"user_login",settingAdministrator}
+		{"user_login",security.Administrator()}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{NETWORK_HEADER_CLIENT_ID,settingClientID},
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
 }
@@ -709,7 +705,7 @@ void Bot::AdjustVibeVolume(Command command)
 
 void Bot::ToggleEmoteOnly()
 {
-	Viewer::Remote *broadcaster=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
+	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
 	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this](Viewer::Local broadcaster) {
 		Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this,broadcaster](QNetworkReply *reply) {
@@ -735,8 +731,8 @@ void Bot::ToggleEmoteOnly()
 			{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()},
 			{QUERY_PARAMETER_MODERATOR_ID,broadcaster.ID()}
 		},{
-			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-			{NETWORK_HEADER_CLIENT_ID,settingClientID},
+			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		});
 	});
@@ -754,8 +750,8 @@ void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
 		{QUERY_PARAMETER_BROADCASTER_ID,broadcasterID},
 		{QUERY_PARAMETER_MODERATOR_ID,broadcasterID}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{NETWORK_HEADER_CLIENT_ID,settingClientID},
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	},QJsonDocument(QJsonObject({{"emote_mode",enable}})).toJson(QJsonDocument::Compact));
 }

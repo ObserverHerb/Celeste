@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include "settings.h"
+#include "security.h"
 #include "entities.h"
 
 inline const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
@@ -24,13 +25,11 @@ class EventSub : public QObject
 	Q_OBJECT
 	using SubscriptionTypes=std::unordered_map<QString,SubscriptionType>;
 public:
-	EventSub(Viewer::Local broadcaster,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,PrivateSetting &settingCallbackURL,QObject *parent=nullptr);
+	EventSub(Security &security,Viewer::Local broadcaster,QObject *parent=nullptr);
 	void Subscribe(const QString &type);
 protected:
 	Viewer::Local broadcaster;
-	PrivateSetting &settingClientID;
-	PrivateSetting &settingOAuthToken;
-	PrivateSetting &settingCallbackURL;
+	Security &security;
 	const QString secret;
 	QString buffer;
 	SubscriptionTypes subscriptionTypes; // TODO: find a better name for this

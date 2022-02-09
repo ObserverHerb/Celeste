@@ -166,7 +166,7 @@ namespace Viewer
 		return description;
 	}
 
-	Remote::Remote(const QString &username,const PrivateSetting &settingOAuthToken,const PrivateSetting &settingClientID) : name(username)
+	Remote::Remote(Security &security,const QString &username) : name(username)
 	{
 		Network::Request({TWITCH_API_ENDPOINT_USERS},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
@@ -189,8 +189,8 @@ namespace Viewer
 		},{
 			{"login",username}
 		},{
-			{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-			{"Client-ID",settingClientID}
+			{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{"Client-ID",security.ClientID()}
 		});
 	};
 }

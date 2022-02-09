@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include "entities.h"
 #include "settings.h"
+#include "security.h"
 
 enum class NativeCommandFlag
 {
@@ -31,7 +32,7 @@ class Bot : public QObject
 	using TagMap=std::unordered_map<QString,QString>;
 	using BadgeMap=std::unordered_map<QString,unsigned int>;
 public:
-	Bot(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,QObject *parent=nullptr);
+	Bot(Security &security,QObject *parent=nullptr);
 	void ToggleEmoteOnly();
 	void EmoteOnly(bool enable,const QString &broadcasterID);
 protected:
@@ -47,9 +48,7 @@ protected:
 	QTimer inactivityClock;
 	QTimer helpClock;
 	QDateTime lastRaid;
-	PrivateSetting &settingAdministrator;
-	PrivateSetting &settingOAuthToken;
-	PrivateSetting &settingClientID;
+	Security &security;
 	ApplicationSetting settingInactivityCooldown;
 	ApplicationSetting settingHelpCooldown;
 	ApplicationSetting settingVibePlaylist;

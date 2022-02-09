@@ -3,6 +3,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include "settings.h"
+#include "security.h"
 #include "entities.h"
 
 class IRCSocket : public QTcpSocket
@@ -24,8 +25,8 @@ class Channel : public QObject
 		DISPATCH
 	};
 public:
-	Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,QObject *parent=nullptr) : Channel(settingAdministrator,settingOAuthToken,nullptr,parent) { }
-	Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,IRCSocket *socket,QObject *parent=nullptr);
+	Channel(Security &security,QObject *parent=nullptr) : Channel(security,nullptr,parent) { }
+	Channel(Security &security,IRCSocket *socket,QObject *parent=nullptr);
 	~Channel();
 	void Connect();
 	void Disconnect();
@@ -33,8 +34,7 @@ public:
 	const std::chrono::milliseconds JoinDelay() const { return static_cast<std::chrono::milliseconds>(settingJoinDelay); }
 protected:
 	Phase phase;
-	PrivateSetting &settingAdministrator;
-	PrivateSetting &settingOAuthToken;
+	Security &security;
 	ApplicationSetting settingChannel;
 	ApplicationSetting settingJoinDelay;
 	IRCSocket *ircSocket;

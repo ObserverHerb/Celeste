@@ -23,11 +23,9 @@ const char *JSON_KEY_EVENT_CHEER_AMOUNT="bits";
 const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
-EventSub::EventSub(Viewer::Local broadcaster,PrivateSetting &settingOAuthToken,PrivateSetting &settingClientID,PrivateSetting &settingCallbackURL,QObject *parent) : QObject(parent),
+EventSub::EventSub(Security &security,Viewer::Local broadcaster,QObject *parent) : QObject(parent),
 	broadcaster(broadcaster),
-	settingClientID(settingClientID),
-	settingOAuthToken(settingOAuthToken),
-	settingCallbackURL(settingCallbackURL),
+	security(security),
 	secret(QUuid::createUuid().toString())
 {
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
@@ -45,8 +43,8 @@ void EventSub::Subscribe(const QString &type)
 		// FIXME: check the validity of this reply!
 		emit Print(StringConvert::Dump(reply->readAll()),"twitch");
 	},{},{
-		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{"Client-ID",settingClientID},
+		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{"Client-ID",security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({
 		{"type",type},
@@ -59,7 +57,7 @@ void EventSub::Subscribe(const QString &type)
 			"transport",
 			QJsonObject({
 				{"method","webhook"},
-				{"callback",QString("https://%1").arg(static_cast<QString>(settingCallbackURL))},
+				{"callback",QString("https://%1").arg(static_cast<QString>(security.CallbackURL()))},
 				{"secret",secret}
 			})
 		}

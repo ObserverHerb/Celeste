@@ -6,6 +6,7 @@
 #include <QMediaPlayer>
 #include <memory>
 #include "settings.h"
+#include "security.h"
 
 enum class CommandType
 {
@@ -125,7 +126,7 @@ namespace Viewer
 	{
 		Q_OBJECT
 	public:
-		Remote(const QString &username,const PrivateSetting &settingOAuthToken,const PrivateSetting &settingClientID);
+		Remote(Security &security,const QString &username);
 	protected:
 		QString name;
 		void DownloadProfileImage(const QString &url);

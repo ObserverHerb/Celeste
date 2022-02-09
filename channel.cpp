@@ -21,10 +21,9 @@ const char *IRC_VALIDATION_JOIN="End of /NAMES list";
 
 const char *SETTINGS_CATEGORY_CHANNEL="Channel";
 
-Channel::Channel(PrivateSetting &settingAdministrator,PrivateSetting &settingOAuthToken,IRCSocket *socket,QObject *parent) : QObject(parent),
+Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject(parent),
 	phase(Phase::CONNECT),
-	settingAdministrator(settingAdministrator),
-	settingOAuthToken(settingOAuthToken),
+	security(security),
 	settingChannel(SETTINGS_CATEGORY_CHANNEL,"Name",""),
 	settingJoinDelay(SETTINGS_CATEGORY_CHANNEL,"JoinDelay",5),
 	ircSocket(socket)
@@ -88,15 +87,15 @@ void Channel::Disconnect()
 
 void Channel::RequestAuthentication()
 {
-	if (!settingAdministrator)
+	if (!security.Administrator())
 	{
 		emit Print("Please set the Administrator under the Authorization section in your settings file",OPERATION_AUTHENTICATION);
 		return;
 	}
 	phase=Phase::AUTHENTICATE;
-	emit Print(QString("Sending credentials: %1").arg(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))),OPERATION_AUTHENTICATION);
-	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(settingOAuthToken))));
-	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_USER).arg(static_cast<QString>(settingAdministrator))));
+	emit Print(QString("Sending credentials: %1").arg(QString(IRC_COMMAND_USER).arg(static_cast<QString>(security.Administrator()))),OPERATION_AUTHENTICATION);
+	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_PASSWORD).arg(static_cast<QString>(security.OAuthToken()))));
+	ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_USER).arg(static_cast<QString>(security.Administrator()))));
 }
 
 void Channel::AuthenticationResponse(const QString &data)
@@ -120,7 +119,7 @@ void Channel::RequestJoin()
 	emit Print(QString("Joining stream in %1 seconds...").arg(TimeConvert::Interval(TimeConvert::Seconds(settingJoinDelay))),OPERATION_CHANNEL);
 	QTimer::singleShot(TimeConvert::Interval(JoinDelay()),this,[this]() {
 		ircSocket->write("CAP REQ :twitch.tv/tags :twitch.tv/commands\n");
-		ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel).toLower() : static_cast<QString>(settingAdministrator).toLower())));
+		ircSocket->write(StringConvert::ByteArray(QString(IRC_COMMAND_JOIN).arg(settingChannel ? static_cast<QString>(settingChannel).toLower() : static_cast<QString>(security.Administrator()).toLower())));
 	});
 }
 
