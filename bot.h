@@ -14,6 +14,7 @@
 enum class NativeCommandFlag
 {
 	AGENDA,
+	CATEGORY,
 	COMMANDS,
 	EMOTE,
 	PANIC,
@@ -87,6 +88,7 @@ protected:
 	void ToggleVibeKeeper();
 	void AdjustVibeVolume(Command command);
 	void StreamTitle(const QString &title);
+	void StreamCategory(const QString &category);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
 	void ChatMessage(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);

@@ -29,6 +29,7 @@ const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/
 const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
 const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
 const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
+const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
 const char *CHAT_BADGE_BROADCASTER="broadcaster";
 const char *CHAT_BADGE_MODERATOR="moderator";
 
@@ -60,6 +61,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0)
 {
 	Command agendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true);
+	Command categoryCommand("category","Change the stream category",CommandType::NATIVE,true);
 	Command commandsCommand("commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false);
 	Command emoteCommand("emote","Toggle emote only mode in chat",CommandType::NATIVE,true);
 	Command panicCommand("panic","Crash Celeste",CommandType::NATIVE,true);
@@ -73,6 +75,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	Command volumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true);
 	commands.insert({
 		{agendaCommand.Name(),agendaCommand},
+		{categoryCommand.Name(),categoryCommand},
 		{commandsCommand.Name(),commandsCommand},
 		{emoteCommand.Name(),emoteCommand},
 		{panicCommand.Name(),panicCommand},
@@ -87,6 +90,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	});
 	nativeCommandFlags.insert({
 		{agendaCommand.Name(),NativeCommandFlag::AGENDA},
+		{categoryCommand.Name(),NativeCommandFlag::CATEGORY},
 		{commandsCommand.Name(),NativeCommandFlag::COMMANDS},
 		{emoteCommand.Name(),NativeCommandFlag::EMOTE},
 		{panicCommand.Name(),NativeCommandFlag::PANIC},
@@ -546,6 +550,9 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const View
 		case NativeCommandFlag::AGENDA:
 			emit SetAgenda(command.Message());
 			break;
+		case NativeCommandFlag::CATEGORY:
+			StreamCategory(command.Message());
+			break;
 		case NativeCommandFlag::COMMANDS:
 			DispatchCommandList();
 			break;
@@ -784,6 +791,52 @@ void Bot::StreamTitle(const QString &title)
 		},
 		{
 			QJsonDocument(QJsonObject({{"title",title}})).toJson(QJsonDocument::Compact)
+		});
+	});
+}
+
+void Bot::StreamCategory(const QString &category)
+{
+	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
+	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,category](Viewer::Local broadcaster) {
+		Network::Request({TWITCH_API_ENDPOINT_GAME_INFORMATION},Network::Method::GET,[this,broadcaster,category](QNetworkReply *reply) {
+			QJsonParseError jsonError;
+			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+			if (json.isNull() || !json.object().contains("data"))
+			{
+				emit Print("Something went wrong finding stream category");
+				return;
+			}
+			QJsonArray data=json.object().value("data").toArray();
+			if (data.size() < 1)
+			{
+				emit Print("Response was incomplete finding stream category");
+				return;
+			}
+			Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,broadcaster,category](QNetworkReply *reply) {
+				if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+				{
+					emit Print("Failed to change stream category");
+					return;
+				}
+				emit Print(QString(R"(Stream category changed to "%1")").arg(category));
+			},{
+				{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()}
+			},{
+				{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+				{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+				{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+			},
+			{
+				QJsonDocument(QJsonObject({{"game_id",data.at(0).toObject().value("id").toString()}})).toJson(QJsonDocument::Compact)
+			});
+		},{
+			{"name",category}
+		},{
+			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		});
 	});
 }
