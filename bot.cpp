@@ -28,6 +28,7 @@ const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticon
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
 const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
 const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
+const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
 const char *CHAT_BADGE_BROADCASTER="broadcaster";
 const char *CHAT_BADGE_MODERATOR="moderator";
 
@@ -65,6 +66,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	Command shoutOutCommand("so","Call attention to another streamer's channel",CommandType::NATIVE,false);
 	Command songCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false);
 	Command timezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::NATIVE,false);
+	Command titleCommand("title","Change the stream title",CommandType::NATIVE,true);
 	Command uptimeCommand("uptime","Show how long the bot has been connected",CommandType::NATIVE,false);
 	Command totalTimeCommand("totaltime","Show how many total hours stream has ever been live",CommandType::NATIVE,false);
 	Command vibeCommand("vibe","Start the playlist of music for the stream",CommandType::NATIVE,true);
@@ -77,6 +79,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 		{shoutOutCommand.Name(),shoutOutCommand},
 		{songCommand.Name(),songCommand},
 		{timezoneCommand.Name(),timezoneCommand},
+		{titleCommand.Name(),titleCommand},
 		{totalTimeCommand.Name(),totalTimeCommand},
 		{uptimeCommand.Name(),uptimeCommand},
 		{vibeCommand.Name(),vibeCommand},
@@ -90,6 +93,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 		{shoutOutCommand.Name(),NativeCommandFlag::SHOUTOUT},
 		{songCommand.Name(),NativeCommandFlag::SONG},
 		{timezoneCommand.Name(),NativeCommandFlag::TIMEZONE},
+		{titleCommand.Name(),NativeCommandFlag::TITLE},
 		{totalTimeCommand.Name(),NativeCommandFlag::TOTAL_TIME},
 		{uptimeCommand.Name(),NativeCommandFlag::UPTIME},
 		{vibeCommand.Name(),NativeCommandFlag::VIBE},
@@ -560,6 +564,9 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const View
 		case NativeCommandFlag::TIMEZONE:
 			emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
 			break;
+		case NativeCommandFlag::TITLE:
+			StreamTitle(command.Message());
+			break;
 		case NativeCommandFlag::TOTAL_TIME:
 			DispatchUptime(true);
 			break;
@@ -754,4 +761,29 @@ void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	},QJsonDocument(QJsonObject({{"emote_mode",enable}})).toJson(QJsonDocument::Compact));
+}
+
+void Bot::StreamTitle(const QString &title)
+{
+	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
+	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,title](Viewer::Local broadcaster) {
+		Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,broadcaster,title](QNetworkReply *reply) {
+			if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+			{
+				emit Print("Failed to change stream title");
+				return;
+			}
+			emit Print(QString(R"(Stream title changed to "%1")").arg(title));
+		},{
+			{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()}
+		},{
+			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		},
+		{
+			QJsonDocument(QJsonObject({{"title",title}})).toJson(QJsonDocument::Compact)
+		});
+	});
 }

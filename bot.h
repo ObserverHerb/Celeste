@@ -20,6 +20,7 @@ enum class NativeCommandFlag
 	SHOUTOUT,
 	SONG,
 	TIMEZONE,
+	TITLE,
 	TOTAL_TIME,
 	UPTIME,
 	VIBE,
@@ -85,6 +86,7 @@ protected:
 	void DispatchUptime(bool total);
 	void ToggleVibeKeeper();
 	void AdjustVibeVolume(Command command);
+	void StreamTitle(const QString &title);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
 	void ChatMessage(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
