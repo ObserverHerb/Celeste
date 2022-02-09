@@ -45,7 +45,7 @@ public:
 	PrivateSetting(const QString &name,const QVariant &value=QVariant()) : BasicSetting("Private",qApp->applicationName(),name,value)
 	{
 		std::optional<QString> filePath=Filesystem::CreateHiddenFile(source->fileName());
-		if (!filePath) throw std::runtime_error("Could not create file for private settings"); // FIXME: don't create settings objects below before main() function
+		if (!filePath) throw std::runtime_error("Could not create file for private settings");
 		source=std::make_unique<QSettings>(*filePath,source->format());
 	}
 };
