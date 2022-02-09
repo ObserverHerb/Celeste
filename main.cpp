@@ -20,6 +20,14 @@ const char *ORGANIZATION_NAME="Sky-Meyg";
 const char *APPLICATION_NAME="Celeste";
 const char *JSON_KEY_ACCESS_TOKEN="access_token";
 const char *JSON_KEY_REFRESH_TOKEN="refresh_token";
+const char *JSON_KEY_EXPIRY="expires_in";
+const char *QUERY_PARAMETER_CLIENT_ID="client_id";
+const char *QUERY_PARAMETER_CLIENT_SECRET="client_secret";
+const char *QUERY_PARAMETER_GRANT_TYPE="grant_type";
+const char *QUERY_PARAMETER_REDIRECT_URI="redirect_uri";
+const char *QUERY_PARAMETER_CODE="code";
+const char *QUERY_PARAMETER_SCOPE="scope";
+const char *TWITCH_API_ENDPOINT_TOKEN="https://id.twitch.tv/oauth2/token";
 
 enum
 {
@@ -94,7 +102,7 @@ int main(int argc,char *argv[])
 		QTimer tokenTimer;
 		tokenTimer.setInterval(3600000); // 1 hour
 		tokenTimer.connect(&tokenTimer,&QTimer::timeout,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret]() {
-			Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret](QNetworkReply *reply) {
+			Network::Request({TWITCH_API_ENDPOINT_TOKEN},Network::Method::POST,[&settingRefreshToken,&settingOAuthToken,&settingClientID,&settingClientSecret](QNetworkReply *reply) {
 				// TODO: can I implement more intelligent error handling here?
 				if (reply->error()) return;
 				QString uhoh=reply->readAll();
@@ -104,12 +112,12 @@ int main(int argc,char *argv[])
 				settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
 				settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
 			},{
-				{"client_id",settingClientID},
-				{"client_secret",settingClientSecret},
-				{"grant_type","refresh_token"},
+				{QUERY_PARAMETER_CLIENT_ID,settingClientID},
+				{QUERY_PARAMETER_CLIENT_SECRET,settingClientSecret},
+				{QUERY_PARAMETER_GRANT_TYPE,"refresh_token"},
 				{"refresh_token",settingRefreshToken}
 			},{
-				{"Content-Type","application/x-www-form-urlencoded"}
+				{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM}
 			});
 		});
 
@@ -177,14 +185,12 @@ int main(int argc,char *argv[])
 			authenticateDialog.setDefaultButton(QMessageBox::Yes);
 			if (authenticateDialog.exec() == QMessageBox::No) return;
 			QMetaObject::Connection authenticate=server.connect(&server,&Server::Dispatch,[&settingClientID,&settingClientSecret,&settingOAuthToken,&settingRefreshToken,&settingCallbackURL,&settingScope,&server](qintptr socketID,const QUrlQuery &query) {
-				const char *QUERY_KEY_CODE="code";
-				const char *QUERY_KEY_SCOPE="scope";
-				if (!query.hasQueryItem(QUERY_KEY_CODE) || !query.hasQueryItem(QUERY_KEY_SCOPE)) return;
+				if (!query.hasQueryItem(QUERY_PARAMETER_CODE) || !query.hasQueryItem(QUERY_PARAMETER_SCOPE)) return;
 				emit server.SocketWrite(socketID,QJsonDocument(QJsonObject({
-					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
-					{QUERY_KEY_SCOPE,query.queryItemValue(QUERY_KEY_SCOPE)}
+					{QUERY_PARAMETER_CODE,query.queryItemValue(QUERY_PARAMETER_CODE)},
+					{QUERY_PARAMETER_SCOPE,query.queryItemValue(QUERY_PARAMETER_SCOPE)}
 				})).toJson(QJsonDocument::Compact));
-				Network::Request({"https://id.twitch.tv/oauth2/token"},Network::Method::POST,[&settingOAuthToken,&settingRefreshToken](QNetworkReply *reply) {
+				Network::Request({TWITCH_API_ENDPOINT_TOKEN},Network::Method::POST,[&settingOAuthToken,&settingRefreshToken](QNetworkReply *reply) {
 					QMessageBox failureDialog;
 					failureDialog.setWindowTitle("Re-Authentication Failed");
 					failureDialog.setText("Attempt to obtain OAuth token failed.");
@@ -209,21 +215,21 @@ int main(int argc,char *argv[])
 					settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
 					settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
 				},{
-					{QUERY_KEY_CODE,query.queryItemValue(QUERY_KEY_CODE)},
-					{"client_id",settingClientID},
-					{"client_secret",settingClientSecret},
-					{"grant_type","authorization_code"},
-					{"redirect_uri",settingCallbackURL}
+					{QUERY_PARAMETER_CODE,query.queryItemValue(QUERY_PARAMETER_CODE)},
+					{QUERY_PARAMETER_CLIENT_ID,settingClientID},
+					{QUERY_PARAMETER_CLIENT_SECRET,settingClientSecret},
+					{QUERY_PARAMETER_GRANT_TYPE,"authorization_code"},
+					{QUERY_PARAMETER_REDIRECT_URI,settingCallbackURL}
 				},{
-					{"Content-Type","application/x-www-form-urlencoded"}
+					{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM}
 				});
 			});
 			QUrl request("https://id.twitch.tv/oauth2/authorize");
 			request.setQuery(QUrlQuery({
-				{"client_id",settingClientID},
-				{"redirect_uri",settingCallbackURL},
+				{QUERY_PARAMETER_CLIENT_ID,settingClientID},
+				{QUERY_PARAMETER_REDIRECT_URI,settingCallbackURL},
 				{"response_type","code"},
-				{"scope",settingScope}
+				{QUERY_PARAMETER_SCOPE,settingScope}
 			 }));
 			QDesktopServices::openUrl(request);
 		});

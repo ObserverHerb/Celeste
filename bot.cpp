@@ -9,6 +9,10 @@
 #include "globals.h"
 
 const char *COMMANDS_LIST_FILENAME="commands.json";
+const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
+const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
+const char *QUERY_PARAMETER_BROADCASTER_ID="broadcaster_id";
+const char *QUERY_PARAMETER_MODERATOR_ID="moderator_id";
 const char *JSON_KEY_COMMAND_NAME="command";
 const char *JSON_KEY_COMMAND_ALIASES="aliases";
 const char *JSON_KEY_COMMAND_DESCRIPTION="description";
@@ -233,8 +237,8 @@ void Bot::LoadBadgeIconURLs()
 			}
 		}
 	},{},{
-		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{"Client-ID",settingClientID}
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{NETWORK_HEADER_CLIENT_ID,settingClientID}
 	});
 }
 
@@ -663,9 +667,9 @@ void Bot::DispatchUptime(bool total)
 	},{
 		{"user_login",settingAdministrator}
 	},{
-		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{"Client-Id",settingClientID},
-		{"Content-Type","application/json"},
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{NETWORK_HEADER_CLIENT_ID,settingClientID},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
 }
 
@@ -728,12 +732,12 @@ void Bot::ToggleEmoteOnly()
 			else
 				EmoteOnly(true,broadcaster.ID());
 		},{
-			{"broadcaster_id",broadcaster.ID()},
-			{"moderator_id",broadcaster.ID()}
+			{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()},
+			{QUERY_PARAMETER_MODERATOR_ID,broadcaster.ID()}
 		},{
-			{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-			{"Client-Id",settingClientID},
-			{"Content-Type","application/json"},
+			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+			{NETWORK_HEADER_CLIENT_ID,settingClientID},
+			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		});
 	});
 }
@@ -747,11 +751,11 @@ void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
 	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::PATCH,[this](QNetworkReply *reply) {
 		if (reply->error()) emit Print(QString("Something went wrong setting emote only: %1").arg(reply->errorString()));
 	},{
-		{"broadcaster_id",broadcasterID},
-		{"moderator_id",broadcasterID}
+		{QUERY_PARAMETER_BROADCASTER_ID,broadcasterID},
+		{QUERY_PARAMETER_MODERATOR_ID,broadcasterID}
 	},{
-		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-		{"Client-Id",settingClientID},
-		{"Content-Type","application/json"},
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+		{NETWORK_HEADER_CLIENT_ID,settingClientID},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	},QJsonDocument(QJsonObject({{"emote_mode",enable}})).toJson(QJsonDocument::Compact));
 }

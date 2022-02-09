@@ -101,7 +101,7 @@ void Server::SocketWrite(qintptr socketID,const QString &data) const
 		Print("Tried to write to non-existent socket",OPERATION);
 		return;
 	}
-	const QString response=QString("HTTP/1.1 200 OK%1Content-Type: text/plain%1%1%2").arg(LINE_BREAK,data);
+	const QString response=QString("HTTP/1.1 200 OK%1%3: %4%1%1%2").arg(LINE_BREAK,data,Network::CONTENT_TYPE,Network::CONTENT_TYPE_PLAIN);
 	if (int written=sockets.at(socketID)->write(StringConvert::ByteArray(response)); written < data.size())
 		Print(QString("Partial write: %1 or %2").arg(written,data.size()),OPERATION);
 	else

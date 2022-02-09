@@ -47,7 +47,7 @@ void EventSub::Subscribe(const QString &type)
 	},{},{
 		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
 		{"Client-ID",settingClientID},
-		{"Content-Type","application/json"}
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({
 		{"type",type},
 		{"version","1"},
