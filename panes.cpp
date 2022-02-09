@@ -136,7 +136,11 @@ void ChatPane::Print(const QString &text)
 void ChatPane::DismissStatus()
 {
 	statuses.pop();
-	if (!statuses.empty()) return;
+	if (!statuses.empty())
+	{
+		status->setText(statuses.front());
+		return;
+	}
 	status->clear();
 	status->hide();
 	statusClock.stop();
