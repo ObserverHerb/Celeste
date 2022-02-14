@@ -32,7 +32,7 @@ class Bot : public QObject
 {
 	Q_OBJECT
 	using TagMap=std::unordered_map<QString,QString>;
-	using BadgeMap=std::unordered_map<QString,unsigned int>;
+	using BadgeMap=std::unordered_map<QString,QString>;
 public:
 	Bot(Security &security,QObject *parent=nullptr);
 	void ToggleEmoteOnly();
@@ -41,7 +41,7 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Local> viewers;
-	std::unordered_map<QString,std::unordered_map<unsigned int,QString>> badgeIconURLs;
+	std::unordered_map<QString,BadgeMap> badgeIconURLs;
 	QMediaPlayer *vibeKeeper;
 	Volume::Fader *vibeFader;
 	QMediaPlaylist vibeSources;

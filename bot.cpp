@@ -237,7 +237,7 @@ void Bot::LoadBadgeIconURLs()
 			{
 				const QJsonObject object=version.toObject();
 				if (!object.contains(JSON_KEY_ID) || !object.contains(JSON_KEY_IMAGE_URL)) continue;
-				const unsigned int setVersion=object.value(JSON_KEY_ID).toVariant().toUInt();
+				const QString setVersion=object.value(JSON_KEY_ID).toVariant().toString();
 				const QString versionURL=object.value(JSON_KEY_IMAGE_URL).toString();
 				badgeIconURLs[setID][setVersion]=versionURL;
 			}
@@ -359,9 +359,9 @@ void Bot::ParseChatMessage(const QString &message)
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,messageSegments,tags](Viewer::Local viewer) mutable {
 		inactivityClock.start();
 
-		std::unordered_map<QString,unsigned int> badges=ParseBadges(tags);
+		BadgeMap badges=ParseBadges(tags);
 		QStringList badgeIconPaths;
-		for (std::unordered_map<QString,unsigned int>::iterator candidate=badges.begin(); candidate != badges.end(); ++candidate)
+		for (BadgeMap::iterator candidate=badges.begin(); candidate != badges.end(); ++candidate)
 		{
 			if (!badgeIconURLs.contains(candidate->first) || !badgeIconURLs.at(candidate->first).contains(candidate->second)) continue;
 			const QString badgeIconPath=Filesystem::TemporaryPath().filePath(QString("%1_%2.png").arg(candidate->first,StringConvert::PositiveInteger(candidate->second)));
@@ -503,7 +503,7 @@ const Bot::BadgeMap Bot::ParseBadges(const TagMap &tags)
 		{
 			QStringList components=entry.split('/');
 			if (components.size() < 2) continue;
-			badges.insert({components.at(0),StringConvert::PositiveInteger(components.at(1))});
+			badges.insert({components.at(0),components.at(1)});
 		}
 	}
 	return badges;
