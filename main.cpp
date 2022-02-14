@@ -145,6 +145,7 @@ int main(int argc,char *argv[])
 				server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
 			});
 		});
+		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
 		channel->connect(channel,&Channel::Denied,[&security,channel,&server]() {
 			QMessageBox authenticateDialog;
 			authenticateDialog.setWindowTitle("Authentication Failed");

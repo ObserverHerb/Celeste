@@ -34,7 +34,6 @@ public:
 	void RequestToken(const QString &code,const QString &scopes);
 	static const QStringList SCOPES;
 private:
-	QTimer tokenTimer;
 	PrivateSetting settingAdministrator;
 	PrivateSetting settingClientID;
 	PrivateSetting settingClientSecret;
@@ -43,8 +42,11 @@ private:
 	PrivateSetting settingServerToken;
 	PrivateSetting settingCallbackURL;
 	PrivateSetting settingScope;
+	static QTimer tokenTimer;
 signals:
 	void TokenRequestFailed();
+public slots:
+	void StartClocks();
 private slots:
 	void RefreshToken();
 };

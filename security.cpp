@@ -55,6 +55,8 @@ const QStringList Security::SCOPES={
 	"whispers:read"
 };
 
+QTimer Security::tokenTimer;
+
 Security::Security() : settingAdministrator("Administrator"),
 	settingClientID("ClientID"),
 	settingClientSecret("ClientSecret"),
@@ -64,7 +66,8 @@ Security::Security() : settingAdministrator("Administrator"),
 	settingCallbackURL("CallbackURL"),
 	settingScope("Permissions")
 {
-	tokenTimer.setInterval(3600000); // 1 hour
+	if (!tokenTimer.isActive()) tokenTimer.setInterval(3600000); // 1 hour
+	tokenTimer.connect(&tokenTimer,&QTimer::timeout,this,&Security::RefreshToken,Qt::UniqueConnection);
 }
 
 void Security::AuthorizeUser()
@@ -105,15 +108,10 @@ void Security::RequestToken(const QString &code,const QString &scopes)
 
 		if (json.object().contains(JSON_KEY_EXPIRY))
 		{
-			QString foo=json.toJson();
-			foo=StringConvert::Integer(json.object().value("expires_in").toInt());
 			std::chrono::milliseconds margin=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::minutes(30));
 			std::chrono::milliseconds expiry=std::chrono::duration_cast<std::chrono::milliseconds>(static_cast<std::chrono::seconds>(json.object().value("expires_in").toInt()))-margin;
 			if (expiry.count() > 0)	tokenTimer.setInterval(expiry.count());
 		}
-
-		tokenTimer.connect(&tokenTimer,&QTimer::timeout,this,&Security::RefreshToken);
-		tokenTimer.start();
 	},{
 		{QUERY_PARAMETER_CODE,code},
 		{QUERY_PARAMETER_CLIENT_ID,settingClientID},
@@ -150,4 +148,9 @@ void Security::RefreshToken()
 	},{
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM}
 	});
+}
+
+void Security::StartClocks()
+{
+	tokenTimer.start();
 }
