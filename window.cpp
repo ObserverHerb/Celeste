@@ -55,8 +55,8 @@ void Window::SwapPane(PersistentPane *pane)
 void Window::AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath)
 {
 	StageEphemeralPane(new MultimediaAnnouncePane({
-		{"Please welcome<br>",1},
-		{QString("%1<br>").arg(name),1.5},
+		{"Please welcome",1},
+		{QString("%1").arg(name),1.5},
 		{"to the chat",1}
 	},profileImage,audioPath));
 }
@@ -64,9 +64,9 @@ void Window::AnnounceArrival(const QString &name,QImage profileImage,const QStri
 void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,const QString& message)
 {
 	StageEphemeralPane(new AnnouncePane({
-		{QString("%1<br>").arg(name),1.5},
-		{"has redeemed<br>",1},
-		{QString("%1<br>").arg(rewardTitle),1.5},
+		{QString("%1").arg(name),1.5},
+		{"has redeemed",1},
+		{QString("%1").arg(rewardTitle),1.5},
 		{message,1}
 	}));
 }
@@ -74,7 +74,7 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 {
 	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{QString("%1<br>").arg(name),1.5},
+		{QString("%1").arg(name),1.5},
 		{"has subscribed!",1}
 	},audioPath);
 	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
@@ -84,9 +84,9 @@ void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath)
 {
 	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{QString("%1<br>").arg(name),1.5},
-		{"is raiding with<br>",1},
-		{QString("%1<br>").arg(StringConvert::PositiveInteger(viewers)),1.5},
+		{QString("%1").arg(name),1.5},
+		{"is raiding with",1},
+		{QString("%1").arg(StringConvert::PositiveInteger(viewers)),1.5},
 		{"viewers",1}
 	},audioPath);
 	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
@@ -99,8 +99,8 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 	connect(pane,&VideoPane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 	StageEphemeralPane(new AnnouncePane({
-		{QString("%1 has cheered<br>").arg(name),0.5},
-		{QString("%1<br>").arg(message),1.5},
+		{QString("%1 has cheered").arg(name),0.5},
+		{QString("%1").arg(message),1.5},
 		{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
 	}));
 }
@@ -132,7 +132,7 @@ void Window::PlayVideo(const QString &path)
 void Window::PlayAudio(const QString &viewer,const QString &message,const QString &path)
 {
 	StageEphemeralPane(new AudioAnnouncePane({
-		{QString("%1<br>").arg(viewer),1.5},
+		{QString("%1").arg(viewer),1.5},
 		{message,1}
 	},path));
 }
@@ -188,8 +188,8 @@ void Window::ShowPanicText(const QString &text)
 void Window::Shoutout(const QString &name,const QString &description,const QImage &profileImage)
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
-		{"Drop a follow on<br>",1},
-		{QString("%1<br>").arg(name),1.5},
+		{"Drop a follow on",1},
+		{QString("%1").arg(name),1.5},
 		{description,0.5}
 	},profileImage);
 	pane->AccentColor(settingAccentColor);
@@ -200,9 +200,9 @@ void Window::Shoutout(const QString &name,const QString &description,const QImag
 void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days)
 {
 	Lines lines;
-	lines.push_back({QString("%1<br>").arg(name),1.5});
-	lines.push_back({"has been following the stream for<br>",1});
-	if (years.count() > 0) lines.push_back({QString("%1 %2<br>").arg(StringConvert::Integer(years.count()),StringConvert::NumberAgreement("year","years",NumberConvert::Positive(years.count()))),1.5});
+	lines.push_back({QString("%1").arg(name),1.5});
+	lines.push_back({"has been following the stream for",1});
+	if (years.count() > 0) lines.push_back({QString("%1 %2").arg(StringConvert::Integer(years.count()),StringConvert::NumberAgreement("year","years",NumberConvert::Positive(years.count()))),1.5});
 	QString finalLine;
 	if (months.count() > 0)
 	{
@@ -232,9 +232,9 @@ void Window::ShowTimezone(const QString &timezone)
 void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds)
 {
 	StageEphemeralPane(new AnnouncePane({
-		{"Stream has been live for<br>",1},
-		{QString("%1 hours<br>").arg(StringConvert::Integer(hours.count())),1.5},
-		{QString("%1 minutes, and %2 seconds<br>").arg(StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count())),1}
+		{"Stream has been live for",1},
+		{QString("%1 hours").arg(StringConvert::Integer(hours.count())),1.5},
+		{QString("%1 minutes, and %2 seconds").arg(StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count())),1}
 	}));
 }
 
@@ -265,11 +265,11 @@ void Window::ReleaseLiveEphemeralPane()
 void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
-		{QString("Now playing<br>"),0.5},
-		{QString("%1<br>").arg(song),1.0},
-		{"by<br>",0.5},
-		{QString("%2<br>").arg(artist),0.75},
-		{"from the ablum<br>",0.5},
+		{QString("Now playing"),0.5},
+		{QString("%1").arg(song),1.0},
+		{"by",0.5},
+		{QString("%2").arg(artist),0.75},
+		{"from the ablum",0.5},
 		{QString("%3").arg(album),0.75}
 	},coverArt);
 	pane->AccentColor(settingAccentColor);

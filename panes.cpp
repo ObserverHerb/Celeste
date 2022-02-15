@@ -236,8 +236,9 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 			paragraph.append(QString("%1").arg(line.first));
 		else
 			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.first,StringConvert::Integer(static_cast<int>(settingFontSize)*line.second)));
+		paragraph.append("<br>");
 	}
-	return QString("<div style='line-height: 1.25;'>%1</div>").arg(paragraph);
+	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);
 }
 
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
