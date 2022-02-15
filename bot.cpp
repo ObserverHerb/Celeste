@@ -30,6 +30,7 @@ const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/
 const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
 const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
 const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
+const char *TWITCH_API_ENDPOING_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
 const char *CHAT_BADGE_BROADCASTER="broadcaster";
 const char *CHAT_BADGE_MODERATOR="moderator";
 
@@ -64,6 +65,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	Command categoryCommand("category","Change the stream category",CommandType::NATIVE,true);
 	Command commandsCommand("commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false);
 	Command emoteCommand("emote","Toggle emote only mode in chat",CommandType::NATIVE,true);
+	Command followageCommand("followage","Show how long a user has followed the broadcaster",CommandType::NATIVE,false);
 	Command panicCommand("panic","Crash Celeste",CommandType::NATIVE,true);
 	Command shoutOutCommand("so","Call attention to another streamer's channel",CommandType::NATIVE,false);
 	Command songCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false);
@@ -78,6 +80,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 		{categoryCommand.Name(),categoryCommand},
 		{commandsCommand.Name(),commandsCommand},
 		{emoteCommand.Name(),emoteCommand},
+		{followageCommand.Name(),followageCommand},
 		{panicCommand.Name(),panicCommand},
 		{shoutOutCommand.Name(),shoutOutCommand},
 		{songCommand.Name(),songCommand},
@@ -93,6 +96,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 		{categoryCommand.Name(),NativeCommandFlag::CATEGORY},
 		{commandsCommand.Name(),NativeCommandFlag::COMMANDS},
 		{emoteCommand.Name(),NativeCommandFlag::EMOTE},
+		{followageCommand.Name(),NativeCommandFlag::FOLLOWAGE},
 		{panicCommand.Name(),NativeCommandFlag::PANIC},
 		{shoutOutCommand.Name(),NativeCommandFlag::SHOUTOUT},
 		{songCommand.Name(),NativeCommandFlag::SONG},
@@ -559,6 +563,9 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const View
 		case NativeCommandFlag::EMOTE:
 			ToggleEmoteOnly();
 			break;
+		case NativeCommandFlag::FOLLOWAGE:
+			DispatchFollowage(viewer.Name());
+			break;
 		case NativeCommandFlag::PANIC:
 			DispatchPanic(viewer.DisplayName());
 			break;
@@ -621,6 +628,47 @@ void Bot::DispatchCommandList()
 		if (!command.second.Protected()) descriptions.push_back({command.first,command.second.Description()});
 	}
 	emit ShowCommandList(descriptions);
+}
+
+void Bot::DispatchFollowage(const QString &name)
+{
+	Viewer::Remote *broadcaster=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
+	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,name](Viewer::Local broadcaster) {
+		Viewer::Remote *viewer=new Viewer::Remote(name,settingOAuthToken,settingClientID);
+		connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
+		connect(viewer,&Viewer::Remote::Recognized,viewer,[this,broadcaster](Viewer::Local viewer) {
+			Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,broadcaster,viewer](QNetworkReply *reply) {
+				QJsonParseError jsonError;
+				QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+				if (json.isNull() || !json.object().contains("data"))
+				{
+					emit Print("Something went wrong obtaining stream information");
+					return;
+				}
+				QJsonArray data=json.object().value("data").toArray();
+				if (data.size() < 1)
+				{
+					emit Print("Response from requesting stream information was incomplete ");
+					return;
+				}
+				QJsonObject details=data.at(0).toObject();
+				QDateTime start=QDateTime::fromString(details.value("followed_at").toString(),Qt::ISODate);
+				std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
+				std::chrono::years years=std::chrono::duration_cast<std::chrono::years>(duration);
+				std::chrono::months months=std::chrono::duration_cast<std::chrono::months>(duration-years);
+				std::chrono::days days=std::chrono::duration_cast<std::chrono::days>(duration-years-months);
+				emit ShowFollowage(viewer.DisplayName(),years,months,days);
+			},{
+				{"from_id",viewer.ID()},
+				{"to_id",broadcaster.ID()}
+			},{
+				{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
+				{"Client-Id",settingClientID},
+				{"Content-Type","application/json"},
+			});
+		});
+	});
 }
 
 void Bot::DispatchPanic(const QString &name)

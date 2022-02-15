@@ -19,6 +19,16 @@ inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
 inline const short KEY=0;
 inline const short VALUE=1;
 
+namespace NumberConvert
+{
+	template <std::integral T>
+	inline unsigned int Positive(T value)
+	{
+		if (std::abs(value) > std::numeric_limits<unsigned int>::max()) throw std::range_error("Overflow converting to positive integer");
+		return value >= 0 ? static_cast<unsigned int>(value) : 0;
+	}
+}
+
 namespace StringConvert
 {
 	inline QByteArray ByteArray(const QString &value) { return value.toLocal8Bit(); } // TODO: how do I report that this failed?
@@ -47,6 +57,12 @@ namespace StringConvert
 		unsigned int result=value.toUInt(&succeeded);
 		if (!succeeded) throw std::range_error("Unable to convert text to positive number");
 		return result;
+	}
+
+	template <std::unsigned_integral T>
+	inline QString NumberAgreement(const QString &singular,const QString &plural,T count)
+	{
+		return count == 1 ? singular : plural;
 	}
 
 	namespace Split

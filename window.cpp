@@ -197,6 +197,33 @@ void Window::Shoutout(const QString &name,const QString &description,const QImag
 	StageEphemeralPane(pane);
 }
 
+void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days)
+{
+	Lines lines;
+	lines.push_back({QString("%1<br>").arg(name),1.5});
+	lines.push_back({"has been following the stream for<br>",1});
+	if (years.count() > 0) lines.push_back({QString("%1 %2<br>").arg(StringConvert::Integer(years.count()),StringConvert::NumberAgreement("year","years",NumberConvert::Positive(years.count()))),1.5});
+	QString finalLine;
+	if (months.count() > 0)
+	{
+		if (days.count() < 1) finalLine.append("and ");
+		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(months.count()),StringConvert::NumberAgreement("month","months",NumberConvert::Positive(months.count()))));
+	}
+	if (days.count() > 0)
+	{
+		if (years.count() > 0 && months.count() > 0) finalLine.append(",");
+		if (years.count() > 0 || months.count() > 0) finalLine.append(QString(" and %1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
+	}
+	if (!finalLine.isEmpty())
+	{
+		if (years.count() > 0)
+			lines.push_back({finalLine,1});
+		else
+			lines.push_back({finalLine,1.5});
+	}
+	StageEphemeralPane(new AnnouncePane(lines));
+}
+
 void Window::ShowTimezone(const QString &timezone)
 {
 	emit Print(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));

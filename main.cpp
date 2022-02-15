@@ -104,6 +104,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
 		celeste.connect(&celeste,&Bot::ShowCurrentSong,&window,&Window::ShowCurrentSong);
 		celeste.connect(&celeste,&Bot::ShowCommandList,&window,&Window::ShowCommandList);
+		celeste.connect(&celeste,&Bot::ShowFollowage,&window,&Window::ShowFollowage);
 		celeste.connect(&celeste,&Bot::ShowUptime,&window,&Window::ShowUptime);
 		celeste.connect(&celeste,&Bot::ShowTotalTime,&window,&Window::ShowUptime);
 		celeste.connect(&celeste,&Bot::Shoutout,&window,&Window::Shoutout);

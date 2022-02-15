@@ -44,6 +44,7 @@ public slots:
 	void ShowCommand(const QString &name,const QString &description);
 	void ShowPanicText(const QString &text);
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
+	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 protected slots:

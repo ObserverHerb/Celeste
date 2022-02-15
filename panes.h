@@ -18,6 +18,8 @@
 #include "widgets.h"
 #include "entities.h"
 
+using Lines=std::vector<std::pair<QString,double>>;
+
 class PersistentPane : public QWidget
 {
 	Q_OBJECT
@@ -99,13 +101,13 @@ class AnnouncePane : public EphemeralPane
 	Q_OBJECT
 public:
 	AnnouncePane(const QString &text,QWidget *parent=nullptr);
-	AnnouncePane(const std::vector<std::pair<QString,double>> &lines,QWidget *parent=nullptr);
+	AnnouncePane(const Lines &lines,QWidget *parent=nullptr);
 	void Show() override;
 	bool event(QEvent *event) override;
 	virtual void Polish();
 	void AccentColor(const QColor &color) { accentColor=color; }
 	void Duration(const int duration) { clock.setInterval(duration); }
-	const QString BuildParagraph(const std::vector<std::pair<QString,double>> &lines);
+	const QString BuildParagraph(const Lines &lines);
 protected:
 	QColor accentColor;
 	QLabel *output;
@@ -123,7 +125,7 @@ class AudioAnnouncePane : public AnnouncePane
 	Q_OBJECT
 public:
 	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent=nullptr);
-	AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent=nullptr);
+	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent=nullptr);
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
@@ -136,7 +138,7 @@ class ImageAnnouncePane : public AnnouncePane
 	Q_OBJECT
 public:
 	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent=nullptr);
-	ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent=nullptr);
+	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent=nullptr);
 	void Polish() override;
 	void resizeEvent(QResizeEvent *event) override;
 protected:
@@ -153,7 +155,7 @@ class MultimediaAnnouncePane : public AnnouncePane
 	Q_OBJECT
 public:
 	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent=nullptr);
-	MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent=nullptr);
+	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent=nullptr);
 	void Polish() override;
 	void Show() override;
 protected:
