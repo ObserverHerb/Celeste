@@ -663,9 +663,9 @@ void Bot::DispatchFollowage(const QString &name)
 				{"from_id",viewer.ID()},
 				{"to_id",broadcaster.ID()}
 			},{
-				{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-				{"Client-Id",security.ClientID()},
-				{"Content-Type","application/json"},
+				{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+				{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+				{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 			});
 		});
 	});
