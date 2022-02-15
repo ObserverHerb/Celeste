@@ -212,7 +212,8 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 	if (days.count() > 0)
 	{
 		if (years.count() > 0 && months.count() > 0) finalLine.append(",");
-		if (years.count() > 0 || months.count() > 0) finalLine.append(QString(" and %1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
+		if (years.count() > 0 || months.count() > 0) finalLine.append(QString(" and"));
+		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
 	}
 	if (!finalLine.isEmpty())
 	{
