@@ -632,10 +632,10 @@ void Bot::DispatchCommandList()
 
 void Bot::DispatchFollowage(const QString &name)
 {
-	Viewer::Remote *broadcaster=new Viewer::Remote(settingAdministrator,settingOAuthToken,settingClientID);
+	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
 	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,name](Viewer::Local broadcaster) {
-		Viewer::Remote *viewer=new Viewer::Remote(name,settingOAuthToken,settingClientID);
+		Viewer::Remote *viewer=new Viewer::Remote(security,name);
 		connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 		connect(viewer,&Viewer::Remote::Recognized,viewer,[this,broadcaster](Viewer::Local viewer) {
 			Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,broadcaster,viewer](QNetworkReply *reply) {
@@ -663,8 +663,8 @@ void Bot::DispatchFollowage(const QString &name)
 				{"from_id",viewer.ID()},
 				{"to_id",broadcaster.ID()}
 			},{
-				{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(settingOAuthToken)))},
-				{"Client-Id",settingClientID},
+				{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+				{"Client-Id",security.ClientID()},
 				{"Content-Type","application/json"},
 			});
 		});
