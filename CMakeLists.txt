@@ -70,7 +70,6 @@ add_executable(Celeste
 	eventsub.cpp
 	panes.h
 	panes.cpp
-	platform.h
 	platform.cpp
 	log.h
 	log.cpp

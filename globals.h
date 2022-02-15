@@ -13,7 +13,6 @@
 #include <queue>
 #include <concepts>
 #include <stdexcept>
-#include "platform.h"
 
 inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
 inline const short KEY=0;
@@ -117,6 +116,20 @@ namespace Filesystem
 	{
 		return QStandardPaths::writableLocation(QStandardPaths::TempLocation);
 	}
+
+	const std::optional<QString> CreateHiddenFile(const QString &filePath);
+
+	inline bool Touch(QFile &file)
+	{
+		const QDir path(QFileInfo(file).absolutePath());
+		if (!file.exists())
+		{
+			if (!path.mkpath(path.absolutePath())) return false;
+			if (!file.open(QIODevice::WriteOnly)) return false;
+			file.close();
+		}
+		return true;
+	}
 }
 
 namespace Random
@@ -199,5 +212,17 @@ namespace Network
 			break;
 		}
 		}
+	}
+}
+
+namespace Platform
+{
+	constexpr bool Windows()
+	{
+#ifdef Q_OS_WIN
+		return true;
+#else
+		return false;
+#endif
 	}
 }

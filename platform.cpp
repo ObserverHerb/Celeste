@@ -1,6 +1,6 @@
 #include <QFileInfo>
 #include <QDir>
-#include "platform.h"
+#include "globals.h"
 
 #ifdef Q_OS_WIN
 #include "windows.h"
@@ -8,18 +8,6 @@
 
 namespace Filesystem
 {
-	bool Touch(QFile &file)
-	{
-		const QDir path(QFileInfo(file).absolutePath());
-		if (!file.exists())
-		{
-			if (!path.mkpath(path.absolutePath())) return false;
-			if (!file.open(QIODevice::WriteOnly)) return false;
-			file.close();
-		}
-		return true;
-	}
-
 	const std::optional<QString> CreateHiddenFile(const QString &filePath)
 	{
 		QFile file;
