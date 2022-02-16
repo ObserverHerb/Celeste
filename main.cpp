@@ -128,10 +128,9 @@ int main(int argc,char *argv[])
 			if (retryDialog.exec() == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&server,&window,&celeste,&log]() {
-			server.disconnect(); // break any connection with security's slots
+		channel->connect(channel,&Channel::Connected,[&security,&server,&celeste,&log]() {
 			Viewer::Remote *viewer=new Viewer::Remote(security,security.Administrator());
-			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&security,&log,&server,&window,&celeste](Viewer::Local viewer) mutable {
+			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&security,&log,&server,&celeste](Viewer::Local viewer) {
 				EventSub *eventSub=new EventSub(security,viewer);
 				eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
 				eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
