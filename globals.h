@@ -179,7 +179,7 @@ namespace Network
 		});
 
 		QNetworkRequest request;
-		for (const std::pair<QByteArray,QByteArray> header : headers) request.setRawHeader(header.first,header.second);
+		for (const std::pair<QByteArray,QByteArray> &header : headers) request.setRawHeader(header.first,header.second);
 		switch (method)
 		{
 		case Method::GET:
