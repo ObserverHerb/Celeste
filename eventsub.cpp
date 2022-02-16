@@ -38,6 +38,8 @@ EventSub::EventSub(Security &security,Viewer::Local broadcaster,QObject *parent)
 void EventSub::Subscribe(const QString &type)
 {
 	const char *OPERATION="subscribe";
+	QUrl callbackURL(security.CallbackURL());
+	callbackURL.setScheme("https");
 	emit Print(QString("Requesting subscription to %1").arg(type),OPERATION);
 	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},Network::Method::POST,[this](QNetworkReply *reply) {
 		// FIXME: check the validity of this reply!
@@ -57,7 +59,7 @@ void EventSub::Subscribe(const QString &type)
 			"transport",
 			QJsonObject({
 				{"method","webhook"},
-				{"callback",QString("https://%1").arg(static_cast<QString>(security.CallbackURL()))},
+				{"callback",callbackURL.toString()},
 				{"secret",secret}
 			})
 		}
