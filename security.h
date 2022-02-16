@@ -26,6 +26,7 @@ public:
 	Security();
 	PrivateSetting& Administrator() { return settingAdministrator; }
 	PrivateSetting& OAuthToken() { return settingOAuthToken; }
+	PrivateSetting& ServerToken() { return settingServerToken; }
 	PrivateSetting& ClientID() { return settingClientID; }
 	PrivateSetting& ClientSecret() { return settingClientSecret; }
 	PrivateSetting& CallbackURL() { return settingCallbackURL; }

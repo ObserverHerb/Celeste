@@ -43,7 +43,7 @@ void EventSub::Subscribe(const QString &type)
 		// FIXME: check the validity of this reply!
 		emit Print(StringConvert::Dump(reply->readAll()),"twitch");
 	},{},{
-		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.ServerToken())))},
 		{"Client-ID",security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({

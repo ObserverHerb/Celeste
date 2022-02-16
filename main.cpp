@@ -147,7 +147,8 @@ int main(int argc,char *argv[])
 			});
 		});
 		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
-		channel->connect(channel,&Channel::Denied,[&security,channel,&server]() {
+		QMetaObject::Connection reauthorize;
+		channel->connect(channel,&Channel::Denied,[&reauthorize,&security,channel,&server]() {
 			QMessageBox authenticateDialog;
 			authenticateDialog.setWindowTitle("Authentication Failed");
 			authenticateDialog.setText("Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?");
@@ -155,7 +156,8 @@ int main(int argc,char *argv[])
 			authenticateDialog.setDefaultButton(QMessageBox::Yes);
 			if (authenticateDialog.exec() == QMessageBox::No) return;
 
-			server.connect(&server,&Server::Dispatch,[&security,&server](qintptr socketID,const QUrlQuery &query) {
+			reauthorize=server.connect(&server,&Server::Dispatch,[&reauthorize,&security,&server](qintptr socketID,const QUrlQuery &query) {
+				server.disconnect(reauthorize); // break any connection with security's slots so we don't conflict with EventSub later
 				emit server.SocketWrite(socketID,QJsonDocument(QJsonObject({
 					{QUERY_PARAMETER_CODE,query.queryItemValue(QUERY_PARAMETER_CODE)},
 					{QUERY_PARAMETER_SCOPE,query.queryItemValue(QUERY_PARAMETER_SCOPE)}
