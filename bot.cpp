@@ -368,7 +368,7 @@ void Bot::ParseChatMessage(const QString &message)
 		for (BadgeMap::iterator candidate=badges.begin(); candidate != badges.end(); ++candidate)
 		{
 			if (!badgeIconURLs.contains(candidate->first) || !badgeIconURLs.at(candidate->first).contains(candidate->second)) continue;
-			const QString badgeIconPath=Filesystem::TemporaryPath().filePath(QString("%1_%2.png").arg(candidate->first,StringConvert::PositiveInteger(candidate->second)));
+			const QString badgeIconPath=Filesystem::TemporaryPath().filePath(QString("%1_%2.png").arg(candidate->first,candidate->second));
 			badgeIconPaths.append(badgeIconPath);
 			DownloadBadgeIcon(badgeIconURLs.at(candidate->first).at(candidate->second),badgeIconPath);
 		}
