@@ -23,7 +23,7 @@ namespace NumberConvert
 	template <std::integral T>
 	inline unsigned int Positive(T value)
 	{
-		if (std::abs(value) > std::numeric_limits<unsigned int>::max()) throw std::range_error("Overflow converting to positive integer");
+		if (static_cast<std::size_t>(std::abs(value)) > static_cast<std::size_t>(std::numeric_limits<unsigned int>::max())) throw std::range_error("Overflow converting to positive integer");
 		return value >= 0 ? static_cast<unsigned int>(value) : 0;
 	}
 }
@@ -137,7 +137,6 @@ namespace Random
 	inline std::random_device generator;
 	inline int Bounded(int lower,int upper)
 	{
-		if (upper > std::numeric_limits<int>::max()) throw std::range_error("Range is larger than integer type");
 		std::uniform_int_distribution<int> distribution(lower,upper);
 		return distribution(generator);
 	}
@@ -149,7 +148,8 @@ namespace Random
 	inline int Bounded(const T &container)
 	{
 		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
-		return Bounded(0,container.size()-1);
+		if (container.size() > std::numeric_limits<int>::max()) throw std::range_error("Container contains too many elements");
+		return Bounded(0,static_cast<int>(container.size())-1);
 	}
 }
 
