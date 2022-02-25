@@ -77,11 +77,12 @@ class EphemeralPane : public QWidget
 public:
 	EphemeralPane(QWidget *parent);
 	virtual void Show()=0;
-	bool Expired();
 protected:
 	bool expired;
+	void Expire();
 signals:
 	void Finished();
+	void Expired();
 	void Print(const QString &text);
 };
 

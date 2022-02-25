@@ -149,15 +149,15 @@ void ChatPane::DismissStatus()
 EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent), expired(false)
 {
 	setVisible(false);
-	connect(this,&ImageAnnouncePane::Finished,[this]() {
-		expired=true;
-	});
-	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::deleteLater);
+	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::Expire);
 }
 
-bool EphemeralPane::Expired()
+void EphemeralPane::Expire()
 {
-	return expired;
+	if (expired) return;
+	expired=true;
+	emit Expired();
+	deleteLater();
 }
 
 VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(new QMediaPlayer(this)), viewport(new QVideoWidget(this))

@@ -241,7 +241,7 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
-	connect(pane,&EphemeralPane::Finished,this,&Window::ReleaseLiveEphemeralPane);
+	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
 	background->layout()->addWidget(pane);
 	if (ephemeralPanes.size() > 0)
 	{
@@ -259,7 +259,7 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 void Window::ReleaseLiveEphemeralPane()
 {
 	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
-	if (ephemeralPanes.front()->Expired()) ephemeralPanes.pop();
+	ephemeralPanes.pop();
 	if (ephemeralPanes.empty()) visiblePane->show();
 }
 
