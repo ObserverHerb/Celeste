@@ -58,7 +58,7 @@ void Window::AnnounceArrival(const QString &name,QImage profileImage,const QStri
 		{"Please welcome",1},
 		{QString("%1").arg(name),1.5},
 		{"to the chat",1}
-	},profileImage,audioPath));
+	},profileImage,audioPath,this));
 }
 
 void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,const QString& message)
@@ -68,7 +68,7 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 		{"has redeemed",1},
 		{QString("%1").arg(rewardTitle),1.5},
 		{message,1}
-	}));
+	},this));
 }
 
 void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
@@ -76,7 +76,7 @@ void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 	AudioAnnouncePane *pane=new AudioAnnouncePane({
 		{QString("%1").arg(name),1.5},
 		{"has subscribed!",1}
-	},audioPath);
+	},audioPath,this);
 	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 }
@@ -88,28 +88,28 @@ void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const Q
 		{"is raiding with",1},
 		{QString("%1").arg(StringConvert::PositiveInteger(viewers)),1.5},
 		{"viewers",1}
-	},audioPath);
+	},audioPath,this);
 	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 }
 
 void Window::AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath)
 {
-	VideoPane *pane=new VideoPane(videoPath);
+	VideoPane *pane=new VideoPane(videoPath,this);
 	connect(pane,&VideoPane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 	StageEphemeralPane(new AnnouncePane({
 		{QString("%1 has cheered").arg(name),0.5},
 		{QString("%1").arg(message),1.5},
 		{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
-	}));
+	},this));
 }
 
 void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 {
 	AudioAnnouncePane *pane=new AudioAnnouncePane({
 		{message,0.5},
-	},audioPath);
+	},audioPath,this);
 	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 }
@@ -126,7 +126,7 @@ void Window::ShowChat()
 
 void Window::PlayVideo(const QString &path)
 {
-	StageEphemeralPane(new VideoPane(path));
+	StageEphemeralPane(new VideoPane(path,this));
 }
 
 void Window::PlayAudio(const QString &viewer,const QString &message,const QString &path)
@@ -134,12 +134,12 @@ void Window::PlayAudio(const QString &viewer,const QString &message,const QStrin
 	StageEphemeralPane(new AudioAnnouncePane({
 		{QString("%1").arg(viewer),1.5},
 		{message,1}
-	},path));
+	},path,this));
 }
 
 void Window::ShowPortraitVideo(const QString &path)
 {
-	StageEphemeralPane(new VideoPane(path));
+	StageEphemeralPane(new VideoPane(path,this));
 }
 
 void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
@@ -163,7 +163,7 @@ void Window::ShowCommandList(std::vector<std::pair<QString,QString>> description
 		{
 			std::vector<std::pair<QString,double>>::size_type start=page*count;
 			std::vector<std::pair<QString,double>>::size_type end=start+count;
-			pane=new AnnouncePane({&lines[start],&lines[std::min(lines.size(),end)]});
+			pane=new AnnouncePane({&lines[start],&lines[std::min(lines.size(),end)]},this);
 			pane->Duration(duration);
 			StageEphemeralPane(pane);
 		}
@@ -176,7 +176,7 @@ void Window::ShowCommand(const QString &name,const QString &description)
 	StageEphemeralPane(new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
 		name,
 		description
-	)));
+	),this));
 }
 
 void Window::ShowPanicText(const QString &text)
@@ -191,7 +191,7 @@ void Window::Shoutout(const QString &name,const QString &description,const QImag
 		{"Drop a follow on",1},
 		{QString("%1").arg(name),1.5},
 		{description,0.5}
-	},profileImage);
+	},profileImage,this);
 	pane->AccentColor(settingAccentColor);
 	pane->Duration(10000); // TODO: change from hardcoded to configurable duration
 	StageEphemeralPane(pane);
@@ -222,7 +222,7 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 		else
 			lines.push_back({finalLine,1.5});
 	}
-	StageEphemeralPane(new AnnouncePane(lines));
+	StageEphemeralPane(new AnnouncePane(lines,this));
 }
 
 void Window::ShowTimezone(const QString &timezone)
@@ -236,7 +236,7 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 		{"Stream has been live for",1},
 		{QString("%1 hours").arg(StringConvert::Integer(hours.count())),1.5},
 		{QString("%1 minutes, and %2 seconds").arg(StringConvert::Integer(minutes.count()),StringConvert::Integer(seconds.count())),1}
-	}));
+	},this));
 }
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
@@ -272,7 +272,7 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 		{QString("%2").arg(artist),0.75},
 		{"from the ablum",0.5},
 		{QString("%3").arg(album),0.75}
-	},coverArt);
+	},coverArt,this);
 	pane->AccentColor(settingAccentColor);
 	StageEphemeralPane(pane);
 }

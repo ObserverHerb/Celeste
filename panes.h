@@ -24,7 +24,7 @@ class PersistentPane : public QWidget
 {
 	Q_OBJECT
 public:
-	PersistentPane(QWidget *parent=nullptr) : QWidget(parent) { }
+	PersistentPane(QWidget *parent) : QWidget(parent) { }
 public slots:
 	virtual void Print(const QString &text)=0;
 };
@@ -75,7 +75,7 @@ class EphemeralPane : public QWidget
 {
 	Q_OBJECT
 public:
-	EphemeralPane(QWidget *parent=nullptr);
+	EphemeralPane(QWidget *parent);
 	virtual void Show()=0;
 	bool Expired();
 protected:
@@ -89,7 +89,7 @@ class VideoPane : public EphemeralPane
 {
 	Q_OBJECT
 public:
-	VideoPane(const QString &path,QWidget *parent=nullptr);
+	VideoPane(const QString &path,QWidget *parent);
 	void Show() override;
 protected:
 	QMediaPlayer *videoPlayer;
@@ -100,8 +100,8 @@ class AnnouncePane : public EphemeralPane
 {
 	Q_OBJECT
 public:
-	AnnouncePane(const QString &text,QWidget *parent=nullptr);
-	AnnouncePane(const Lines &lines,QWidget *parent=nullptr);
+	AnnouncePane(const QString &text,QWidget *parent);
+	AnnouncePane(const Lines &lines,QWidget *parent);
 	void Show() override;
 	bool event(QEvent *event) override;
 	virtual void Polish();
@@ -124,8 +124,8 @@ class AudioAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent=nullptr);
-	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent=nullptr);
+	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent);
+	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent);
 	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
@@ -137,8 +137,8 @@ class ImageAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent=nullptr);
-	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent=nullptr);
+	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
+	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent);
 	void Polish() override;
 	void resizeEvent(QResizeEvent *event) override;
 protected:
@@ -154,12 +154,12 @@ class MultimediaAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent=nullptr);
-	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent=nullptr);
+	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
+	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent);
 	void Polish() override;
 	void Show() override;
 protected:
-	MultimediaAnnouncePane(const QString &path,QWidget *parent=nullptr);
+	MultimediaAnnouncePane(const QString &path,QWidget *parent);
 	AudioAnnouncePane *audioPane;
 	ImageAnnouncePane *imagePane;
 };

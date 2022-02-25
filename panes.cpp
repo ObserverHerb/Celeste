@@ -241,7 +241,7 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer())
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer(this))
 {
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
@@ -274,7 +274,7 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 	view=new QGraphicsView(scene);
 	view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	pixmap=new QGraphicsPixmapItem();
+	pixmap=new QGraphicsPixmapItem(); // the scene takes ownership of the pixmap pointer
 	scene->addItem(pixmap);
 
 	shadow=new QGraphicsDropShadowEffect();
@@ -313,7 +313,7 @@ MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *pare
 
 MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
 {
-	imagePane=new ImageAnnouncePane(text,image,output);
+	imagePane=new ImageAnnouncePane(text,image,this);
 }
 
 MultimediaAnnouncePane::MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
