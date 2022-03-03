@@ -14,44 +14,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (WIN32)
 	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent WinExtras REQUIRED)
-	#find_package(Qt5 COMPONENTS Test REQUIRED)
 else()
 	find_package(Qt5 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent TextToSpeech REQUIRED)
-	#find_package(Qt5 COMPONENTS Test REQUIRED)
 endif()
-
-#if(BUILD_TESTING)
-#	add_executable(Gauntlet
-#		globals.h
-#		settings.h
-#		channel.h
-#		channel.cpp
-#		widgets.h
-#		widgets.cpp
-#		entities.h
-#		entities.cpp
-#		subscribers.h
-#		subscribers.cpp
-#		panes.h
-#		panes.cpp
-#		platform.h
-#		platform.cpp
-#		log.h
-#		log.cpp
-#		window.h
-#		window.cpp
-#		bot.h
-#		bot.cpp
-#		testing.cpp
-#	)
-#	add_test(NAME Gauntlet COMMAND Gauntlet ${CMAKE_SOURCE_DIR}/exercises)
-
-#	if (WIN32)
-#		target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::WinExtras)
-#	else()
-#		target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
-#	endif()
-#endif()
 
 add_executable(Celeste
 	globals.h
@@ -84,7 +49,6 @@ add_executable(Celeste
 if (WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::WinExtras)
-	#target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::WinExtras)
 else()
 	include(CheckIPOSupported)
 	check_ipo_supported(RESULT result)
@@ -93,5 +57,4 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
-	#target_link_libraries(Gauntlet PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::Test Qt5::TextToSpeech)
 endif()
