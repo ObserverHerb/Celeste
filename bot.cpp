@@ -714,7 +714,7 @@ void Bot::DispatchUptime(bool total)
 		QJsonObject details=data.at(0).toObject();
 		QDateTime start=QDateTime::fromString(details.value("started_at").toString(),Qt::ISODate);
 		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
-		if (total) duration+=std::chrono::milliseconds(static_cast<qint64>(settingUptimeHistory));
+		if (total) duration+=std::chrono::minutes(static_cast<qint64>(settingUptimeHistory));
 		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
 		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
 		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-hours-minutes);
