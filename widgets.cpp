@@ -1,3 +1,4 @@
+#include <QScrollBar>
 #include "globals.h"
 #include "widgets.h"
 
@@ -18,20 +19,20 @@ namespace StyleSheet
 	}
 }
 
-ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent)
+PinnedTextEdit::PinnedTextEdit(QWidget *parent) : QTextEdit(parent)
 {
-	connect(this,&ScrollingTextEdit::textChanged,[this]() {
+	connect(this,&PinnedTextEdit::textChanged,[this]() {
 		Tail();
 	});
 }
 
-void ScrollingTextEdit::resizeEvent(QResizeEvent *event)
+void PinnedTextEdit::resizeEvent(QResizeEvent *event)
 {
 	Tail();
 	QTextEdit::resizeEvent(event);
 }
 
-void ScrollingTextEdit::Tail()
+void PinnedTextEdit::Tail()
 {
 	QTextCursor cursor=textCursor();
 	cursor.movePosition(QTextCursor::End);
@@ -39,9 +40,38 @@ void ScrollingTextEdit::Tail()
 	ensureCursorVisible();
 }
 
-void ScrollingTextEdit::Append(const QString &text)
+void PinnedTextEdit::Append(const QString &text)
 {
 	Tail();
 	if (!toPlainText().isEmpty()) insertPlainText("\n"); // FIXME: this is really inefficient
 	insertHtml(text);
+}
+
+const int ScrollingTextEdit::PAUSE=3000;
+
+ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent)
+{
+
+}
+
+void ScrollingTextEdit::showEvent(QShowEvent *event)
+{
+	scrollTimer.setInterval(50);
+	QTimer::singleShot(PAUSE,[this]() {
+		connect(&scrollTimer,&QTimer::timeout,[this]() {
+			verticalScrollBar()->setSliderPosition(verticalScrollBar()->sliderPosition()+1);
+		});
+		connect(verticalScrollBar(),&QScrollBar::valueChanged,this,&ScrollingTextEdit::Scrolled);
+		scrollTimer.start();
+	});
+}
+
+void ScrollingTextEdit::Scrolled(int position)
+{
+	if (position >= verticalScrollBar()->maximum())
+	{
+		QTimer::singleShot(PAUSE,[this]() {
+			emit Finished();
+		});
+	}
 }

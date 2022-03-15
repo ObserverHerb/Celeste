@@ -59,7 +59,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	agenda->hide();
 	layout()->addWidget(agenda);
 
-	chat=new ScrollingTextEdit(this);
+	chat=new PinnedTextEdit(this);
 	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	chat->setFontFamily(settingFont);
 	chat->setFontPointSize(settingFontSize);
@@ -239,6 +239,36 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 		paragraph.append("<br>");
 	}
 	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);
+}
+
+ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(text,parent), commands(new ScrollingTextEdit(this))
+{
+	commands->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	commands->setFontFamily(settingFont);
+	commands->setFontPointSize(settingFontSize);
+	commands->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message, span.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize))));
+	commands->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
+	commands->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	commands->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	commands->setFrameStyle(QFrame::NoFrame);
+	commands->setCursorWidth(0);
+
+	connect(commands,&ScrollingTextEdit::Finished,this,&ScrollingAnnouncePane::Finished);
+}
+
+ScrollingAnnouncePane::ScrollingAnnouncePane(const Lines &lines,QWidget *parent) : ScrollingAnnouncePane("",parent)
+{
+	commands->setText(BuildParagraph(lines));
+}
+
+void ScrollingAnnouncePane::Show()
+{
+	show();
+}
+
+void ScrollingAnnouncePane::Polish()
+{
+	layout()->addWidget(commands);
 }
 
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer(this))

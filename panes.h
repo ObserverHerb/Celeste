@@ -53,7 +53,7 @@ public:
 	void SetAgenda(const QString &text);
 protected:
 	QLabel *agenda;
-	ScrollingTextEdit *chat;
+	PinnedTextEdit *chat;
 	QLabel *status;
 	QTimer statusClock;
 	std::queue<QString> statuses;
@@ -119,6 +119,18 @@ protected:
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
+};
+
+class ScrollingAnnouncePane : public AnnouncePane
+{
+	Q_OBJECT
+public:
+	ScrollingAnnouncePane(const QString &text,QWidget *parent);
+	ScrollingAnnouncePane(const Lines &lines,QWidget *parent);
+	void Show() override;
+	void Polish() override;
+protected:
+	ScrollingTextEdit *commands;
 };
 
 class AudioAnnouncePane : public AnnouncePane

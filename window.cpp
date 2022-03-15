@@ -144,30 +144,13 @@ void Window::ShowPortraitVideo(const QString &path)
 
 void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
 {
-	AnnouncePane *pane;
-	int duration=15000;
-	int count=8; // TODO: this should be calculated based on text line height vs pixel height of window
-	count=count*2; // a single command covers two lines
-	for (int page=0; page < std::ceil(static_cast<double>(descriptions.size())/count); page++)
+	Lines lines;
+	for (const std::pair<QString,QString> &command : descriptions)
 	{
-		std::vector<std::pair<QString,double>> lines;
-		for (const std::pair<QString,QString> &command : descriptions)
-		{
-			lines.push_back({QString("<div style='margin-bottom: 0;'>!%1</div>").arg(command.first),0.6});
-			lines.push_back({QString("<div style='margin-bottom: 0.5em;'>%1</div>").arg(command.second),0.5});
-		}
-		int duration=15000;
-		int count=8; // TODO: this should be calculated based on text line height vs pixel height of window
-		count=count*2; // a single command covers two lines
-		for (int page=0; page < std::ceil(static_cast<double>(lines.size())/count); page++)
-		{
-			std::vector<std::pair<QString,double>>::size_type start=page*count;
-			std::vector<std::pair<QString,double>>::size_type end=start+count;
-			pane=new AnnouncePane({&lines[start],&lines[std::min(lines.size(),end)]},this);
-			pane->Duration(duration);
-			StageEphemeralPane(pane);
-		}
+		lines.push_back({QString("<div style='margin-bottom: 0.5em;'>!%1").arg(command.first),0.6});
+		lines.push_back({QString("%1</div>").arg(command.second),0.5});
 	}
+	StageEphemeralPane(new ScrollingAnnouncePane(lines,this));
 }
 
 void Window::ShowCommand(const QString &name,const QString &description)
