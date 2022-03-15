@@ -216,7 +216,7 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
 	}
 	if (!finalLine.isEmpty()) lines.push_back({finalLine,years.count() > 0 ? 1 : 1.5});
-	StageEphemeralPane(new AnnouncePane(lines));
+	StageEphemeralPane(new AnnouncePane(lines,this));
 }
 
 void Window::ShowTimezone(const QString &timezone)
@@ -242,7 +242,7 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(seconds.count()),StringConvert::NumberAgreement("second","seconds",NumberConvert::Positive(seconds.count()))));
 	}
 	if (!finalLine.isEmpty()) lines.push_back({finalLine,hours.count() > 0 ? 1 : 1.5});
-	StageEphemeralPane(new AnnouncePane(lines));
+	StageEphemeralPane(new AnnouncePane(lines,this));
 }
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
