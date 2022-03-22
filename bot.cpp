@@ -617,7 +617,7 @@ void Bot::DispatchRandomVideo(Command command)
 		emit Print("No videos found");
 		return;
 	}
-	emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(0,videos.size()))));
+	emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(videos))));
 }
 
 void Bot::DispatchCommandList()
