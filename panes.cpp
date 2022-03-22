@@ -285,7 +285,7 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 	output->setText(text);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
+AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
 {
 	output->setText(BuildParagraph(lines));
 }
