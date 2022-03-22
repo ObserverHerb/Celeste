@@ -282,6 +282,7 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 		emit Finished();
 	});
 	audioPlayer->setMedia(QUrl::fromLocalFile(path));
+	output->setText(text);
 }
 
 AudioAnnouncePane::AudioAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
