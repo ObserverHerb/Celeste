@@ -252,6 +252,7 @@ ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent
 	commands->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	commands->setFrameStyle(QFrame::NoFrame);
 	commands->setCursorWidth(0);
+	commands->setText(text);
 
 	connect(commands,&ScrollingTextEdit::Finished,this,&ScrollingAnnouncePane::Finished);
 }
