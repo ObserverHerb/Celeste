@@ -144,13 +144,12 @@ void Window::ShowPortraitVideo(const QString &path)
 
 void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
 {
-	Lines lines;
+	QString text;
 	for (const std::pair<QString,QString> &command : descriptions)
 	{
-		lines.push_back({QString("<div style='margin-bottom: 0.5em;'>!%1").arg(command.first),0.6});
-		lines.push_back({QString("%1</div>").arg(command.second),0.5});
+		text.append(QString("<div class='name'>!%1<br><span class='description'> %2<br></div>").arg(command.first,command.second));
 	}
-	StageEphemeralPane(new ScrollingAnnouncePane(lines,this));
+	StageEphemeralPane(new ScrollingAnnouncePane(text,this));
 }
 
 void Window::ShowCommand(const QString &name,const QString &description)

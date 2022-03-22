@@ -47,7 +47,7 @@ void PinnedTextEdit::Append(const QString &text)
 	insertHtml(text);
 }
 
-const int ScrollingTextEdit::PAUSE=3000;
+const int ScrollingTextEdit::PAUSE=5000;
 
 ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent)
 {
@@ -56,7 +56,7 @@ ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent)
 
 void ScrollingTextEdit::showEvent(QShowEvent *event)
 {
-	scrollTimer.setInterval(50);
+	scrollTimer.setInterval(25);
 	QTimer::singleShot(PAUSE,[this]() {
 		connect(&scrollTimer,&QTimer::timeout,[this]() {
 			verticalScrollBar()->setSliderPosition(verticalScrollBar()->sliderPosition()+1);
