@@ -114,6 +114,14 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 	StageEphemeralPane(pane);
 }
 
+void Window::AnnounceHost(const QString &hostingChannel)
+{
+	StageEphemeralPane(new AnnouncePane({
+		{hostingChannel,1.5},
+		{"is hosting the stream!",1}
+	},this));
+}
+
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);

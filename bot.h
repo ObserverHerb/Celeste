@@ -71,8 +71,8 @@ protected:
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
 	void StartClocks();
-	TagMap TakeTags(QStringList &messageSegments);
-	std::optional<QStringList> TakeHostmask(QStringList &messageSegments);
+	std::optional<TagMap> ParseTags(QStringList::const_iterator &messageSegment);
+	std::optional<QStringList> ParseHostmask(QStringList::const_iterator &messageSegment);
 	Viewer::Remote* TakeViewer(QStringList &hostmaskSegments);
 	const std::tuple<std::vector<Media::Emote>,int> ParseEmotes(const TagMap &tags,const QString &message);
 	void DownloadEmote(const Media::Emote &emote);
@@ -114,8 +114,10 @@ signals:
 	void AnnounceRaid(const QString &viewer,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
+	void AnnounceHost(const QString &hostingChannel);
 public slots:
 	void ParseChatMessage(const QString &message);
+	void ParseChatNotification(QStringList::const_iterator &messageSegment);
 	void Ping();
 	void Subscription(const QString &viewer);
 	void Redemption(const QString &name,const QString &rewardTitle,const QString &message);

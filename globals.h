@@ -153,6 +153,14 @@ namespace Random
 	}
 }
 
+namespace Validate
+{
+	template <typename T> void IteratorPosition(const T &container,const T::const_iterator &iterator)
+	{
+
+	}
+}
+
 namespace Network
 {
 	inline const char *CONTENT_TYPE="Content-Type";

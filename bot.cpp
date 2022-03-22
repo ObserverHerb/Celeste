@@ -335,37 +335,49 @@ void Bot::DispatchArrival(Viewer::Local viewer)
 
 void Bot::ParseChatMessage(const QString &message)
 {
-	QStringList messageSegments;
-	messageSegments=message.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-	if (messageSegments.size() < 2)
+	const char *INCOMPLETE_MESSAGE_ERROR="Not enough message segments to parse";
+
+	QStringList messageSegments=message.split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+	QStringList::const_iterator messageSegment=messageSegments.constBegin();
+	if (messageSegment == messageSegments.end())
 	{
-		emit Print("Message is invalid");
+		emit Print(INCOMPLETE_MESSAGE_ERROR);
 		return;
 	}
 
 	// extract some metadata that appears before the message
 	// tags
-	TagMap tags=TakeTags(messageSegments);
-	if (messageSegments=messageSegments.join(" ").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2)
+	std::optional<TagMap> tags=ParseTags(messageSegment);
+
+	// username/viewer
+	if (messageSegment == messageSegments.end())
 	{
-		emit Print("Invalid message segment count");
+		emit Print(INCOMPLETE_MESSAGE_ERROR);
 		return;
 	}
-	// username/viewer
-	std::optional<QStringList> hostmask=TakeHostmask(messageSegments);
+	std::optional<QStringList> hostmask=ParseHostmask(messageSegment);
 	if (!hostmask)
 	{
 		emit Print("Invalid message sender");
 		return;
 	}
-	Viewer::Remote *viewer=new Viewer::Remote(security,hostmask->first().trimmed());
+
+	// check for notification
+	if (!tags && hostmask->first() == "jtv")
+	{
+		ParseChatNotification(*messageSegment);
+		return;
+	}
+
+	// standard chat message
+	Viewer::Remote *viewer=new Viewer::Remote(security,hostmask->first());
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,messageSegments,tags](Viewer::Local viewer) mutable {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,message=messageSegment->trimmed(),tags=*tags](Viewer::Local viewer) mutable {
 		inactivityClock.start();
 
 		BadgeMap badges=ParseBadges(tags);
 		QStringList badgeIconPaths;
-		for (BadgeMap::iterator candidate=badges.begin(); candidate != badges.end(); ++candidate)
+		for (BadgeMap::const_iterator candidate=badges.cbegin(); candidate != badges.cend(); ++candidate)
 		{
 			if (!badgeIconURLs.contains(candidate->first) || !badgeIconURLs.at(candidate->first).contains(candidate->second)) continue;
 			const QString badgeIconPath=Filesystem::TemporaryPath().filePath(QString("%1_%2.png").arg(candidate->first,candidate->second));
@@ -381,26 +393,26 @@ void Bot::ParseChatMessage(const QString &message)
 		}
 
 		// determine if this is a command, and if so, process it as such
-		messageSegments=messageSegments.join(":").trimmed().split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-		if (messageSegments.at(0).at(0) == '!')
+		QStringList words=message.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
+		if (words.at(0).at(0) == '!')
 		{
-			QString commandName=messageSegments.takeFirst();
+			QString commandName=words.takeFirst();
 			bool moderator=badges.find(CHAT_BADGE_MODERATOR) != badges.end() && badges.at(CHAT_BADGE_MODERATOR) > 0;
-			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,broadcaster || moderator)) return;
-			messageSegments.prepend(commandName);
+			if (DispatchCommand(commandName.mid(1),words.join(" "),viewer,broadcaster || moderator)) return;
+			words.prepend(commandName);
 		}
 
 		// determine if the message is an action
 		// have to do this here, because the ACTION tag
 		// throws off the indicies in processing emotes below
 		bool action=false;
-		if (messageSegments.front() == "\001ACTION")
+		if (words.front() == "\001ACTION")
 		{
-			messageSegments.pop_front();
-			messageSegments.back().remove('\001');
+			words.pop_front();
+			words.back().remove('\001');
 			action=true;
 		}
-		QString message=messageSegments.join(" ");
+		QString message=words.join(" ");
 
 		// look for emotes if they exist
 		std::vector<Media::Emote> emotes;
@@ -417,34 +429,46 @@ void Bot::ParseChatMessage(const QString &message)
 	});
 }
 
-Bot::TagMap Bot::TakeTags(QStringList &messageSegments)
+std::optional<Bot::TagMap> Bot::ParseTags(QStringList::const_iterator &messageSegment)
 {
 	TagMap result;
-	for (const QString &pair : messageSegments.takeFirst().split(";",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)))
+	for (const QString &pair : messageSegment->split(";",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)))
 	{
 		QStringList components=pair.split("=",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
 		if (components.size() == 2)
 			result[components.at(KEY)]=components.at(VALUE);
 		else
-			emit Print(QString("Message has an invalid tag: %1").arg(pair));
+			return std::nullopt;
 	}
 	if (result.find("color") == result.end())
 	{
 		emit Print("Message has no color");
 		result["color"]=QString();
 	}
+	messageSegment++;
 	return result;
 }
 
-std::optional<QStringList> Bot::TakeHostmask(QStringList &messageSegments)
+std::optional<QStringList> Bot::ParseHostmask(QStringList::const_iterator &messageSegment)
 {
-	QStringList hostmaskSegments=messageSegments.takeFirst().split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
+	QStringList hostmaskSegments=messageSegment->split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
 	if (hostmaskSegments.size() < 1)
 	{
 		emit Print("Message hostmask is invalid");
 		return std::nullopt;
 	}
+	messageSegment++;
 	return hostmaskSegments;
+}
+
+void Bot::ParseChatNotification(QStringList::const_iterator &message)
+{
+	if (message->contains("is now hosting you."))
+	{
+		emit AnnounceHost(message->split(" ").first());
+		return;
+	}
+	Print ("Unrecognized event received from Twitch");
 }
 
 void Bot::DownloadEmote(const Media::Emote &emote)
