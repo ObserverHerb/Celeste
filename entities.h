@@ -72,18 +72,17 @@ namespace Volume
 
 namespace File
 {
-	class List : public QObject
+	class List
 	{
-		Q_OBJECT
-		public:
-			List(const QString &path);
-			List(const QStringList &files);
-			const QString File(const int index);
-			const QString First();
-			const QString Random();
-			int RandomIndex();
-		protected:
-			QStringList files;
+	public:
+		List(const QString &path);
+		List(const QStringList &files);
+		const QString File(const int index);
+		const QString First();
+		const QString Random();
+		int RandomIndex();
+	protected:
+		QStringList files;
 	};
 }
 
@@ -136,23 +135,24 @@ namespace Viewer
 	};
 }
 
-namespace Media
+namespace Chat
 {
-	class Emote
+	struct Emote
 	{
-	public:
-		Emote(const QString &name,const QString &id,const QString &path,unsigned int start,unsigned int end) : name(name), id(id), path(path), start(start), end(end) {}
-		const QString &Name() const { return name; }
-		const QString &ID() const { return id; }
-		const QString &Path() const { return path; }
-		unsigned int StartPosition() const { return start; }
-		unsigned int EndPosition() const { return end; }
-		bool operator<(const Emote &other) const { return start < other.start; }
-	protected:
 		QString name;
 		QString id;
 		QString path;
-		unsigned int start;
-		unsigned int end;
+		unsigned int start { 0 };
+		unsigned int end { 0 };
+		bool operator<(const Emote &other) const { return start < other.start; }
+	};
+
+	struct Message
+	{
+		QString sender;
+		QString text;
+		QColor color;
+		bool broadcaster { false };
+		bool moderator { false };
 	};
 }

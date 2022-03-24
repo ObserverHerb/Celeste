@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QTimer>
 #include <unordered_map>
+#include <unordered_set>
 #include "entities.h"
 #include "settings.h"
 #include "security.h"
@@ -32,17 +33,16 @@ enum class NativeCommandFlag
 class Bot : public QObject
 {
 	Q_OBJECT
-	using TagMap=std::unordered_map<QString,QString>;
-	using BadgeMap=std::unordered_map<QString,QString>;
 public:
 	Bot(Security &security,QObject *parent=nullptr);
+	Bot(const Bot& other)=delete;
+	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
 	void EmoteOnly(bool enable,const QString &broadcasterID);
 protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
-	std::unordered_map<QString,Viewer::Local> viewers;
-	std::unordered_map<QString,BadgeMap> badgeIconURLs;
+	std::unordered_set<QString> viewers;
 	QMediaPlayer *vibeKeeper;
 	Volume::Fader *vibeFader;
 	QMediaPlaylist vibeSources;
@@ -64,22 +64,20 @@ protected:
 	ApplicationSetting settingSubscriptionSound;
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
+	ApplicationSetting settingHostSound;
 	ApplicationSetting settingUptimeHistory;
+	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
 	bool LoadDynamicCommands();
 	void LoadVibePlaylist();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
 	void StartClocks();
-	TagMap TakeTags(QStringList &messageSegments);
-	std::optional<QStringList> TakeHostmask(QStringList &messageSegments);
-	Viewer::Remote* TakeViewer(QStringList &hostmaskSegments);
-	const std::tuple<std::vector<Media::Emote>,int> ParseEmotes(const TagMap &tags,const QString &message);
-	void DownloadEmote(const Media::Emote &emote);
-	const BadgeMap ParseBadges(const TagMap &tags);
-	void DownloadBadgeIcon(const QString &badgeURL,const QString &badge);
-	bool DispatchCommand(const QString name,const QString parameters,const Viewer::Local viewer,bool broadcaster);
-	void DispatchArrival(Viewer::Local viewer);
+	void DownloadEmote(Chat::Emote &emote);
+	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
+	bool DispatchCommand(const QString name,const QString parameters,const QString &login,bool privileged);
+	void DispatchArrival(const QString &login);
+	bool DispatchChatNotification(const QStringView &message);
 	void DispatchVideo(Command command);
 	void DispatchRandomVideo(Command command);
 	void DispatchCommandList();
@@ -93,7 +91,7 @@ protected:
 	void StreamCategory(const QString &category);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
-	void ChatMessage(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
+	void ChatMessage(const QString &name,const QString &message,const std::vector<Chat::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
 	void RefreshChat();
 	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
 	void PlayVideo(const QString &path);
@@ -114,6 +112,7 @@ signals:
 	void AnnounceRaid(const QString &viewer,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
+	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
 public slots:
 	void ParseChatMessage(const QString &message);
 	void Ping();

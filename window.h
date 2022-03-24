@@ -25,7 +25,7 @@ protected:
 	const QSize ScreenThird();
 signals:
 	void Print(const QString &message);
-	void ChatMessage(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
+	void ChatMessage(const QString &name,const QString &message,const std::vector<Chat::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();
 public slots:
@@ -36,6 +36,7 @@ public slots:
 	void AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
+	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);

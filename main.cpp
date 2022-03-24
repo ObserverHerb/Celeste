@@ -100,6 +100,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::AnnounceRaid,&window,&Window::AnnounceRaid);
 		celeste.connect(&celeste,&Bot::AnnounceCheer,&window,&Window::AnnounceCheer);
 		celeste.connect(&celeste,&Bot::AnnounceTextWall,&window,&Window::AnnounceTextWall);
+		celeste.connect(&celeste,&Bot::AnnounceHost,&window,&Window::AnnounceHost);
 		celeste.connect(&celeste,&Bot::SetAgenda,&window,&Window::SetAgenda);
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
 		celeste.connect(&celeste,&Bot::ShowCurrentSong,&window,&Window::ShowCurrentSong);
@@ -147,7 +148,7 @@ int main(int argc,char *argv[])
 		});
 		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
 		QMetaObject::Connection reauthorize;
-		channel->connect(channel,&Channel::Denied,[&reauthorize,&security,channel,&server]() {
+		channel->connect(channel,&Channel::Denied,[&reauthorize,&security,&server]() {
 			QMessageBox authenticateDialog;
 			authenticateDialog.setWindowTitle("Authentication Failed");
 			authenticateDialog.setText("Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?");

@@ -105,6 +105,31 @@ namespace TimeConvert
 	inline const std::chrono::milliseconds Now() { return std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch(); }
 }
 
+namespace StringView
+{
+	inline std::optional<QStringView> Take(QStringView &window,QChar delimiter)
+	{
+		QStringView candidate=window.left(window.indexOf(delimiter));
+		window=window.mid(candidate.size()+1);
+		if (candidate.isEmpty()) return std::nullopt;
+		return candidate.trimmed();
+	}
+
+	inline std::optional<QStringView> First(const QStringView &window,QChar delimiter)
+	{
+		QStringView candidate=window.left(window.indexOf(delimiter));
+		if (candidate.isEmpty()) return std::nullopt;
+		return candidate.trimmed();
+	}
+
+	inline std::optional<QStringView> Last(const QStringView &window,QChar delimiter)
+	{
+		QStringView candidate=window.mid(window.lastIndexOf(delimiter)+1);
+		if (candidate.isEmpty()) return std::nullopt;
+		return candidate.trimmed();
+	}
+}
+
 namespace Filesystem
 {
 	inline const QDir DataPath()

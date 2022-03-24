@@ -25,14 +25,19 @@ const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
 const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
-const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
 const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
 const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
 const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
 const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
 const char *TWITCH_API_ENDPOING_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
-const char *CHAT_BADGE_BROADCASTER="broadcaster";
-const char *CHAT_BADGE_MODERATOR="moderator";
+const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
+const char16_t *TWITCH_SYSTEM_ACCOUNT_NAME=u"jtv";
+const char16_t *CHAT_BADGE_BROADCASTER=u"broadcaster";
+const char16_t *CHAT_BADGE_MODERATOR=u"moderator";
+const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
+const char16_t *CHAT_TAG_BADGES=u"badges";
+const char16_t *CHAT_TAG_COLOR=u"color";
+const char16_t *CHAT_TAG_EMOTES=u"emotes";
 
 const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 	{"native",CommandType::NATIVE},
@@ -40,6 +45,7 @@ const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 	{"announce",CommandType::AUDIO}
 };
 
+std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
@@ -50,15 +56,16 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
 	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),
 	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
+	settingTextWallThreshold(SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400),
+	settingTextWallSound(SETTINGS_CATEGORY_EVENTS,"TextWallSound"),
 	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
 	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait"),
 	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
 	settingCheerVideo(SETTINGS_CATEGORY_EVENTS,"Cheer"),
-	settingTextWallThreshold(SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400),
-	settingTextWallSound(SETTINGS_CATEGORY_EVENTS,"TextWallSound"),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
+	settingHostSound(SETTINGS_CATEGORY_EVENTS,"Host"),
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0)
 {
 	Command agendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true);
@@ -221,7 +228,7 @@ void Bot::LoadRoasts()
 
 void Bot::LoadBadgeIconURLs()
 {
-	Network::Request({TWITCH_API_ENDPOINT_BADGES},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request({TWITCH_API_ENDPOINT_BADGES},Network::Method::GET,[](QNetworkReply *reply) {
 		const char *JSON_KEY_ID="id";
 		const char *JSON_KEY_SET_ID="set_id";
 		const char *JSON_KEY_VERSIONS="versions";
@@ -316,288 +323,315 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 	emit AnnounceCheer(viewer,count,message,settingCheerVideo);
 }
 
-void Bot::DispatchArrival(Viewer::Local viewer)
+void Bot::DispatchArrival(const QString &login)
 {
 	if (static_cast<QString>(settingArrivalSound).isEmpty())
 	{
 		emit Print("No audio path set for arrivals","announce arrival");
 		return;
 	}
-	if (security.Administrator() != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
-	{
-		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
-			emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
-		});
-		connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
-	}
+
+	Viewer::Remote *viewer=new Viewer::Remote(security,login);
+	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
+		if (security.Administrator() != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
+		{
+			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
+			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
+				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+			});
+			connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
+		}
+	});
 }
 
 void Bot::ParseChatMessage(const QString &message)
 {
-	QStringList messageSegments;
-	messageSegments=message.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-	if (messageSegments.size() < 2)
-	{
-		emit Print("Message is invalid");
-		return;
-	}
+	if (message.size() < 1) return;
+	std::optional<QStringView> window;
 
-	// extract some metadata that appears before the message
-	// tags
-	TagMap tags=TakeTags(messageSegments);
-	if (messageSegments=messageSegments.join(" ").split(":",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)); messageSegments.size() < 2)
-	{
-		emit Print("Invalid message segment count");
-		return;
-	}
-	// username/viewer
-	std::optional<QStringList> hostmask=TakeHostmask(messageSegments);
-	if (!hostmask)
-	{
-		emit Print("Invalid message sender");
-		return;
-	}
-	Viewer::Remote *viewer=new Viewer::Remote(security,hostmask->first().trimmed());
-	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,messageSegments,tags](Viewer::Local viewer) mutable {
-		inactivityClock.start();
+	QStringView remainingText(message);
+	QStringView sender;
+	QStringView login;
+	QColor color;
+	QStringList badgeIconPaths;
+	bool broadcaster=false;
+	bool moderator=false;
+	std::vector<Chat::Emote> emotes;
 
-		BadgeMap badges=ParseBadges(tags);
-		QStringList badgeIconPaths;
-		for (BadgeMap::iterator candidate=badges.begin(); candidate != badges.end(); ++candidate)
+	// Twitch appears to use ":" as a delimiter and every message is divided into three sections
+	// if a section is missing, it will still have its delimiters
+	if (remainingText.at(0) != ':')
+	{
+		// tag section is always first and not preceeded by a colon
+		// since we now know the section exists, consume up to the SPACE,
+		// NOT COLON because there are not spaces in the tags but there are
+		// colons in the emotes tag, and apparently there is always
+		// a space before each section after the first
+		window=StringView::Take(remainingText,' ');
+		if (window)
 		{
-			if (!badgeIconURLs.contains(candidate->first) || !badgeIconURLs.at(candidate->first).contains(candidate->second)) continue;
-			const QString badgeIconPath=Filesystem::TemporaryPath().filePath(QString("%1_%2.png").arg(candidate->first,candidate->second));
-			badgeIconPaths.append(badgeIconPath);
-			DownloadBadgeIcon(badgeIconURLs.at(candidate->first).at(candidate->second),badgeIconPath);
-		}
-
-		bool broadcaster=badges.find(CHAT_BADGE_BROADCASTER) != badges.end() && badges.at(CHAT_BADGE_BROADCASTER) > 0;
-		if (viewers.find(viewer.Name()) == viewers.end() && !broadcaster)
-		{
-			DispatchArrival(viewer);
-			viewers.emplace(viewer.Name(),viewer);
-		}
-
-		// determine if this is a command, and if so, process it as such
-		messageSegments=messageSegments.join(":").trimmed().split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-		if (messageSegments.at(0).at(0) == '!')
-		{
-			QString commandName=messageSegments.takeFirst();
-			bool moderator=badges.find(CHAT_BADGE_MODERATOR) != badges.end() && badges.at(CHAT_BADGE_MODERATOR) > 0;
-			if (DispatchCommand(commandName.mid(1),messageSegments.join(" "),viewer,broadcaster || moderator)) return;
-			messageSegments.prepend(commandName);
-		}
-
-		// determine if the message is an action
-		// have to do this here, because the ACTION tag
-		// throws off the indicies in processing emotes below
-		bool action=false;
-		if (messageSegments.front() == "\001ACTION")
-		{
-			messageSegments.pop_front();
-			messageSegments.back().remove('\001');
-			action=true;
-		}
-		QString message=messageSegments.join(" ");
-
-		// look for emotes if they exist
-		std::vector<Media::Emote> emotes;
-		int emoteCharacterCount=0;
-		if (tags.find("emotes") != tags.end()) std::tie(emotes,emoteCharacterCount)=ParseEmotes(tags,message);
-
-		// inspect for wall of text (not including emotes)
-		if (message.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold))
-			emit AnnounceTextWall(message,settingTextWallSound);
-
-		// print the final message
-		const QString &color=tags.at("color");
-		emit ChatMessage(viewer.DisplayName(),message,emotes,badgeIconPaths,color.isNull() ? QColor() : QColor(color),action);
-	});
-}
-
-Bot::TagMap Bot::TakeTags(QStringList &messageSegments)
-{
-	TagMap result;
-	for (const QString &pair : messageSegments.takeFirst().split(";",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)))
-	{
-		QStringList components=pair.split("=",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::KEEP_EMPTY_PARTS));
-		if (components.size() == 2)
-			result[components.at(KEY)]=components.at(VALUE);
-		else
-			emit Print(QString("Message has an invalid tag: %1").arg(pair));
-	}
-	if (result.find("color") == result.end())
-	{
-		emit Print("Message has no color");
-		result["color"]=QString();
-	}
-	return result;
-}
-
-std::optional<QStringList> Bot::TakeHostmask(QStringList &messageSegments)
-{
-	QStringList hostmaskSegments=messageSegments.takeFirst().split("!",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	if (hostmaskSegments.size() < 1)
-	{
-		emit Print("Message hostmask is invalid");
-		return std::nullopt;
-	}
-	return hostmaskSegments;
-}
-
-void Bot::DownloadEmote(const Media::Emote &emote)
-{
-	if (!QFile(emote.Path()).exists())
-	{
-		Network::Request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.ID()),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
-			if (downloadReply->error())
+			std::unordered_map<QStringView,QStringView> tags;
+			while (!window->isEmpty())
 			{
-				emit Print(QString("Failed to download emote %1: %2").arg(emote.Name(),downloadReply->errorString()));
-				return;
+				std::optional<QStringView> pair=StringView::Take(*window,';');
+				if (!pair) continue; // skip malformated badges rather than making a visible fuss
+				std::optional<QStringView> key=StringView::Take(*pair,'=');
+				if (!key) continue; // same as above
+				std::optional<QStringView> value=StringView::Last(*pair,'=');
+				if (!value) continue; // I'll rely on "missing" to represent an empty value
+				tags[*key]=*value;
 			}
-			if (!QImage::fromData(downloadReply->readAll()).save(emote.Path())) emit Print(QString("Failed to save emote %1 to %2").arg(emote.Name(),emote.Path()));
-			emit RefreshChat();
-		});
-	}
-}
+			if (tags.contains(CHAT_TAG_DISPLAY_NAME)) sender=tags.at(CHAT_TAG_DISPLAY_NAME);
+			if (tags.contains(CHAT_TAG_COLOR)) color=tags.at(CHAT_TAG_COLOR).toString();
 
-const std::tuple<std::vector<Media::Emote>,int> Bot::ParseEmotes(const TagMap &tags,const QString &message)
-{
-	std::vector<Media::Emote> emotes;
-	int totalCharacterCount=0;
-	QStringList entries=tags.at("emotes").split("/",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-	for (const QString &entry : entries)
-	{
-		QStringList details=entry.split(":");
-		if (details.size() < 2)
-		{
-			emit Print("Malformatted emote in message");
-			continue;
-		}
-		for (const QString &instance : details.at(1).split(","))
-		{
-			QStringList indicies=instance.split("-");
-			if (indicies.size() < 2)
+			// badges
+			if (tags.contains(CHAT_TAG_BADGES))
 			{
-				emit Print("Cannot determine where emote starts or ends");
-				continue;
+				std::unordered_map<QStringView,QStringView> badges;
+				QStringView &versions=tags.at(CHAT_TAG_BADGES);
+				while (!versions.isEmpty())
+				{
+					std::optional<QStringView> pair=StringView::Take(versions,',');
+					if (!pair) continue;
+					std::optional<QStringView> name=StringView::Take(*pair,'/');
+					if (!name) continue;
+					std::optional<QStringView> version=StringView::Last(*pair,'/');
+					if (!version) continue; // a badge must have a version
+					badges.insert({*name,*version});
+					std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
+					if (!badgeIconPath) continue;
+					badgeIconPaths.append(*badgeIconPath);
+				}
+				if (badges.contains(CHAT_BADGE_BROADCASTER) && badges.at(CHAT_BADGE_BROADCASTER) == u"1") broadcaster=true;
+				if (badges.contains(CHAT_BADGE_MODERATOR) && badges.at(CHAT_BADGE_MODERATOR) == u"1") moderator=true;
 			}
-			unsigned int start=StringConvert::PositiveInteger(indicies.at(0));
-			unsigned int end=StringConvert::PositiveInteger(indicies.at(1));
-			const Media::Emote emote({message.mid(start,end-start),details.at(0),Filesystem::TemporaryPath().filePath(QString("%1.png").arg(details.at(0))),start,end});
-			DownloadEmote(emote);
-			emotes.push_back(emote);
-			totalCharacterCount+=emote.Name().size();
+
+			// emotes
+			if (tags.contains(CHAT_TAG_EMOTES))
+			{
+				QStringView &entries=tags.at(CHAT_TAG_EMOTES);
+				while (!entries.isEmpty())
+				{
+					std::optional<QStringView> entry=StringView::Take(entries,'/');
+					if (!entry) continue;
+					std::optional<QStringView> id=StringView::Take(*entry,':');
+					if (!id) continue;
+					while(!entry->isEmpty())
+					{
+						std::optional<QStringView> occurrence=StringView::Take(*entry,',');
+						std::optional<QStringView> left=StringView::First(*occurrence,'-');
+						std::optional<QStringView> right=StringView::Last(*occurrence,'-');
+						if (!left || !right) continue;
+						unsigned int start=StringConvert::PositiveInteger(left->toString());
+						unsigned int end=StringConvert::PositiveInteger(right->toString());
+						const Chat::Emote emote {
+							.id=id->toString(),
+							.start=start,
+							.end=end
+						};
+						emotes.push_back(emote);
+					}
+				}
+				std::sort(emotes.begin(),emotes.end());
+			}
 		}
 	}
-	std::sort(emotes.begin(),emotes.end());
-	return {emotes,totalCharacterCount};
-}
+	window=StringView::Take(remainingText,':'); // the colon must be consumed whether the tag section was empty or not
 
-const Bot::BadgeMap Bot::ParseBadges(const TagMap &tags)
-{
-	const char *KEY_BADGES="badges";
-	BadgeMap badges;
-	if (tags.find(KEY_BADGES) != tags.end())
+	window=StringView::Take(remainingText,':');
+	if (window)
 	{
-		QStringList entries=tags.at(KEY_BADGES).split(',');
-		for (const QString &entry : entries)
+		// hostmask
+		std::optional<QStringView> hostmask=StringView::Take(*window,' ');
+		if (!hostmask) return;
+		std::optional<QStringView> user=StringView::Take(*hostmask,'!');
+		if (!user) return;
+		login=*user;
+
+		// type
+		std::optional<QStringView> type=StringView::Take(*window,' ');
+		if (!type) return;
+
+		// channel
+		std::optional<QStringView> channel=StringView::Take(*window,' ');
+		if (!channel) return;
+	}
+
+	if (login == TWITCH_SYSTEM_ACCOUNT_NAME)
+	{
+		if (DispatchChatNotification(remainingText.toString())) return;
+	}
+
+	// determine if this is a command, and if so, process it as such
+	// and if it's valid, we're done
+	window=remainingText;
+	if (std::optional<QStringView> command=StringView::Take(*window,' '); command)
+	{
+		if (command->size() > 0 && command->at(0) == '!')
 		{
-			QStringList components=entry.split('/');
-			if (components.size() < 2) continue;
-			badges.insert({components.at(0),components.at(1)});
+			if (DispatchCommand(command->mid(1).toString(),window->toString(),login.toString(),broadcaster || moderator)) return;
 		}
 	}
-	return badges;
+
+	if (const QString name=login.toString(); !broadcaster)
+	{
+		if (const std::unordered_set<QString>::const_iterator viewer=viewers.find(name); viewer == viewers.end())
+		{
+			DispatchArrival(name);
+			viewers.emplace(name);
+		}
+	}
+
+	// determine if the message is an action
+	bool action=false;
+	remainingText=remainingText.trimmed();
+	QString before=remainingText.toString();
+	if (const QString ACTION("\001ACTION"); remainingText.startsWith(ACTION))
+	{
+		remainingText=remainingText.mid(ACTION.size(),remainingText.lastIndexOf('\001')-ACTION.size()).trimmed();
+		action=true;
+	}
+	QString after=remainingText.toString();
+
+	// set emote name and check for wall of text
+	int emoteCharacterCount=0;
+	for (Chat::Emote &emote : emotes)
+	{
+		const QStringView name=remainingText.mid(emote.start,1+emote.end-emote.start); // end is an index, not a size, so we have to add 1 to get the size
+		emoteCharacterCount+=name.size();
+		emote.name=name.toString();
+		DownloadEmote(emote); // once we know the emote name, we can determine the path, which means we can download it (download will set the path in the struct)
+	}
+	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold)) emit AnnounceTextWall(message,settingTextWallSound);
+
+	emit ChatMessage(sender.toString(),remainingText.toString(),emotes,badgeIconPaths,color,action);
+	inactivityClock.start();
 }
 
-void Bot::DownloadBadgeIcon(const QString &badgeURL,const QString &badgePath)
+std::optional<QString> Bot::DownloadBadgeIcon(const QString &badge,const QString &version)
 {
+	if (!badgeIconURLs.contains(badge) || !badgeIconURLs.at(badge).contains(version)) return std::nullopt;
+	QString badgeIconURL=badgeIconURLs.at(badge).at(version);
+	static const QString CHAT_BADGE_ICON_PATH_TEMPLATE=Filesystem::TemporaryPath().filePath(QString("%1_%2.png"));
+	QString badgePath=CHAT_BADGE_ICON_PATH_TEMPLATE.arg(badge,version);
 	if (!QFile(badgePath).exists())
 	{
-		Network::Request(badgeURL,Network::Method::GET,[this,badgeURL,badgePath](QNetworkReply *downloadReply) {
+		Network::Request(badgeIconURL,Network::Method::GET,[this,badgeIconURL,badgePath](QNetworkReply *downloadReply) {
 			if (downloadReply->error())
 			{
-				emit Print(QString("Failed to download badge %1: %2").arg(badgeURL,downloadReply->errorString()));
+				emit Print(QString("Failed to download badge %1: %2").arg(badgeIconURL,downloadReply->errorString()));
 				return;
 			}
 			if (!QImage::fromData(downloadReply->readAll()).save(badgePath)) emit Print(QString("Failed to save badge %2").arg(badgePath));
 			emit RefreshChat();
 		});
 	}
+	return badgePath;
 }
 
-bool Bot::DispatchCommand(const QString name,const QString parameters,const Viewer::Local viewer,bool broadcaster)
+void Bot::DownloadEmote(Chat::Emote &emote)
+{
+	emote.path=Filesystem::TemporaryPath().filePath(QString("%1.png").arg(emote.id));
+	if (!QFile(emote.path).exists())
+	{
+		Network::Request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.id),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
+			if (downloadReply->error())
+			{
+				emit Print(QString("Failed to download emote %1: %2").arg(emote.name,downloadReply->errorString()));
+				return;
+			}
+			if (!QImage::fromData(downloadReply->readAll()).save(emote.path)) emit Print(QString("Failed to save emote %1 to %2").arg(emote.name,emote.path));
+			emit RefreshChat();
+		});
+	}
+}
+
+bool Bot::DispatchCommand(const QString name,const QString parameters,const QString &login,bool privileged)
 {
 	if (commands.find(name) == commands.end()) return false;
 	Command command=parameters.isEmpty() ? commands.at(name) : Command(commands.at(name),parameters);
 
-	if (command.Protected() && !broadcaster)
+	if (command.Protected() && !privileged)
 	{
-		emit Print(QString("The command %1 is protected but %2 is not the broadcaster").arg(command.Name(),viewer.Name()));
+		emit Print(QString(R"(The command "!%1" is protected but requester is not authorized")").arg(command.Name()));
 		return false;
 	}
 
-	switch (command.Type())
-	{
-	case CommandType::VIDEO:
-		DispatchVideo(command);
-		break;
-	case CommandType::AUDIO:
-		emit PlayAudio(viewer.DisplayName(),command.Message(),command.Path());
-		break;
-	case CommandType::NATIVE:
-		switch (nativeCommandFlags.at(command.Name()))
+	Viewer::Remote *viewer=new Viewer::Remote(security,login);
+	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command,parameters](Viewer::Local viewer) {
+		switch (command.Type())
 		{
-		case NativeCommandFlag::AGENDA:
-			emit SetAgenda(command.Message());
+		case CommandType::VIDEO:
+			DispatchVideo(command);
 			break;
-		case NativeCommandFlag::CATEGORY:
-			StreamCategory(command.Message());
+		case CommandType::AUDIO:
+			emit PlayAudio(viewer.DisplayName(),command.Message(),command.Path());
 			break;
-		case NativeCommandFlag::COMMANDS:
-			DispatchCommandList();
+		case CommandType::NATIVE:
+			switch (nativeCommandFlags.at(command.Name()))
+			{
+			case NativeCommandFlag::AGENDA:
+				emit SetAgenda(command.Message());
+				break;
+			case NativeCommandFlag::CATEGORY:
+				StreamCategory(command.Message());
+				break;
+			case NativeCommandFlag::COMMANDS:
+				DispatchCommandList();
+				break;
+			case NativeCommandFlag::EMOTE:
+				ToggleEmoteOnly();
+				break;
+			case NativeCommandFlag::FOLLOWAGE:
+				DispatchFollowage(viewer.Name());
+				break;
+			case NativeCommandFlag::PANIC:
+				DispatchPanic(viewer.DisplayName());
+				break;
+			case NativeCommandFlag::SHOUTOUT:
+				DispatchShoutout(command);
+				break;
+			case NativeCommandFlag::SONG:
+				emit ShowCurrentSong(vibeKeeper->metaData("Title").toString(),vibeKeeper->metaData("AlbumTitle").toString(),vibeKeeper->metaData("AlbumArtist").toString(),vibeKeeper->metaData("CoverArtImage").value<QImage>());
+				break;
+			case NativeCommandFlag::TIMEZONE:
+				emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
+				break;
+			case NativeCommandFlag::TITLE:
+				StreamTitle(command.Message());
+				break;
+			case NativeCommandFlag::TOTAL_TIME:
+				DispatchUptime(true);
+				break;
+			case NativeCommandFlag::UPTIME:
+				DispatchUptime(false);
+				break;
+			case NativeCommandFlag::VIBE:
+				ToggleVibeKeeper();
+				break;
+			case NativeCommandFlag::VOLUME:
+				AdjustVibeVolume(command);
+				break;
+			}
 			break;
-		case NativeCommandFlag::EMOTE:
-			ToggleEmoteOnly();
-			break;
-		case NativeCommandFlag::FOLLOWAGE:
-			DispatchFollowage(viewer.Name());
-			break;
-		case NativeCommandFlag::PANIC:
-			DispatchPanic(viewer.DisplayName());
-			break;
-		case NativeCommandFlag::SHOUTOUT:
-			DispatchShoutout(command);
-			break;
-		case NativeCommandFlag::SONG:
-			emit ShowCurrentSong(vibeKeeper->metaData("Title").toString(),vibeKeeper->metaData("AlbumTitle").toString(),vibeKeeper->metaData("AlbumArtist").toString(),vibeKeeper->metaData("CoverArtImage").value<QImage>());
-			break;
-		case NativeCommandFlag::TIMEZONE:
-			emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
-			break;
-		case NativeCommandFlag::TITLE:
-			StreamTitle(command.Message());
-			break;
-		case NativeCommandFlag::TOTAL_TIME:
-			DispatchUptime(true);
-			break;
-		case NativeCommandFlag::UPTIME:
-			DispatchUptime(false);
-			break;
-		case NativeCommandFlag::VIBE:
-			ToggleVibeKeeper();
-			break;
-		case NativeCommandFlag::VOLUME:
-			AdjustVibeVolume(command);
-			break;
-		}
-		break;
-	};
+		};
+	});
 
 	return true;
+}
+
+bool Bot::DispatchChatNotification(const QStringView &message)
+{
+	if (message.contains(u"is now hosting you."))
+	{
+		std::optional<QStringView> host=StringView::First(message,' ');
+		if (!host) return false;
+		emit AnnounceHost(host->toString(),settingHostSound);
+		return true;
+	}
+	return false;
 }
 
 void Bot::DispatchVideo(Command command)

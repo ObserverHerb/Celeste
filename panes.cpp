@@ -104,18 +104,18 @@ void ChatPane::Refresh()
 	chat->viewport()->update();
 }
 
-void ChatPane::Message(const QString &name,const QString &message,const std::vector<Media::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action) const
+void ChatPane::Message(const QString &name,const QString &message,const std::vector<Chat::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action) const
 {
 	QString badges;
 	for (const QString &icon : badgeIcons) badges.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
 
 	QString emotedMessage;
 	unsigned int position=0;
-	for (const Media::Emote &emote : emotes)
+	for (const Chat::Emote &emote : emotes)
 	{
-		if (position < emote.StartPosition()) emotedMessage+=message.midRef(position,emote.StartPosition()-position);
-		emotedMessage+=QString("<img style='vertical-align: middle;' src='%1' />").arg(emote.Path());
-		position=emote.EndPosition()+1;
+		if (position < emote.start) emotedMessage+=message.midRef(position,emote.start-position);
+		emotedMessage+=QString(R"(<img style="vertical-align: middle;" src="%1" />)").arg(emote.path);
+		position=emote.end+1;
 	}
 	if (position < static_cast<unsigned int>(message.size())) emotedMessage+=message.midRef(position,message.size()-position);
 
