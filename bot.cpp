@@ -144,7 +144,8 @@ bool Bot::LoadDynamicCommands()
 		return false;
 	}
 
-	for (const QJsonValue &jsonValue : json.array())
+	const QJsonArray objects=json.array();
+	for (const QJsonValue &jsonValue : objects)
 	{
 		QJsonObject jsonObject=jsonValue.toObject();
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
@@ -161,7 +162,8 @@ bool Bot::LoadDynamicCommands()
 		}
 		if (jsonObject.contains(JSON_KEY_COMMAND_ALIASES))
 		{
-			for (const QJsonValue &jsonValue : jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray())
+			const QJsonArray aliases=jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray();
+			for (const QJsonValue &jsonValue : aliases)
 			{
 				const QString alias=jsonValue.toString();
 				commands[alias]={
@@ -182,20 +184,19 @@ bool Bot::LoadDynamicCommands()
 
 void Bot::LoadVibePlaylist()
 {
-	emit Print("viberator");
-	connect(&vibeSources,&QMediaPlaylist::loadFailed,[this]() {
+	connect(&vibeSources,&QMediaPlaylist::loadFailed,this,[this]() {
 		emit Print(QString("Failed to load vibe playlist: %1").arg(vibeSources.errorString()));
 	});
-	connect(&vibeSources,&QMediaPlaylist::loaded,[this]() {
+	connect(&vibeSources,&QMediaPlaylist::loaded,this,[this]() {
 		vibeSources.shuffle();
 		vibeSources.setCurrentIndex(Random::Bounded(0,vibeSources.mediaCount()));
 		vibeKeeper->setPlaylist(&vibeSources);
 		emit Print("Vibe playlist loaded!");
 	});
-	connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
+	connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this](QMediaPlayer::Error error) {
 		emit Print(QString("Vibe Keeper failed to start: %1").arg(vibeKeeper->errorString()));
 	});
-	connect(vibeKeeper,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+	connect(vibeKeeper,&QMediaPlayer::stateChanged,this,[this](QMediaPlayer::State state) {
 		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(vibeKeeper->metaData("Title").toString(),vibeKeeper->metaData("AlbumArtist").toString()));
 	});
 	vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
@@ -203,10 +204,10 @@ void Bot::LoadVibePlaylist()
 
 void Bot::LoadRoasts()
 {
-	connect(&roastSources,&QMediaPlaylist::loadFailed,[this]() {
+	connect(&roastSources,&QMediaPlaylist::loadFailed,this,[this]() {
 		emit Print(QString("Failed to load roasts: %1").arg(roastSources.errorString()));
 	});
-	connect(&roastSources,&QMediaPlaylist::loaded,[this]() {
+	connect(&roastSources,&QMediaPlaylist::loaded,this,[this]() {
 		roastSources.shuffle();
 		roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
 		roaster->setPlaylist(&roastSources);
@@ -214,10 +215,10 @@ void Bot::LoadRoasts()
 		emit Print("Roasts loaded!");
 	});
 	roastSources.load(QUrl::fromLocalFile(settingRoasts));
-	connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),[this](QMediaPlayer::Error error) {
+	connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this](QMediaPlayer::Error error) {
 		emit Print(QString("Roaster failed to start: %1").arg(vibeKeeper->errorString()));
 	});
-	connect(roaster,&QMediaPlayer::mediaStatusChanged,[this](QMediaPlayer::MediaStatus status) {
+	connect(roaster,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
 		if (status == QMediaPlayer::EndOfMedia)
 		{
 			roaster->stop();
@@ -244,7 +245,8 @@ void Bot::LoadBadgeIconURLs()
 			const QJsonObject object=set.toObject();
 			if (!object.contains(JSON_KEY_SET_ID) || !object.contains(JSON_KEY_VERSIONS)) continue;
 			const QString setID=object.value(JSON_KEY_SET_ID).toString();
-			for (const QJsonValue &version : object.value(JSON_KEY_VERSIONS).toArray())
+			const QJsonArray versions=object.value(JSON_KEY_VERSIONS).toArray();
+			for (const QJsonValue &version : versions)
 			{
 				const QJsonObject object=version.toObject();
 				if (!object.contains(JSON_KEY_ID) || !object.contains(JSON_KEY_IMAGE_URL)) continue;
@@ -264,14 +266,14 @@ void Bot::StartClocks()
 	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
 	if (settingPortraitVideo)
 	{
-		connect(&inactivityClock,&QTimer::timeout,[this]() {
+		connect(&inactivityClock,&QTimer::timeout,this,[this]() {
 			emit PlayVideo(settingPortraitVideo);
 		});
 	}
 	inactivityClock.start();
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
-	connect(&helpClock,&QTimer::timeout,[this]() {
+	connect(&helpClock,&QTimer::timeout,this,[this]() {
 		std::unordered_map<QString,Command>::iterator candidate=std::next(std::begin(commands),Random::Bounded(commands));
 		emit ShowCommand(candidate->second.Name(),candidate->second.Description());
 	});
@@ -283,7 +285,7 @@ void Bot::Ping()
 	if (settingPortraitVideo)
 		emit ShowPortraitVideo(settingPortraitVideo);
 	else
-		Print("Letting Twitch server know we're still here...");
+		emit Print("Letting Twitch server know we're still here...");
 }
 
 void Bot::Redemption(const QString &name,const QString &rewardTitle,const QString &message)
@@ -337,7 +339,7 @@ void Bot::DispatchArrival(const QString &login)
 		if (security.Administrator() != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
 		{
 			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
+			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
 				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
 			});
 			connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
@@ -616,6 +618,8 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const QStr
 				break;
 			}
 			break;
+		case CommandType::BLANK:
+			break;
 		};
 	});
 
@@ -657,7 +661,7 @@ void Bot::DispatchRandomVideo(Command command)
 void Bot::DispatchCommandList()
 {
 	std::vector<std::pair<QString,QString>> descriptions;
-	for (const std::pair<QString,Command> &command : commands)
+	for (const std::pair<const QString,Command> &command : commands)
 	{
 		if (!command.second.Protected()) descriptions.push_back({command.first,command.second.Description()});
 	}
@@ -720,9 +724,9 @@ void Bot::DispatchPanic(const QString &name)
 void Bot::DispatchShoutout(Command command)
 {
 	Viewer::Remote *viewer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
-	connect(viewer,&Viewer::Remote::Recognized,[this](Viewer::Local viewer) {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,[this,viewer](const QImage &profileImage) {
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
 			emit Shoutout(viewer.DisplayName(),viewer.Description(),profileImage);
 		});
 	});
@@ -753,9 +757,9 @@ void Bot::DispatchUptime(bool total)
 		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
 		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-hours-minutes);
 		if (total)
-			ShowTotalTime(hours,minutes,seconds);
+			emit ShowTotalTime(hours,minutes,seconds);
 		else
-			ShowUptime(hours,minutes,seconds);
+			emit ShowUptime(hours,minutes,seconds);
 	},{
 		{"user_login",security.Administrator()}
 	},{
