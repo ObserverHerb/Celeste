@@ -775,6 +775,7 @@ void Bot::ToggleVibeKeeper()
 	{
 		emit Print("Pausing the vibes...");
 		vibeKeeper->pause();
+		return;
 	}
 	vibeKeeper->play();
 }
