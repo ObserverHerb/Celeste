@@ -488,13 +488,11 @@ void Bot::ParseChatMessage(const QString &message)
 	// determine if the message is an action
 	bool action=false;
 	remainingText=remainingText.trimmed();
-	QString before=remainingText.toString();
 	if (const QString ACTION("\001ACTION"); remainingText.startsWith(ACTION))
 	{
 		remainingText=remainingText.mid(ACTION.size(),remainingText.lastIndexOf('\001')-ACTION.size()).trimmed();
 		action=true;
 	}
-	QString after=remainingText.toString();
 
 	// set emote name and check for wall of text
 	int emoteCharacterCount=0;
