@@ -75,10 +75,13 @@ class EphemeralPane : public QWidget
 {
 	Q_OBJECT
 public:
-	EphemeralPane(QWidget *parent);
+	EphemeralPane(QWidget *parent,bool highPriority=true);
 	virtual void Show()=0;
+	void LowerPriority();
+	bool HighPriority() const;
 protected:
 	bool expired;
+	bool highPriority;
 	void Expire();
 signals:
 	void Finished();

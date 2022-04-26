@@ -29,11 +29,11 @@ class ScrollingTextEdit : public QTextEdit
 public:
 	ScrollingTextEdit(QWidget *parent);
 protected:
+	QPropertyAnimation scrollTransition;
 	void showEvent(QShowEvent *event) override;
-	QTimer scrollTimer;
 	const static int PAUSE;
 signals:
 	void Finished();
 protected slots:
-	void Scrolled(int position);
+	void Scroll();
 };

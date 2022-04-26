@@ -146,10 +146,20 @@ void ChatPane::DismissStatus()
 	statusClock.stop();
 }
 
-EphemeralPane::EphemeralPane(QWidget *parent) : QWidget(parent), expired(false)
+EphemeralPane::EphemeralPane(QWidget *parent,bool highPriority) : QWidget(parent), expired(false), highPriority(highPriority)
 {
 	setVisible(false);
 	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::Expire);
+}
+
+void EphemeralPane::LowerPriority()
+{
+	highPriority=false;
+}
+
+bool EphemeralPane::HighPriority() const
+{
+	return highPriority;
 }
 
 void EphemeralPane::Expire()

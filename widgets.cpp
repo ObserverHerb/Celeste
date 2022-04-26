@@ -56,29 +56,22 @@ void PinnedTextEdit::Append(const QString &text)
 
 const int ScrollingTextEdit::PAUSE=5000;
 
-ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent)
+ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent), scrollTransition(QPropertyAnimation(verticalScrollBar(),"sliderPosition"))
 {
-
+	connect(&scrollTransition,&QPropertyAnimation::finished,this,&ScrollingTextEdit::Finished);
 }
 
 void ScrollingTextEdit::showEvent(QShowEvent *event)
 {
-	scrollTimer.setInterval(25);
-	QTimer::singleShot(PAUSE,[this]() {
-		connect(&scrollTimer,&QTimer::timeout,[this]() {
-			verticalScrollBar()->setSliderPosition(verticalScrollBar()->sliderPosition()+1);
-		});
-		connect(verticalScrollBar(),&QScrollBar::valueChanged,this,&ScrollingTextEdit::Scrolled);
-		scrollTimer.start();
-	});
+	scrollTransition.setDuration((verticalScrollBar()->maximum()-verticalScrollBar()->value())*25); // distance remaining * ms/step (10ms/1step)
+	scrollTransition.setStartValue(verticalScrollBar()->value());
+	scrollTransition.setEndValue(verticalScrollBar()->maximum());
+	QTimer::singleShot(PAUSE,this,&ScrollingTextEdit::Scroll);
+
+	QTextEdit::showEvent(event);
 }
 
-void ScrollingTextEdit::Scrolled(int position)
+void ScrollingTextEdit::Scroll()
 {
-	if (position >= verticalScrollBar()->maximum())
-	{
-		QTimer::singleShot(PAUSE,[this]() {
-			emit Finished();
-		});
-	}
+	scrollTransition.start();
 }

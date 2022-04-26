@@ -19,7 +19,8 @@ protected:
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingAccentColor;
-	std::queue<EphemeralPane*> ephemeralPanes;
+	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
+	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
 	void SwapPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();

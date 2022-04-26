@@ -157,12 +157,14 @@ void Window::ShowCommandList(std::vector<std::pair<QString,QString>> description
 	{
 		text.append(QString("<div class='name'>!%1<br><span class='description'> %2<br></div>").arg(command.first,command.second));
 	}
-	StageEphemeralPane(new ScrollingAnnouncePane(text,this));
+	ScrollingAnnouncePane *pane=new ScrollingAnnouncePane(text,this);
+	pane->LowerPriority();
+	StageEphemeralPane(pane);
 }
 
 void Window::ShowCommand(const QString &name,const QString &description)
 {
-	if (!ephemeralPanes.empty()) return;
+	if (!highPriorityEphemeralPanes.empty()) return;
 	StageEphemeralPane(new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
 		name,
 		description
@@ -239,24 +241,69 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 {
 	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
 	background->layout()->addWidget(pane);
-	if (ephemeralPanes.size() > 0)
+	if (pane->HighPriority())
 	{
-		connect(ephemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::Show);
-		ephemeralPanes.push(pane);
+		if (highPriorityEphemeralPanes.empty())
+		{
+			if (!lowPriorityEphemeralPanes.empty()) lowPriorityEphemeralPanes.front()->hide();
+			highPriorityEphemeralPanes.push(pane);
+			visiblePane->hide();
+			pane->Show();
+		}
+		else
+		{
+			connect(highPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::Show);
+			highPriorityEphemeralPanes.push(pane);
+		}
 	}
 	else
 	{
-		ephemeralPanes.push(pane);
-		visiblePane->hide();
-		pane->Show();
+		if (lowPriorityEphemeralPanes.empty())
+		{
+			if (highPriorityEphemeralPanes.empty())
+			{
+				visiblePane->hide();
+				pane->Show();
+			}
+		}
+		else
+		{
+			connect(lowPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::Show);
+		}
+		lowPriorityEphemeralPanes.push(pane);
 	}
 }
 
 void Window::ReleaseLiveEphemeralPane()
 {
-	if (ephemeralPanes.empty()) throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
-	ephemeralPanes.pop();
-	if (ephemeralPanes.empty()) visiblePane->show();
+	// determine which queue the pane came from and remove it
+	if (highPriorityEphemeralPanes.empty())
+	{
+		if (lowPriorityEphemeralPanes.empty())
+		{
+			throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
+		}
+		else
+		{
+			lowPriorityEphemeralPanes.pop();
+		}
+	}
+	else
+	{
+		highPriorityEphemeralPanes.pop();
+	}
+
+	// check what's left and return to chat if empty
+	if (highPriorityEphemeralPanes.empty())
+	{
+		if (lowPriorityEphemeralPanes.empty())
+		{
+			visiblePane->show();
+			return;
+		}
+
+		lowPriorityEphemeralPanes.front()->Show();
+	}
 }
 
 void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
