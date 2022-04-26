@@ -19,17 +19,24 @@ namespace StyleSheet
 	}
 }
 
-PinnedTextEdit::PinnedTextEdit(QWidget *parent) : QTextEdit(parent)
+PinnedTextEdit::PinnedTextEdit(QWidget *parent) : QTextEdit(parent), scrollTransition(QPropertyAnimation(verticalScrollBar(),"sliderPosition"))
 {
-	connect(this,&PinnedTextEdit::textChanged,[this]() {
-		Tail();
-	});
+	connect(this,&PinnedTextEdit::textChanged,this,&PinnedTextEdit::Scroll);
+	connect(&scrollTransition,&QPropertyAnimation::finished,this,&PinnedTextEdit::Tail);
 }
 
 void PinnedTextEdit::resizeEvent(QResizeEvent *event)
 {
 	Tail();
 	QTextEdit::resizeEvent(event);
+}
+
+void PinnedTextEdit::Scroll()
+{
+	scrollTransition.setDuration((verticalScrollBar()->maximum()-verticalScrollBar()->value())*10); // distance remaining * ms/step (10ms/1step)
+	scrollTransition.setStartValue(verticalScrollBar()->value());
+	scrollTransition.setEndValue(verticalScrollBar()->maximum());
+	scrollTransition.start();
 }
 
 void PinnedTextEdit::Tail()

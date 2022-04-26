@@ -2,6 +2,7 @@
 
 #include <QTextEdit>
 #include <QTimer>
+#include <QPropertyAnimation>
 
 namespace StyleSheet
 {
@@ -15,8 +16,11 @@ public:
 	PinnedTextEdit(QWidget *parent);
 	void Append(const QString &text);
 protected:
-	void resizeEvent(QResizeEvent *event);
+	QPropertyAnimation scrollTransition;
+	void resizeEvent(QResizeEvent *event) override;
+protected slots:
 	void Tail();
+	void Scroll();
 };
 
 class ScrollingTextEdit : public QTextEdit
