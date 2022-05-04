@@ -20,7 +20,7 @@ protected:
 	void resizeEvent(QResizeEvent *event) override;
 protected slots:
 	void Tail();
-	void Scroll();
+	void Scroll(int minimum,int maximum);
 };
 
 class ScrollingTextEdit : public QTextEdit

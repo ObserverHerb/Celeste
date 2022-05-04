@@ -21,8 +21,8 @@ namespace StyleSheet
 
 PinnedTextEdit::PinnedTextEdit(QWidget *parent) : QTextEdit(parent), scrollTransition(QPropertyAnimation(verticalScrollBar(),"sliderPosition"))
 {
-	connect(this,&PinnedTextEdit::textChanged,this,&PinnedTextEdit::Scroll);
 	connect(&scrollTransition,&QPropertyAnimation::finished,this,&PinnedTextEdit::Tail);
+	connect(verticalScrollBar(),&QScrollBar::rangeChanged,this,&PinnedTextEdit::Scroll);
 }
 
 void PinnedTextEdit::resizeEvent(QResizeEvent *event)
@@ -31,21 +31,20 @@ void PinnedTextEdit::resizeEvent(QResizeEvent *event)
 	QTextEdit::resizeEvent(event);
 }
 
-void PinnedTextEdit::Scroll()
+void PinnedTextEdit::Scroll(int minimum,int maximum)
 {
-	scrollTransition.setDuration((verticalScrollBar()->maximum()-verticalScrollBar()->value())*10); // distance remaining * ms/step (10ms/1step)
+	if (scrollTransition.state() == QAbstractAnimation::Running) return;
+	scrollTransition.setDuration((maximum-verticalScrollBar()->value())*10); // distance remaining * ms/step (10ms/1step)
 	scrollTransition.setStartValue(verticalScrollBar()->value());
-	scrollTransition.setEndValue(verticalScrollBar()->maximum());
+	scrollTransition.setEndValue(maximum);
 	scrollTransition.start();
 }
 
 void PinnedTextEdit::Tail()
 {
-	QTextCursor cursor=textCursor();
-	cursor.movePosition(QTextCursor::End);
-	setTextCursor(cursor);
-	ensureCursorVisible();
+	if (scrollTransition.endValue() != verticalScrollBar()->maximum()) Scroll(scrollTransition.startValue().toInt(),verticalScrollBar()->maximum());
 }
+
 
 void PinnedTextEdit::Append(const QString &text)
 {
