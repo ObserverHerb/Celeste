@@ -152,7 +152,11 @@ namespace Chat
 		QString sender;
 		QString text;
 		QColor color;
+		QStringList badges;
+		std::vector<Chat::Emote> emotes;
+		bool action { false };
 		bool broadcaster { false };
 		bool moderator { false };
+		bool Privileged() const { return broadcaster || moderator; }
 	};
 }

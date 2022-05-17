@@ -68,52 +68,21 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	settingHostSound(SETTINGS_CATEGORY_EVENTS,"Host"),
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0)
 {
-	Command agendaCommand("agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true);
-	Command categoryCommand("category","Change the stream category",CommandType::NATIVE,true);
-	Command commandsCommand("commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false);
-	Command emoteCommand("emote","Toggle emote only mode in chat",CommandType::NATIVE,true);
-	Command followageCommand("followage","Show how long a user has followed the broadcaster",CommandType::NATIVE,false);
-	Command panicCommand("panic","Crash Celeste",CommandType::NATIVE,true);
-	Command shoutOutCommand("so","Call attention to another streamer's channel",CommandType::NATIVE,false);
-	Command songCommand("song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false);
-	Command timezoneCommand("timezone","Display the timezone of the system the bot is running on",CommandType::NATIVE,false);
-	Command titleCommand("title","Change the stream title",CommandType::NATIVE,true);
-	Command uptimeCommand("uptime","Show how long the bot has been connected",CommandType::NATIVE,false);
-	Command totalTimeCommand("totaltime","Show how many total hours stream has ever been live",CommandType::NATIVE,false);
-	Command vibeCommand("vibe","Start the playlist of music for the stream",CommandType::NATIVE,true);
-	Command volumeCommand("volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true);
-	commands.insert({
-		{agendaCommand.Name(),agendaCommand},
-		{categoryCommand.Name(),categoryCommand},
-		{commandsCommand.Name(),commandsCommand},
-		{emoteCommand.Name(),emoteCommand},
-		{followageCommand.Name(),followageCommand},
-		{panicCommand.Name(),panicCommand},
-		{shoutOutCommand.Name(),shoutOutCommand},
-		{songCommand.Name(),songCommand},
-		{timezoneCommand.Name(),timezoneCommand},
-		{titleCommand.Name(),titleCommand},
-		{totalTimeCommand.Name(),totalTimeCommand},
-		{uptimeCommand.Name(),uptimeCommand},
-		{vibeCommand.Name(),vibeCommand},
-		{volumeCommand.Name(),volumeCommand}
-	});
-	nativeCommandFlags.insert({
-		{agendaCommand.Name(),NativeCommandFlag::AGENDA},
-		{categoryCommand.Name(),NativeCommandFlag::CATEGORY},
-		{commandsCommand.Name(),NativeCommandFlag::COMMANDS},
-		{emoteCommand.Name(),NativeCommandFlag::EMOTE},
-		{followageCommand.Name(),NativeCommandFlag::FOLLOWAGE},
-		{panicCommand.Name(),NativeCommandFlag::PANIC},
-		{shoutOutCommand.Name(),NativeCommandFlag::SHOUTOUT},
-		{songCommand.Name(),NativeCommandFlag::SONG},
-		{timezoneCommand.Name(),NativeCommandFlag::TIMEZONE},
-		{titleCommand.Name(),NativeCommandFlag::TITLE},
-		{totalTimeCommand.Name(),NativeCommandFlag::TOTAL_TIME},
-		{uptimeCommand.Name(),NativeCommandFlag::UPTIME},
-		{vibeCommand.Name(),NativeCommandFlag::VIBE},
-		{volumeCommand.Name(),NativeCommandFlag::VOLUME}
-	});
+	DeclareCommand({"agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
+	DeclareCommand({"category","Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
+	DeclareCommand({"commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
+	DeclareCommand({"emote","Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
+	DeclareCommand({"followage","Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
+	DeclareCommand({"html","Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
+	DeclareCommand({"panic","Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
+	DeclareCommand({"so","Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
+	DeclareCommand({"song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
+	DeclareCommand({"timezone","Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
+	DeclareCommand({"title","Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
+	DeclareCommand({"uptime","Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
+	DeclareCommand({"totaltime","Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
+	DeclareCommand({"vibe","Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
+	DeclareCommand({"volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	if (!LoadDynamicCommands()) emit Print("Failed to load commands"); // do this after creating native commands or aliases to native commands won't work
 
 	if (settingVibePlaylist) LoadVibePlaylist();
@@ -123,6 +92,12 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
 	vibeKeeper->setVolume(0);
+}
+
+void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
+{
+	commands.insert({{command.Name(),command}});
+	nativeCommandFlags.insert({{command.Name(),flag}});
 }
 
 bool Bot::LoadDynamicCommands()
@@ -349,13 +324,8 @@ void Bot::ParseChatMessage(const QString &message)
 	std::optional<QStringView> window;
 
 	QStringView remainingText(message);
-	QStringView sender;
 	QStringView login;
-	QColor color;
-	QStringList badgeIconPaths;
-	bool broadcaster=false;
-	bool moderator=false;
-	std::vector<Chat::Emote> emotes;
+	Chat::Message chatMessage;
 
 	// Twitch appears to use ":" as a delimiter and every message is divided into three sections
 	// if a section is missing, it will still have its delimiters
@@ -380,8 +350,8 @@ void Bot::ParseChatMessage(const QString &message)
 				if (!value) continue; // I'll rely on "missing" to represent an empty value
 				tags[*key]=*value;
 			}
-			if (tags.contains(CHAT_TAG_DISPLAY_NAME)) sender=tags.at(CHAT_TAG_DISPLAY_NAME);
-			if (tags.contains(CHAT_TAG_COLOR)) color=tags.at(CHAT_TAG_COLOR).toString();
+			if (tags.contains(CHAT_TAG_DISPLAY_NAME)) chatMessage.sender=tags.at(CHAT_TAG_DISPLAY_NAME).toString();
+			if (tags.contains(CHAT_TAG_COLOR)) chatMessage.color=tags.at(CHAT_TAG_COLOR).toString();
 
 			// badges
 			if (tags.contains(CHAT_TAG_BADGES))
@@ -399,10 +369,10 @@ void Bot::ParseChatMessage(const QString &message)
 					badges.insert({*name,*version});
 					std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
 					if (!badgeIconPath) continue;
-					badgeIconPaths.append(*badgeIconPath);
+					chatMessage.badges.append(*badgeIconPath);
 				}
-				if (badges.contains(CHAT_BADGE_BROADCASTER) && badges.at(CHAT_BADGE_BROADCASTER) == u"1") broadcaster=true;
-				if (badges.contains(CHAT_BADGE_MODERATOR) && badges.at(CHAT_BADGE_MODERATOR) == u"1") moderator=true;
+				if (badges.contains(CHAT_BADGE_BROADCASTER) && badges.at(CHAT_BADGE_BROADCASTER) == u"1") chatMessage.broadcaster=true;
+				if (badges.contains(CHAT_BADGE_MODERATOR) && badges.at(CHAT_BADGE_MODERATOR) == u"1") chatMessage.moderator=true;
 			}
 
 			// emotes
@@ -428,10 +398,10 @@ void Bot::ParseChatMessage(const QString &message)
 							.start=start,
 							.end=end
 						};
-						emotes.push_back(emote);
+						chatMessage.emotes.push_back(emote);
 					}
 				}
-				std::sort(emotes.begin(),emotes.end());
+				std::sort(chatMessage.emotes.begin(),chatMessage.emotes.end());
 			}
 		}
 	}
@@ -468,11 +438,12 @@ void Bot::ParseChatMessage(const QString &message)
 	{
 		if (command->size() > 0 && command->at(0) == '!')
 		{
-			if (DispatchCommand(command->mid(1).toString(),window->toString(),login.toString(),broadcaster || moderator)) return;
+			chatMessage.text=window->toString();
+			if (DispatchCommand(command->mid(1).toString(),chatMessage,login.toString())) return;
 		}
 	}
 
-	if (const QString name=login.toString(); !broadcaster)
+	if (const QString name=login.toString(); !chatMessage.broadcaster)
 	{
 		if (const std::unordered_set<QString>::const_iterator viewer=viewers.find(name); viewer == viewers.end())
 		{
@@ -482,17 +453,16 @@ void Bot::ParseChatMessage(const QString &message)
 	}
 
 	// determine if the message is an action
-	bool action=false;
 	remainingText=remainingText.trimmed();
 	if (const QString ACTION("\001ACTION"); remainingText.startsWith(ACTION))
 	{
 		remainingText=remainingText.mid(ACTION.size(),remainingText.lastIndexOf('\001')-ACTION.size()).trimmed();
-		action=true;
+		chatMessage.action=true;
 	}
 
 	// set emote name and check for wall of text
 	int emoteCharacterCount=0;
-	for (Chat::Emote &emote : emotes)
+	for (Chat::Emote &emote : chatMessage.emotes)
 	{
 		const QStringView name=remainingText.mid(emote.start,1+emote.end-emote.start); // end is an index, not a size, so we have to add 1 to get the size
 		emoteCharacterCount+=name.size();
@@ -501,7 +471,8 @@ void Bot::ParseChatMessage(const QString &message)
 	}
 	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold)) emit AnnounceTextWall(message,settingTextWallSound);
 
-	emit ChatMessage(sender.toString(),remainingText.toString(),emotes,badgeIconPaths,color,action);
+	chatMessage.text=remainingText.toString().toHtmlEscaped();
+	emit ChatMessage(chatMessage);
 	inactivityClock.start();
 }
 
@@ -543,12 +514,12 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 	}
 }
 
-bool Bot::DispatchCommand(const QString name,const QString parameters,const QString &login,bool privileged)
+bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login)
 {
 	if (commands.find(name) == commands.end()) return false;
-	Command command=parameters.isEmpty() ? commands.at(name) : Command(commands.at(name),parameters);
+	Command command=chatMessage.text.isEmpty() ? commands.at(name) : Command(commands.at(name),chatMessage.text);
 
-	if (command.Protected() && !privileged)
+	if (command.Protected() && !chatMessage.Privileged())
 	{
 		emit Print(QString(R"(The command "!%1" is protected but requester is not authorized")").arg(command.Name()));
 		return false;
@@ -556,7 +527,7 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const QStr
 
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command,parameters](Viewer::Local viewer) {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command,chatMessage](Viewer::Local viewer) {
 		switch (command.Type())
 		{
 		case CommandType::VIDEO:
@@ -582,6 +553,18 @@ bool Bot::DispatchCommand(const QString name,const QString parameters,const QStr
 				break;
 			case NativeCommandFlag::FOLLOWAGE:
 				DispatchFollowage(viewer.Name());
+				break;
+			case NativeCommandFlag::HTML:
+				ChatMessage({
+					.sender=chatMessage.sender,
+					.text=chatMessage.text,
+					.color=chatMessage.color,
+					.badges=chatMessage.badges,
+					.emotes={},
+					.action=chatMessage.action,
+					.broadcaster=chatMessage.broadcaster,
+					.moderator=chatMessage.moderator
+				});
 				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());

@@ -26,7 +26,7 @@ protected:
 	const QSize ScreenThird();
 signals:
 	void Print(const QString &message);
-	void ChatMessage(const QString &name,const QString &message,const std::vector<Chat::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
+	void ChatMessage(const Chat::Message &message);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();
 public slots:

@@ -104,25 +104,25 @@ void ChatPane::Refresh()
 	chat->viewport()->update();
 }
 
-void ChatPane::Message(const QString &name,const QString &message,const std::vector<Chat::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action) const
+void ChatPane::Message(const Chat::Message &message) const
 {
 	QString badges;
-	for (const QString &icon : badgeIcons) badges.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
+	for (const QString &icon : message.badges) badges.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
 
 	QString emotedMessage;
 	unsigned int position=0;
-	for (const Chat::Emote &emote : emotes)
+	for (const Chat::Emote &emote : message.emotes)
 	{
-		if (position < emote.start) emotedMessage+=message.midRef(position,emote.start-position);
+		if (position < emote.start) emotedMessage+=message.text.midRef(position,emote.start-position);
 		emotedMessage+=QString(R"(<img style="vertical-align: middle;" src="%1" />)").arg(emote.path);
 		position=emote.end+1;
 	}
-	if (position < static_cast<unsigned int>(message.size())) emotedMessage+=message.midRef(position,message.size()-position);
+	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=message.text.midRef(position,message.text.size()-position);
 
-	if (action)
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor,badges));
+	if (message.action)
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
 	else
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(name,emotedMessage,color.isValid() ? color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
 }
 
 void ChatPane::Print(const QString &text)

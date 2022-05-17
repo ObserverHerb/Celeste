@@ -19,6 +19,7 @@ enum class NativeCommandFlag
 	COMMANDS,
 	EMOTE,
 	FOLLOWAGE,
+	HTML,
 	PANIC,
 	SHOUTOUT,
 	SONG,
@@ -68,6 +69,7 @@ protected:
 	ApplicationSetting settingUptimeHistory;
 	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
+	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
 	bool LoadDynamicCommands();
 	void LoadVibePlaylist();
 	void LoadRoasts();
@@ -75,7 +77,7 @@ protected:
 	void StartClocks();
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
-	bool DispatchCommand(const QString name,const QString parameters,const QString &login,bool privileged);
+	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
 	void DispatchArrival(const QString &login);
 	bool DispatchChatNotification(const QStringView &message);
 	void DispatchVideo(Command command);
@@ -91,7 +93,7 @@ protected:
 	void StreamCategory(const QString &category);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
-	void ChatMessage(const QString &name,const QString &message,const std::vector<Chat::Emote> &emotes,const QStringList &badgeIcons,const QColor color,bool action);
+	void ChatMessage(const Chat::Message &message);
 	void RefreshChat();
 	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
 	void PlayVideo(const QString &path);
