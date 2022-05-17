@@ -114,7 +114,7 @@ signals:
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
 public slots:
-	void ParseChatMessage(const QString &message);
+	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void Ping();
 	void Subscription(const QString &viewer);
 	void Redemption(const QString &name,const QString &rewardTitle,const QString &message);
