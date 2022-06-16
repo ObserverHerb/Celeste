@@ -102,6 +102,7 @@ signals:
 	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void Panic(const QString &text);
+	void Pulse(const QString &trigger);
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);

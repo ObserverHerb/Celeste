@@ -15,6 +15,7 @@
 #include "server.h"
 #include "globals.h"
 #include "security.h"
+#include "pulsar.h"
 
 const char *ORGANIZATION_NAME="Sky-Meyg";
 const char *APPLICATION_NAME="Celeste";
@@ -76,6 +77,7 @@ int main(int argc,char *argv[])
 		Channel *channel=new Channel(security,&socket);
 		Server server;
 		Bot celeste(security);
+		Pulsar pulsar;
 #ifdef Q_OS_WIN
 		Win32Window window;
 #else
@@ -112,6 +114,8 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::PlayVideo,&window,&Window::PlayVideo);
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
 		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
+		celeste.connect(&celeste,&Bot::Pulse,&pulsar,&Pulsar::Pulse);
+		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
@@ -175,6 +179,7 @@ int main(int argc,char *argv[])
 
 		if (!log.Open()) throw std::runtime_error("Could not open log file!");
 		if (!server.Listen()) throw std::runtime_error("Could not start server!");
+		pulsar.LoadTriggers();
 		window.show();
 		channel->Connect();
 

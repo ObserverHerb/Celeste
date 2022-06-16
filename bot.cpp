@@ -42,7 +42,8 @@ const char16_t *CHAT_TAG_EMOTES=u"emotes";
 const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 	{"native",CommandType::NATIVE},
 	{"video",CommandType::VIDEO},
-	{"announce",CommandType::AUDIO}
+	{"announce",CommandType::AUDIO},
+	{"pulsar",CommandType::PULSAR}
 };
 
 std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconURLs;
@@ -438,7 +439,7 @@ void Bot::ParseChatMessage(const QString &message)
 	{
 		if (command->size() > 0 && command->at(0) == '!')
 		{
-			chatMessage.text=window->toString();
+			chatMessage.text=window->toString().trimmed();
 			if (DispatchCommand(command->mid(1).toString(),chatMessage,login.toString())) return;
 		}
 	}
@@ -535,6 +536,9 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 			break;
 		case CommandType::AUDIO:
 			emit PlayAudio(viewer.DisplayName(),command.Message(),command.Path());
+			break;
+		case CommandType::PULSAR:
+			emit Pulse(command.Message());
 			break;
 		case CommandType::NATIVE:
 			switch (nativeCommandFlags.at(command.Name()))

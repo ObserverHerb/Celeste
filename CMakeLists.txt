@@ -35,6 +35,8 @@ add_executable(Celeste
 	eventsub.cpp
 	panes.h
 	panes.cpp
+	pulsar.h
+	pulsar.cpp
 	platform.cpp
 	log.h
 	log.cpp
@@ -57,4 +59,40 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
+endif()
+
+if (WITH_PULSAR)
+	add_library(Pulsar MODULE pulsar/pulsar.cpp)
+	if (WIN32)
+		execute_process(COMMAND powershell ${CMAKE_SOURCE_DIR}/pulsar-bootstrap.ps1)
+		set(OBS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/obs-studio)
+		set(OBS_LIB_DIR ${CMAKE_SOURCE_DIR}/obs-studio/build64)
+
+		include_directories(${OBS_SOURCE_DIR}/libobs)
+		include_directories(${OBS_SOURCE_DIR}/UI/obs-frontend-api/)
+		target_include_directories(Pulsar SYSTEM PRIVATE ${OBS_INCLUDE_DIR}/obs)
+
+		find_library(LIBOBS_LIBRARY obs
+			${OBS_LIB_DIR}
+			${OBS_LIB_DIR}/libobs/
+			${OBS_LIB_DIR}/libobs/RelWithDebInfo/
+			${OBS_LIB_DIR}/libobs/Relase/
+			${OBS_LIB_DIR}/libobs/*/
+		)
+
+		find_library(OBS_FRONTEND_LIBRARY obs-frontend-api
+			${OBS_LIB_DIR}
+			${OBS_LIB_DIR}/UI/obs-frontend-api/
+			${OBS_LIB_DIR}/UI/obs-frontend-api/RelWithDebInfo/
+			${OBS_LIB_DIR}/UI/obs-frontend-api/Release/
+			${OBS_LIB_DIR}/UI/obs-frontend-api/*/
+		)
+	else()
+		find_package(Qt5 COMPONENTS Network REQUIRED)
+		include(FindPkgConfig)
+		pkg_search_module(OBS REQUIRED libobs)
+		find_path(OBS_INCLUDE_DIR obs-module.h HINTS ${OBS_INCLUDEDIR} ${OBS_INCLUDE_DIRS})
+		target_include_directories(Pulsar SYSTEM PRIVATE ${OBS_INCLUDE_DIR}/obs)
+	endif()
+	target_link_libraries(Pulsar ${LIBOBS_LIBRARY} ${OBS_FRONTEND_LIBRARY} Qt5::Widgets Qt5::Network)
 endif()

@@ -13,7 +13,8 @@ enum class CommandType
 	BLANK,
 	NATIVE,
 	VIDEO,
-	AUDIO
+	AUDIO,
+	PULSAR
 };
 
 class Command
