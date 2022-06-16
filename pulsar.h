@@ -1,4 +1,5 @@
 #include <QObject>
+#include <QJsonArray>
 
 inline const char *PULSAR_SOCKET_NAME="pulsar-obs";
 
