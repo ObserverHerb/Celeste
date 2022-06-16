@@ -188,7 +188,7 @@ int main(int argc,char *argv[])
 
 	catch (const std::runtime_error &exception)
 	{
-		qFatal(exception.what());
+		qFatal("%s",exception.what());
 		return FATAL_ERROR;
 	}
 
