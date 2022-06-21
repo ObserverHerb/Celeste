@@ -39,7 +39,7 @@ protected:
 	Security &security;
 	ApplicationSetting settingChannel;
 	IRCSocket *ircSocket;
-	void ParseMessage(const QString &message);
+	void ParseMessage(const QString message);
 	void DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParamter);
 	void SendMessage(QString prefix,QString command,QStringList parameters,QString finalParamter);
 	void ParseCapabilities(const QStringList &parameters,const QString &capabilities);

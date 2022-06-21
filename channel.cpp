@@ -111,7 +111,7 @@ void Channel::DataAvailable()
 	}
 }
 
-void Channel::ParseMessage(const QString& message)
+void Channel::ParseMessage(const QString message)
 {
 	static const char* OPERATION_PARSE_MESSAGE="message parsing";
 	emit Print(message,OPERATION_PARSE_MESSAGE);
