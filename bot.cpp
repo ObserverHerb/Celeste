@@ -153,6 +153,12 @@ bool Bot::LoadDynamicCommands()
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
+			const QString type=jsonObject.value(JSON_KEY_COMMAND_TYPE).toString();
+			if (!COMMAND_TYPES.contains(type))
+			{
+				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type,name),OPERATION_LOAD_COMMANDS);
+				continue;
+			}
 			commands[name]={
 				name,
 				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
