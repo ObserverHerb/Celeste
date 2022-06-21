@@ -116,6 +116,13 @@ namespace StringView
 		return candidate.trimmed();
 	}
 
+	inline std::optional<QStringView> Take(QStringView &window,QChar lead,QChar delimiter)
+	{
+		if (window.front() != lead) return std::nullopt;
+		window=window.mid(1);
+		return Take(window,delimiter);
+	}
+
 	inline std::optional<QStringView> First(const QStringView &window,QChar delimiter)
 	{
 		QStringView candidate=window.left(window.indexOf(delimiter));

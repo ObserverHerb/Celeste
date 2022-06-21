@@ -114,15 +114,13 @@ void Channel::DataAvailable()
 void Channel::ParseMessage(const QString& message)
 {
 	static const char* OPERATION_PARSE_MESSAGE="message parsing";
-
+	emit Print(message,OPERATION_PARSE_MESSAGE);
 	QStringView window(message);
-	std::optional<QStringView> prefix=StringView::Take(window,':');
-	std::optional<QStringView> source=StringView::Take(window,' ');
-	if (!source)
-	{
-		emit Print("Source is missing from message",OPERATION_PARSE_MESSAGE);
-		return;
-	}
+
+	// grab prefix if one exists
+	std::optional<QStringView> prefix=StringView::Take(window,'@',' ');
+	std::optional<QStringView> source=StringView::Take(window,':',' ');
+	if (!source) emit Print("Source is missing from message",OPERATION_PARSE_MESSAGE); // make a note, but per the spec, source is optional
 	std::optional<QStringView> command=StringView::Take(window,' ');
 	if (!command)
 	{
@@ -133,7 +131,7 @@ void Channel::ParseMessage(const QString& message)
 	if (!window.isEmpty()) parameters=StringView::Take(window,':');
 	std::optional<QStringView> finalParameter;
 	if (!window.isEmpty()) finalParameter=StringView::Take(window,'\n');
-	DispatchMessage(prefix ? prefix->toString() : QString(), source->toString(), command->toString(), parameters ? parameters->toString().split(' ') : QStringList(), finalParameter ? finalParameter->toString() : QString());
+	DispatchMessage(prefix ? prefix->toString() : QString(), source ? source->toString() : QString(), command->toString(), parameters ? parameters->toString().split(' ',StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)) : QStringList(), finalParameter ? finalParameter->toString() : QString());
 }
 
 void Channel::DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParameter)
@@ -188,7 +186,8 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 
 void Channel::SendMessage(QString prefix,QString command,QStringList parameters,QString finalParameter)
 {
-	QString message=QString("%1:? %2").arg(prefix,command);
+	// "Clients MUST NOT include a source when sending a message." (https://modern.ircdocs.horse/#client-messages)
+	QString message=QString("%1 %2").arg(prefix,command);
 	if (!parameters.isEmpty()) message.append(QString(" %1").arg(parameters.join(' ')));
 	if (!finalParameter.isEmpty()) message.append(QString(" :%1").arg(finalParameter));
 	message.append("\r\n");
