@@ -12,8 +12,6 @@ const char *OPERATION_NOTICES="recognize notice";
 
 const char *TWITCH_HOST="irc.chat.twitch.tv";
 const unsigned int TWITCH_PORT=6667;
-const char16_t *TWITCH_PING=u"PING :tmi.twitch.tv";
-const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
 
 const char *IRC_COMMAND_USER="NICK %1\n";
 const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
