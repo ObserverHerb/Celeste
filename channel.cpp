@@ -74,11 +74,11 @@ Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject
 	ircSocket(socket)
 {
 	if (!ircSocket) ircSocket=new IRCSocket(this);
-	connect(ircSocket,&IRCSocket::connected,[this]() {
+	connect(ircSocket,&IRCSocket::connected,this,[this]() {
 		emit Print("Connected!",OPERATION_CONNECTION);
 		Authenticate();
 	});
-	connect(ircSocket,&IRCSocket::disconnected,[this]() {
+	connect(ircSocket,&IRCSocket::disconnected,this,[this]() {
 		emit Disconnected();
 		emit Print("Disconnected",OPERATION_CONNECTION);
 	});
