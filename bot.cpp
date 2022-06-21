@@ -127,10 +127,12 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 
 bool Bot::LoadDynamicCommands()
 {
+	const char *OPERATION_LOAD_COMMANDS="load dynamic commands";
+
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite))
 	{
-		emit Print(QString("Failed to open command list file: %1").arg(commandListFile.fileName()));
+		emit Print(QString("Failed to open command list file: %1").arg(commandListFile.fileName()),OPERATION_LOAD_COMMANDS);
 		return false;
 	}
 
@@ -140,7 +142,7 @@ bool Bot::LoadDynamicCommands()
 	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
 	if (json.isNull())
 	{
-		emit Print(jsonError.errorString());
+		emit Print(jsonError.errorString(),OPERATION_LOAD_COMMANDS);
 		return false;
 	}
 
