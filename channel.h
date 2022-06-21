@@ -44,6 +44,7 @@ protected:
 	void SendMessage(QString prefix,QString command,QStringList parameters,QString finalParamter);
 	void ParseCapabilities(const QStringList &parameters,const QString &capabilities);
 	void DispatchCapabilities(const QString &clientIdentifier,const QString &subCommand,const QStringList &capabilities);
+	void ParseNotice(const QString &message);
 	void Authenticate();
 	void RequestCapabilities();
 	void RequestJoin();
@@ -54,9 +55,9 @@ signals:
 	void Disconnected();
 	void Denied();
 	void Joined();
-	void Ping();
+	void Ping(const QString &token);
 protected slots:
 	void DataAvailable();
 	void SocketError(QAbstractSocket::SocketError error);
-	void Pong();
+	void Pong(const QString &token);
 };

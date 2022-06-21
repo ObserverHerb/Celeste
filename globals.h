@@ -31,6 +31,7 @@ namespace NumberConvert
 namespace StringConvert
 {
 	inline QByteArray ByteArray(const QString &value) { return value.toLocal8Bit(); } // TODO: how do I report that this failed?
+	inline const char* Raw(const QString &value) { return ByteArray(value).data(); }
 	inline QString Integer(const int &value)
 	{
 		QString result=QString::number(value);

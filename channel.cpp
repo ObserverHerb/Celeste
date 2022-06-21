@@ -7,6 +7,8 @@ const char *OPERATION_CONNECTION="connection";
 const char *OPERATION_AUTHENTICATION="authentication";
 const char *OPERATION_SEND="sending data";
 const char *OPERATION_RECEIVE="receiving data";
+const char *OPERATION_CAPABILITIES="recognize capabilities";
+const char *OPERATION_NOTICES="recognize notice";
 
 const char *TWITCH_HOST="irc.chat.twitch.tv";
 const unsigned int TWITCH_PORT=6667;
@@ -16,8 +18,6 @@ const char *TWITCH_PONG="PONG :tmi.twitch.tv\n";
 const char *IRC_COMMAND_USER="NICK %1\n";
 const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
 const char *IRC_COMMAND_JOIN="JOIN #%1\n";
-const char16_t *IRC_VALIDATION_AUTHENTICATION=u"You are in a maze of twisty passages, all alike.";
-const char16_t *IRC_VALIDATION_JOIN=u"End of /NAMES list";
 
 const char *SETTINGS_CATEGORY_CHANNEL="Channel";
 
@@ -32,15 +32,20 @@ enum class IRCCommand
 	RPL_MOTDSTART=375,
 	RPL_MOTD=372,
 	RPL_ENDOFMOTD=376,
+	ERR_UNKNOWNCOMMAND=421,
 	CAP=1000,
 	JOIN,
-	PRIVMSG
+	PRIVMSG,
+	NOTICE,
+	PING
 };
 
 const std::unordered_map<QString,IRCCommand> nonNumericIRCCommands={
 	{"CAP",IRCCommand::CAP},
 	{"JOIN",IRCCommand::JOIN},
-	{"PRIVMSG",IRCCommand::PRIVMSG}
+	{"PRIVMSG",IRCCommand::PRIVMSG},
+	{"NOTICE",IRCCommand::NOTICE},
+	{"PING",IRCCommand::PING}
 };
 
 enum class CapabilitiesSubcommand
@@ -52,6 +57,17 @@ enum class CapabilitiesSubcommand
 const std::unordered_map<QString,CapabilitiesSubcommand> capabilitiesSubcommands={
 	{"ACK",CapabilitiesSubcommand::ACK},
 	{"NAK",CapabilitiesSubcommand::NAK}
+};
+
+enum class Notice
+{
+	MALFORMATTED_AUTH,
+	DENIED,
+};
+
+const std::unordered_map<QString,Notice> notices={
+	{"Login authentication failed",Notice::DENIED},
+	{"Improperly formatted auth",Notice::MALFORMATTED_AUTH}
 };
 
 Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject(parent),
@@ -124,12 +140,12 @@ void Channel::ParseMessage(const QString& message)
 
 void Channel::DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParameter)
 {
-	const char *OPERATION_DISPATCH="dispatch message";
+	static const char *OPERATION_DISPATCH="dispatch message";
 
 	bool numeric=false;
 	int code=command.toInt(&numeric);
 	if (!numeric) code=nonNumericIRCCommands.contains(command) ? static_cast<int>(nonNumericIRCCommands.at(command)) : -1;
-	switch (code)
+	switch (code) // I'd rather static_cast the code, but if Twitch sends a command I haven't implemented, code will be outside the enum's range
 	{
 	case static_cast<int>(IRCCommand::RPL_WELCOME):
 		break;
@@ -149,6 +165,9 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 		emit Print("Server accepted authentication; requesting capabilities...",OPERATION_DISPATCH);
 		RequestCapabilities();
 		break;
+	case static_cast<int>(IRCCommand::ERR_UNKNOWNCOMMAND):
+		emit Print("Server didn't recognize command",OPERATION_DISPATCH);
+		break;
 	case static_cast<int>(IRCCommand::CAP):
 		ParseCapabilities(parameters,finalParameter);
 		break;
@@ -158,8 +177,14 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 	case static_cast<int>(IRCCommand::PRIVMSG):
 		emit Dispatch(prefix,source,parameters,finalParameter);
 		break;
+	case static_cast<int>(IRCCommand::NOTICE):
+		ParseNotice(finalParameter);
+		break;
+	case static_cast<int>(IRCCommand::PING):
+		emit Ping(finalParameter);
+		break;
 	default:
-		emit Print("Unrecognized command",OPERATION_DISPATCH);
+		emit Print(QString("Unrecognized command '%1' received from server").arg(command),OPERATION_DISPATCH);
 	}
 }
 
@@ -177,7 +202,7 @@ void Channel::ParseCapabilities(const QStringList &parameters,const QString &cap
 	// must contain at least client identifier name (or *) and subcommand
 	if (parameters.size() < 2)
 	{
-		emit Print("Capabilities message is malformatted");
+		emit Print("Capabilities message is malformatted",OPERATION_CAPABILITIES);
 		return;
 	}
 
@@ -193,11 +218,36 @@ void Channel::DispatchCapabilities(const QString &clientIdentifier,const QString
 		RequestJoin();
 		break;
 	case static_cast<int>(CapabilitiesSubcommand::NAK):
-		emit Print(QString("Capability was rejected by server: %1").arg(capabilities.join(' ')));
+		emit Print(QString("Capability was rejected by server: %1").arg(capabilities.join(' ')),OPERATION_CAPABILITIES);
 		break;
 	default:
-		emit Print("Unrecognized capabilities subcommand");
+		emit Print("Unrecognized capabilities subcommand",OPERATION_CAPABILITIES);
 		break;
+	}
+}
+
+void Channel::ParseNotice(const QString &message)
+{
+	try
+	{
+		if (!notices.contains(message)) throw std::runtime_error("Unrecognized notice received");
+		Notice notice=notices.at(message);
+
+		switch (notice)
+		{
+		case Notice::DENIED:
+			emit Print("Server denied login",OPERATION_NOTICES);
+			emit Denied();
+			break;
+		case Notice::MALFORMATTED_AUTH:
+			emit Print("Authentication information was sent incorrectly",OPERATION_NOTICES);
+			break;
+		}
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Print(exception.what(),OPERATION_NOTICES);
 	}
 }
 
@@ -230,7 +280,7 @@ void Channel::Authenticate()
 
 void Channel::RequestCapabilities()
 {
-	SendMessage(QString(),"CAP",{"REQ"},"twitch.tv/tags :twitch.tv/commands"); // TODO: implement source
+	SendMessage(QString(),"CAP",{"REQ"},"twitch.tv/tags :twitch.tv/commands");
 }
 
 void Channel::RequestJoin()
@@ -243,9 +293,9 @@ void Channel::SocketError(QAbstractSocket::SocketError error)
 	emit Print(QString("Failed to connect to server (%1)").arg(ircSocket->errorString()),OPERATION_CONNECTION);
 }
 
-void Channel::Pong()
+void Channel::Pong(const QString &token)
 {
-	ircSocket->write(StringConvert::ByteArray(TWITCH_PONG));
+	SendMessage(QString(),"PONG",{},token);
 }
 
 QByteArray IRCSocket::Read()
@@ -258,7 +308,7 @@ std::optional<char> IRCSocket::Pop()
 	char character='\0';
 	if (!getChar(&character))
 	{
-		emit Print("Failed to read data from socket");
+		emit Print("Failed to read data from socket",OPERATION_RECEIVE);
 		return std::nullopt;
 	}
 	return {character};
