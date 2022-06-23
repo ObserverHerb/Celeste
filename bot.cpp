@@ -103,10 +103,12 @@ void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
 
 bool Bot::LoadDynamicCommands()
 {
+	const char *OPERATION_LOAD_COMMANDS="load dynamic commands";
+
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::ReadWrite))
 	{
-		emit Print(QString("Failed to open command list file: %1").arg(commandListFile.fileName()));
+		emit Print(QString("Failed to open command list file: %1").arg(commandListFile.fileName()),OPERATION_LOAD_COMMANDS);
 		return false;
 	}
 
@@ -116,7 +118,7 @@ bool Bot::LoadDynamicCommands()
 	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
 	if (json.isNull())
 	{
-		emit Print(jsonError.errorString());
+		emit Print(jsonError.errorString(),OPERATION_LOAD_COMMANDS);
 		return false;
 	}
 
@@ -127,6 +129,12 @@ bool Bot::LoadDynamicCommands()
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
+			const QString type=jsonObject.value(JSON_KEY_COMMAND_TYPE).toString();
+			if (!COMMAND_TYPES.contains(type))
+			{
+				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type,name),OPERATION_LOAD_COMMANDS);
+				continue;
+			}
 			commands[name]={
 				name,
 				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
@@ -319,113 +327,90 @@ void Bot::DispatchArrival(const QString &login)
 	});
 }
 
-void Bot::ParseChatMessage(const QString &message)
+void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message)
 {
-	if (message.size() < 1) return;
 	std::optional<QStringView> window;
 
 	QStringView remainingText(message);
 	QStringView login;
 	Chat::Message chatMessage;
 
-	// Twitch appears to use ":" as a delimiter and every message is divided into three sections
-	// if a section is missing, it will still have its delimiters
-	if (remainingText.at(0) != ':')
+	// parse tags
+	window=prefix;
+	std::unordered_map<QStringView,QStringView> tags;
+	while (!window->isEmpty())
 	{
-		// tag section is always first and not preceeded by a colon
-		// since we now know the section exists, consume up to the SPACE,
-		// NOT COLON because there are not spaces in the tags but there are
-		// colons in the emotes tag, and apparently there is always
-		// a space before each section after the first
-		window=StringView::Take(remainingText,' ');
-		if (window)
+		std::optional<QStringView> pair=StringView::Take(*window,';');
+		if (!pair) continue; // skip malformated badges rather than making a visible fuss
+		std::optional<QStringView> key=StringView::Take(*pair,'=');
+		if (!key) continue; // same as above
+		std::optional<QStringView> value=StringView::Last(*pair,'=');
+		if (!value) continue; // I'll rely on "missing" to represent an empty value
+		tags[*key]=*value;
+	}
+	if (tags.contains(CHAT_TAG_DISPLAY_NAME)) chatMessage.sender=tags.at(CHAT_TAG_DISPLAY_NAME).toString();
+	if (tags.contains(CHAT_TAG_COLOR)) chatMessage.color=tags.at(CHAT_TAG_COLOR).toString();
+
+	// badges
+	if (tags.contains(CHAT_TAG_BADGES))
+	{
+		std::unordered_map<QStringView,QStringView> badges;
+		QStringView &versions=tags.at(CHAT_TAG_BADGES);
+		while (!versions.isEmpty())
 		{
-			std::unordered_map<QStringView,QStringView> tags;
-			while (!window->isEmpty())
-			{
-				std::optional<QStringView> pair=StringView::Take(*window,';');
-				if (!pair) continue; // skip malformated badges rather than making a visible fuss
-				std::optional<QStringView> key=StringView::Take(*pair,'=');
-				if (!key) continue; // same as above
-				std::optional<QStringView> value=StringView::Last(*pair,'=');
-				if (!value) continue; // I'll rely on "missing" to represent an empty value
-				tags[*key]=*value;
-			}
-			if (tags.contains(CHAT_TAG_DISPLAY_NAME)) chatMessage.sender=tags.at(CHAT_TAG_DISPLAY_NAME).toString();
-			if (tags.contains(CHAT_TAG_COLOR)) chatMessage.color=tags.at(CHAT_TAG_COLOR).toString();
+			std::optional<QStringView> pair=StringView::Take(versions,',');
+			if (!pair) continue;
+			std::optional<QStringView> name=StringView::Take(*pair,'/');
+			if (!name) continue;
+			std::optional<QStringView> version=StringView::Last(*pair,'/');
+			if (!version) continue; // a badge must have a version
+			badges.insert({*name,*version});
+			std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
+			if (!badgeIconPath) continue;
+			chatMessage.badges.append(*badgeIconPath);
+		}
+		if (badges.contains(CHAT_BADGE_BROADCASTER) && badges.at(CHAT_BADGE_BROADCASTER) == u"1") chatMessage.broadcaster=true;
+		if (badges.contains(CHAT_BADGE_MODERATOR) && badges.at(CHAT_BADGE_MODERATOR) == u"1") chatMessage.moderator=true;
+	}
 
-			// badges
-			if (tags.contains(CHAT_TAG_BADGES))
+	// emotes
+	if (tags.contains(CHAT_TAG_EMOTES))
+	{
+		QStringView &entries=tags.at(CHAT_TAG_EMOTES);
+		while (!entries.isEmpty())
+		{
+			std::optional<QStringView> entry=StringView::Take(entries,'/');
+			if (!entry) continue;
+			std::optional<QStringView> id=StringView::Take(*entry,':');
+			if (!id) continue;
+			while(!entry->isEmpty())
 			{
-				std::unordered_map<QStringView,QStringView> badges;
-				QStringView &versions=tags.at(CHAT_TAG_BADGES);
-				while (!versions.isEmpty())
-				{
-					std::optional<QStringView> pair=StringView::Take(versions,',');
-					if (!pair) continue;
-					std::optional<QStringView> name=StringView::Take(*pair,'/');
-					if (!name) continue;
-					std::optional<QStringView> version=StringView::Last(*pair,'/');
-					if (!version) continue; // a badge must have a version
-					badges.insert({*name,*version});
-					std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
-					if (!badgeIconPath) continue;
-					chatMessage.badges.append(*badgeIconPath);
-				}
-				if (badges.contains(CHAT_BADGE_BROADCASTER) && badges.at(CHAT_BADGE_BROADCASTER) == u"1") chatMessage.broadcaster=true;
-				if (badges.contains(CHAT_BADGE_MODERATOR) && badges.at(CHAT_BADGE_MODERATOR) == u"1") chatMessage.moderator=true;
-			}
-
-			// emotes
-			if (tags.contains(CHAT_TAG_EMOTES))
-			{
-				QStringView &entries=tags.at(CHAT_TAG_EMOTES);
-				while (!entries.isEmpty())
-				{
-					std::optional<QStringView> entry=StringView::Take(entries,'/');
-					if (!entry) continue;
-					std::optional<QStringView> id=StringView::Take(*entry,':');
-					if (!id) continue;
-					while(!entry->isEmpty())
-					{
-						std::optional<QStringView> occurrence=StringView::Take(*entry,',');
-						std::optional<QStringView> left=StringView::First(*occurrence,'-');
-						std::optional<QStringView> right=StringView::Last(*occurrence,'-');
-						if (!left || !right) continue;
-						unsigned int start=StringConvert::PositiveInteger(left->toString());
-						unsigned int end=StringConvert::PositiveInteger(right->toString());
-						const Chat::Emote emote {
-							.id=id->toString(),
-							.start=start,
-							.end=end
-						};
-						chatMessage.emotes.push_back(emote);
-					}
-				}
-				std::sort(chatMessage.emotes.begin(),chatMessage.emotes.end());
+				std::optional<QStringView> occurrence=StringView::Take(*entry,',');
+				std::optional<QStringView> left=StringView::First(*occurrence,'-');
+				std::optional<QStringView> right=StringView::Last(*occurrence,'-');
+				if (!left || !right) continue;
+				unsigned int start=StringConvert::PositiveInteger(left->toString());
+				unsigned int end=StringConvert::PositiveInteger(right->toString());
+				const Chat::Emote emote {
+					.id=id->toString(),
+					.start=start,
+					.end=end
+				};
+				chatMessage.emotes.push_back(emote);
 			}
 		}
+		std::sort(chatMessage.emotes.begin(),chatMessage.emotes.end());
 	}
-	window=StringView::Take(remainingText,':'); // the colon must be consumed whether the tag section was empty or not
 
-	window=StringView::Take(remainingText,':');
-	if (window)
-	{
-		// hostmask
-		std::optional<QStringView> hostmask=StringView::Take(*window,' ');
-		if (!hostmask) return;
-		std::optional<QStringView> user=StringView::Take(*hostmask,'!');
-		if (!user) return;
-		login=*user;
+	window=source;
 
-		// type
-		std::optional<QStringView> type=StringView::Take(*window,' ');
-		if (!type) return;
-
-		// channel
-		std::optional<QStringView> channel=StringView::Take(*window,' ');
-		if (!channel) return;
-	}
+	// hostmask
+	// TODO: break these down in the Channel class, not here
+	std::optional<QStringView> hostmask=StringView::Take(*window,' ');
+	if (!hostmask) return;
+	std::optional<QStringView> user=StringView::Take(*hostmask,'!');
+	if (!user) return;
+	login=*user;
 
 	if (login == TWITCH_SYSTEM_ACCOUNT_NAME)
 	{
@@ -434,7 +419,7 @@ void Bot::ParseChatMessage(const QString &message)
 
 	// determine if this is a command, and if so, process it as such
 	// and if it's valid, we're done
-	window=remainingText;
+	window=message;
 	if (std::optional<QStringView> command=StringView::Take(*window,' '); command)
 	{
 		if (command->size() > 0 && command->at(0) == '!')
