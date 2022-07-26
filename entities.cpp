@@ -193,4 +193,34 @@ namespace Viewer
 			{"Client-ID",security.ClientID()}
 		});
 	};
+
+	Attributes::Attributes(bool commands,bool welcomed,bool bot) : commands(commands), welcomed(welcomed), bot(bot)
+	{
+
+	}
+
+	bool Attributes::Commands() const
+	{
+		return commands;
+	}
+
+	bool Attributes::Welcomed() const
+	{
+		return welcomed;
+	}
+
+	bool Attributes::Bot() const
+	{
+		return bot;
+	}
+
+	void Attributes::Welcome()
+	{
+		welcomed=true;
+	}
+
+	void Attributes::ResetWelcome()
+	{
+		welcomed=false;
+	}
 }

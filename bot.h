@@ -39,11 +39,12 @@ public:
 	Bot(const Bot& other)=delete;
 	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
-	void EmoteOnly(bool enable,const QString &broadcasterID);
+	void EmoteOnly(bool enable);
+	void SaveViewerAttributes(bool resetWelcomes);
 protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
-	std::unordered_set<QString> viewers;
+	std::unordered_map<QString,Viewer::Attributes> viewers;
 	QMediaPlayer *vibeKeeper;
 	Volume::Fader *vibeFader;
 	QMediaPlaylist vibeSources;
@@ -66,11 +67,13 @@ protected:
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
 	ApplicationSetting settingHostSound;
+	ApplicationSetting settingDeniedCommandVideo;
 	ApplicationSetting settingUptimeHistory;
 	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
 	bool LoadDynamicCommands();
+	bool LoadViewerAttributes();
 	void LoadVibePlaylist();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
@@ -116,6 +119,7 @@ signals:
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
+	void AnnounceDeniedCommand(const QString &videoPath);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void Ping();

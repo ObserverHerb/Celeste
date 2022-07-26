@@ -35,9 +35,11 @@ public:
 	void Connect();
 	void Disconnect();
 	const QString Name() const { return settingChannel; }
+	bool Protected() const;
 protected:
 	Security &security;
 	ApplicationSetting settingChannel;
+	ApplicationSetting settingProtect;
 	IRCSocket *ircSocket;
 	void ParseMessage(const QString message);
 	void DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParamter);

@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCloseEvent>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QDialogButtonBox>
@@ -103,6 +104,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::AnnounceCheer,&window,&Window::AnnounceCheer);
 		celeste.connect(&celeste,&Bot::AnnounceTextWall,&window,&Window::AnnounceTextWall);
 		celeste.connect(&celeste,&Bot::AnnounceHost,&window,&Window::AnnounceHost);
+		celeste.connect(&celeste,&Bot::AnnounceDeniedCommand,&window,&Window::AnnounceDeniedCommand);
 		celeste.connect(&celeste,&Bot::SetAgenda,&window,&Window::SetAgenda);
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
 		celeste.connect(&celeste,&Bot::ShowCurrentSong,&window,&Window::ShowCurrentSong);
@@ -134,9 +136,8 @@ int main(int argc,char *argv[])
 			channel->Connect();
 		});
 		channel->connect(channel,&Channel::Connected,[&security,&server,&celeste,&log]() {
-			Viewer::Remote *viewer=new Viewer::Remote(security,security.Administrator());
-			viewer->connect(viewer,&Viewer::Remote::Recognized,viewer,[&security,&log,&server,&celeste](Viewer::Local viewer) {
-				EventSub *eventSub=new EventSub(security,viewer);
+			security.connect(&security,&Security::AdministratorProfileObtained,&security,[&security,&log,&server,&celeste]() {
+				EventSub *eventSub=new EventSub(security);
 				eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
 				eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
 				eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
@@ -149,6 +150,7 @@ int main(int argc,char *argv[])
 				eventSub->Subscribe(SUBSCRIPTION_TYPE_CHEER);
 				server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
 			});
+			security.ObtainAdministratorProfile();
 		});
 		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
 		QMetaObject::Connection reauthorize;
@@ -175,6 +177,26 @@ int main(int argc,char *argv[])
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
 			channel->deleteLater();
+		});
+		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
+			if (channel->Protected()) {
+				QMessageBox emoteOnlyDialog;
+				emoteOnlyDialog.setWindowTitle("Channel Protection");
+				emoteOnlyDialog.setText("Enable emote-only chat?");
+				emoteOnlyDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
+				emoteOnlyDialog.setDefaultButton(QMessageBox::No);
+				if (emoteOnlyDialog.exec() == QMessageBox::Yes)
+					celeste.EmoteOnly(true);
+			}
+
+			QMessageBox resetDialog;
+			resetDialog.setWindowTitle("Reset Next Session");
+			resetDialog.setText("Would you like to reset the session for the next stream?");
+			resetDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
+			resetDialog.setDefaultButton(QMessageBox::Yes);
+			celeste.SaveViewerAttributes(resetDialog.exec() == QMessageBox::Yes);
+
+			closeEvent->accept();
 		});
 
 		if (!log.Open()) throw std::runtime_error("Could not open log file!");

@@ -31,8 +31,10 @@ public:
 	PrivateSetting& ClientSecret() { return settingClientSecret; }
 	PrivateSetting& CallbackURL() { return settingCallbackURL; }
 	PrivateSetting& Scope() { return settingScope; }
+	const QString& AdministratorID() const;
 	void AuthorizeUser();
 	void RequestToken(const QString &code,const QString &scopes);
+	void ObtainAdministratorProfile();
 	static const QStringList SCOPES;
 private:
 	PrivateSetting settingAdministrator;
@@ -43,9 +45,11 @@ private:
 	PrivateSetting settingServerToken;
 	PrivateSetting settingCallbackURL;
 	PrivateSetting settingScope;
+	QString administratorID;
 	static QTimer tokenTimer;
 signals:
 	void TokenRequestFailed();
+	void AdministratorProfileObtained();
 public slots:
 	void StartClocks();
 private slots:

@@ -25,10 +25,9 @@ class EventSub : public QObject
 	Q_OBJECT
 	using SubscriptionTypes=std::unordered_map<QString,SubscriptionType>;
 public:
-	EventSub(Security &security,Viewer::Local broadcaster,QObject *parent=nullptr);
+	EventSub(Security &security,QObject *parent=nullptr);
 	void Subscribe(const QString &type);
 protected:
-	Viewer::Local broadcaster;
 	Security &security;
 	const QString secret;
 	QString buffer;

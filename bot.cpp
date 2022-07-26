@@ -9,6 +9,7 @@
 #include "globals.h"
 
 const char *COMMANDS_LIST_FILENAME="commands.json";
+const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
 const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
 const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
 const char *QUERY_PARAMETER_BROADCASTER_ID="broadcaster_id";
@@ -21,6 +22,9 @@ const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
 const char *JSON_KEY_DATA="data";
+const char *JSON_KEY_COMMANDS="commands";
+const char *JSON_KEY_WELCOME="welcomed";
+const char *JSON_KEY_BOT="bot";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
@@ -67,6 +71,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
 	settingHostSound(SETTINGS_CATEGORY_EVENTS,"Host"),
+	settingDeniedCommandVideo(SETTINGS_CATEGORY_COMMANDS,"Denied"),
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0)
 {
 	DeclareCommand({"agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
@@ -85,6 +90,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	DeclareCommand({"vibe","Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
 	DeclareCommand({"volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	if (!LoadDynamicCommands()) emit Print("Failed to load commands"); // do this after creating native commands or aliases to native commands won't work
+	LoadViewerAttributes();
 
 	if (settingVibePlaylist) LoadVibePlaylist();
 	if (settingRoasts) LoadRoasts();
@@ -164,6 +170,58 @@ bool Bot::LoadDynamicCommands()
 	}
 
 	return true;
+}
+
+bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather than return a bool
+{
+	QFile commandListFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
+	if (!commandListFile.open(QIODevice::ReadWrite))
+	{
+		emit Print(QString("Failed to open user attributes file: %1").arg(commandListFile.fileName()));
+		return false;
+	}
+
+	QJsonParseError jsonError;
+	QByteArray data=commandListFile.readAll();
+	if (data.isEmpty()) data="{}";
+	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
+	if (json.isNull())
+	{
+		emit Print(jsonError.errorString());
+		return false;
+	}
+
+	const QJsonObject entries=json.object();
+	for (QJsonObject::const_iterator viewer=entries.begin(); viewer != entries.end(); ++viewer)
+	{
+		const QJsonObject attributes=viewer->toObject();
+		viewers[viewer.key()]={
+			attributes.contains(JSON_KEY_COMMANDS) ? attributes.value(JSON_KEY_COMMANDS).toBool() : true,
+			attributes.contains(JSON_KEY_WELCOME) ? attributes.value(JSON_KEY_WELCOME).toBool() : false,
+			attributes.contains(JSON_KEY_BOT) ? attributes.value(JSON_KEY_BOT).toBool() : false
+		};
+	}
+
+	return true;
+}
+
+void Bot::SaveViewerAttributes(bool resetWelcomes)
+{
+	QFile commandListFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
+	if (!commandListFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
+
+	QJsonObject entries;
+	for (const std::pair<QString,Viewer::Attributes> &viewer : viewers)
+	{
+		QJsonObject attributes={
+			{JSON_KEY_COMMANDS,viewer.second.Commands()},
+			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.Welcomed()},
+			{JSON_KEY_BOT,viewer.second.Bot()}
+		};
+		entries.insert(viewer.first,attributes);
+	}
+
+	commandListFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
 }
 
 void Bot::LoadVibePlaylist()
@@ -311,6 +369,16 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 
 void Bot::DispatchArrival(const QString &login)
 {
+	if (viewers.contains(login))
+	{
+		if (viewers.at(login).Bot() || viewers.at(login).Welcomed()) return;
+	}
+	else
+	{
+		viewers[login]={};
+		SaveViewerAttributes(false);
+	}
+
 	if (static_cast<QString>(settingArrivalSound).isEmpty()) return; // this isn't an error; clearing the setting is how you turn arrival announcements off
 
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
@@ -321,6 +389,7 @@ void Bot::DispatchArrival(const QString &login)
 			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
 				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+				viewers.at(viewer.Name()).Welcome();
 			});
 			connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 		}
@@ -429,14 +498,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		}
 	}
 
-	if (const QString name=login.toString(); !chatMessage.broadcaster)
-	{
-		if (const std::unordered_set<QString>::const_iterator viewer=viewers.find(name); viewer == viewers.end())
-		{
-			DispatchArrival(name);
-			viewers.emplace(name);
-		}
-	}
+	if (!chatMessage.broadcaster) DispatchArrival(login.toString());
 
 	// determine if the message is an action
 	remainingText=remainingText.trimmed();
@@ -507,6 +569,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 
 	if (command.Protected() && !chatMessage.Privileged())
 	{
+		emit AnnounceDeniedCommand(File::List(settingDeniedCommandVideo).Random());
 		emit Print(QString(R"(The command "!%1" is protected but requester is not authorized")").arg(command.Name()));
 		return false;
 	}
@@ -614,6 +677,7 @@ void Bot::DispatchVideo(Command command)
 
 void Bot::DispatchRandomVideo(Command command)
 {
+	// TODO: Modify File::List to accept a filter and use it
 	QDir directory(command.Path());
 	QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
 	if (videos.size() < 1)
@@ -636,41 +700,37 @@ void Bot::DispatchCommandList()
 
 void Bot::DispatchFollowage(const QString &name)
 {
-	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
-	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,name](Viewer::Local broadcaster) {
-		Viewer::Remote *viewer=new Viewer::Remote(security,name);
-		connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-		connect(viewer,&Viewer::Remote::Recognized,viewer,[this,broadcaster](Viewer::Local viewer) {
-			Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,broadcaster,viewer](QNetworkReply *reply) {
-				QJsonParseError jsonError;
-				QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-				if (json.isNull() || !json.object().contains("data"))
-				{
-					emit Print("Something went wrong obtaining stream information");
-					return;
-				}
-				QJsonArray data=json.object().value("data").toArray();
-				if (data.size() < 1)
-				{
-					emit Print("Response from requesting stream information was incomplete ");
-					return;
-				}
-				QJsonObject details=data.at(0).toObject();
-				QDateTime start=QDateTime::fromString(details.value("followed_at").toString(),Qt::ISODate);
-				std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
-				std::chrono::years years=std::chrono::duration_cast<std::chrono::years>(duration);
-				std::chrono::months months=std::chrono::duration_cast<std::chrono::months>(duration-years);
-				std::chrono::days days=std::chrono::duration_cast<std::chrono::days>(duration-years-months);
-				emit ShowFollowage(viewer.DisplayName(),years,months,days);
-			},{
-				{"from_id",viewer.ID()},
-				{"to_id",broadcaster.ID()}
-			},{
-				{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-				{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-				{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
-			});
+	Viewer::Remote *viewer=new Viewer::Remote(security,name);
+	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
+		Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
+			QJsonParseError jsonError;
+			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+			if (json.isNull() || !json.object().contains("data"))
+			{
+				emit Print("Something went wrong obtaining stream information");
+				return;
+			}
+			QJsonArray data=json.object().value("data").toArray();
+			if (data.size() < 1)
+			{
+				emit Print("Response from requesting stream information was incomplete ");
+				return;
+			}
+			QJsonObject details=data.at(0).toObject();
+			QDateTime start=QDateTime::fromString(details.value("followed_at").toString(),Qt::ISODate);
+			std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
+			std::chrono::years years=std::chrono::duration_cast<std::chrono::years>(duration);
+			std::chrono::months months=std::chrono::duration_cast<std::chrono::months>(duration-years);
+			std::chrono::days days=std::chrono::duration_cast<std::chrono::days>(duration-years-months);
+			emit ShowFollowage(viewer.DisplayName(),years,months,days);
+		},{
+			{"from_id",viewer.ID()},
+			{"to_id",security.AdministratorID()}
+		},{
+			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		});
 	});
 }
@@ -772,40 +832,36 @@ void Bot::AdjustVibeVolume(Command command)
 
 void Bot::ToggleEmoteOnly()
 {
-	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
-	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this](Viewer::Local broadcaster) {
-		Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this,broadcaster](QNetworkReply *reply) {
-			QJsonParseError jsonError;
-			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-			if (json.isNull() || !json.object().contains("data"))
-			{
-				emit Print("Something went wrong changing emote only mode");
-				return;
-			}
-			QJsonArray data=json.object().value("data").toArray();
-			if (data.size() < 1)
-			{
-				emit Print("Response was incomplete changing emote only mode");
-				return;
-			}
-			QJsonObject details=data.at(0).toObject();
-			if (details.value("emote_mode").toBool())
-				EmoteOnly(false,broadcaster.ID());
-			else
-				EmoteOnly(true,broadcaster.ID());
-		},{
-			{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()},
-			{QUERY_PARAMETER_MODERATOR_ID,broadcaster.ID()}
-		},{
-			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
-		});
+	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this](QNetworkReply *reply) {
+		QJsonParseError jsonError;
+		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+		if (json.isNull() || !json.object().contains("data"))
+		{
+			emit Print("Something went wrong changing emote only mode");
+			return;
+		}
+		QJsonArray data=json.object().value("data").toArray();
+		if (data.size() < 1)
+		{
+			emit Print("Response was incomplete changing emote only mode");
+			return;
+		}
+		QJsonObject details=data.at(0).toObject();
+		if (details.value("emote_mode").toBool())
+			EmoteOnly(false);
+		else
+			EmoteOnly(true);
+	},{
+		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
+		{QUERY_PARAMETER_MODERATOR_ID,security.AdministratorID()}
+	},{
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
 }
 
-void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
+void Bot::EmoteOnly(bool enable)
 {
 	// just use broadcasterID for both
 	// this is for authorizing the moderator at the API-level, which we're not worried about here
@@ -814,8 +870,8 @@ void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
 	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::PATCH,[this](QNetworkReply *reply) {
 		if (reply->error()) emit Print(QString("Something went wrong setting emote only: %1").arg(reply->errorString()));
 	},{
-		{QUERY_PARAMETER_BROADCASTER_ID,broadcasterID},
-		{QUERY_PARAMETER_MODERATOR_ID,broadcasterID}
+		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
+		{QUERY_PARAMETER_MODERATOR_ID,security.AdministratorID()}
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
@@ -825,71 +881,63 @@ void Bot::EmoteOnly(bool enable,const QString &broadcasterID)
 
 void Bot::StreamTitle(const QString &title)
 {
-	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
-	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,title](Viewer::Local broadcaster) {
-		Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,broadcaster,title](QNetworkReply *reply) {
+	Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
+		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+		{
+			emit Print("Failed to change stream title");
+			return;
+		}
+		emit Print(QString(R"(Stream title changed to "%1")").arg(title));
+	},{
+		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()}
+	},{
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+	},
+	{
+		QJsonDocument(QJsonObject({{"title",title}})).toJson(QJsonDocument::Compact)
+	});
+}
+
+void Bot::StreamCategory(const QString &category)
+{
+	Network::Request({TWITCH_API_ENDPOINT_GAME_INFORMATION},Network::Method::GET,[this,category](QNetworkReply *reply) {
+		QJsonParseError jsonError;
+		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+		if (json.isNull() || !json.object().contains("data"))
+		{
+			emit Print("Something went wrong finding stream category");
+			return;
+		}
+		QJsonArray data=json.object().value("data").toArray();
+		if (data.size() < 1)
+		{
+			emit Print("Response was incomplete finding stream category");
+			return;
+		}
+		Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,category](QNetworkReply *reply) {
 			if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
 			{
-				emit Print("Failed to change stream title");
+				emit Print("Failed to change stream category");
 				return;
 			}
-			emit Print(QString(R"(Stream title changed to "%1")").arg(title));
+			emit Print(QString(R"(Stream category changed to "%1")").arg(category));
 		},{
-			{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()}
+			{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()}
 		},{
 			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
 			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		},
 		{
-			QJsonDocument(QJsonObject({{"title",title}})).toJson(QJsonDocument::Compact)
+			QJsonDocument(QJsonObject({{"game_id",data.at(0).toObject().value("id").toString()}})).toJson(QJsonDocument::Compact)
 		});
-	});
-}
-
-void Bot::StreamCategory(const QString &category)
-{
-	Viewer::Remote *broadcaster=new Viewer::Remote(security,security.Administrator());
-	connect(broadcaster,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(broadcaster,&Viewer::Remote::Recognized,broadcaster,[this,category](Viewer::Local broadcaster) {
-		Network::Request({TWITCH_API_ENDPOINT_GAME_INFORMATION},Network::Method::GET,[this,broadcaster,category](QNetworkReply *reply) {
-			QJsonParseError jsonError;
-			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-			if (json.isNull() || !json.object().contains("data"))
-			{
-				emit Print("Something went wrong finding stream category");
-				return;
-			}
-			QJsonArray data=json.object().value("data").toArray();
-			if (data.size() < 1)
-			{
-				emit Print("Response was incomplete finding stream category");
-				return;
-			}
-			Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,broadcaster,category](QNetworkReply *reply) {
-				if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
-				{
-					emit Print("Failed to change stream category");
-					return;
-				}
-				emit Print(QString(R"(Stream category changed to "%1")").arg(category));
-			},{
-				{QUERY_PARAMETER_BROADCASTER_ID,broadcaster.ID()}
-			},{
-				{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-				{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-				{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
-			},
-			{
-				QJsonDocument(QJsonObject({{"game_id",data.at(0).toObject().value("id").toString()}})).toJson(QJsonDocument::Compact)
-			});
-		},{
-			{"name",category}
-		},{
-			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
-		});
+	},{
+		{"name",category}
+	},{
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
 }
