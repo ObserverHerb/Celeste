@@ -239,6 +239,7 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
+	emit SuppressMusic();
 	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
 	background->layout()->addWidget(pane);
 	if (pane->HighPriority())
@@ -299,6 +300,7 @@ void Window::ReleaseLiveEphemeralPane()
 		if (lowPriorityEphemeralPanes.empty())
 		{
 			visiblePane->show();
+			emit RestoreMusic();
 			return;
 		}
 

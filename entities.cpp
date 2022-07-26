@@ -6,74 +6,103 @@
 #include "entities.h"
 #include "globals.h"
 
-namespace Volume
+Q_DECLARE_METATYPE(std::chrono::milliseconds)
+
+namespace Music
 {
-	Fader::Fader(QMediaPlayer *player,const QString &arguments,QObject *parent) : Fader(player,0,static_cast<std::chrono::seconds>(0),parent)
+	Player::Player(QObject *parent) : player(new QMediaPlayer(this)),
+		volumeAdjustment(player,"volume")
+		//settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10)
 	{
-		Parse(arguments);
+		player->setVolume(0);
+
+		connect(player,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,&Player::ConvertError);
+		connect(player,&QMediaPlayer::stateChanged,this,&Player::StateChanged);
+
+		connect(&sources,&QMediaPlaylist::loadFailed,this,[this]() {
+			emit Print(QString("Failed to load vibe playlist: %1").arg(sources.errorString()));
+		}); // TODO: this shouldn't be a lambda anymore
+		connect(&sources,&QMediaPlaylist::loaded,this,&Player::PlaylistLoaded);
 	}
 
-	Fader::Fader(QMediaPlayer *player,unsigned int volume,std::chrono::seconds duration,QObject *parent) : QObject(parent),
-		settingDefaultDuration(SETTINGS_CATEGORY_VOLUME,"DefaultFadeSeconds",5),
-		player(player),
-		initialVolume(static_cast<unsigned int>(player->volume())),
-		targetVolume(std::clamp<int>(volume,0,100)),
-		startTime(TimeConvert::Now()),
-		duration(TimeConvert::Milliseconds(duration))
+	void Player::Load(const QString &location)
 	{
-		connect(this,&Fader::AdjustmentNeeded,this,&Fader::Adjust,Qt::QueuedConnection);
+		Load(QUrl::fromLocalFile(location));
 	}
 
-	void Fader::Parse(const QString &text)
+	void Player::Load(const QUrl &location)
 	{
-		QStringList values=text.split(" ",StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS));
-		if (values.size() < 1) throw std::range_error("No volume specified");
-		targetVolume=StringConvert::PositiveInteger(values[0]);
-		duration=values.size() > 1 ? static_cast<std::chrono::seconds>(StringConvert::PositiveInteger(values[1])) : settingDefaultDuration;
+		sources.load(location);
 	}
 
-	void Fader::Start()
+	void Player::Start()
 	{
-		emit Print(QString("Adjusting volume from %1% to %2% over %3 seconds").arg(
-			StringConvert::Integer(initialVolume),
-			StringConvert::Integer(targetVolume),
-			StringConvert::Integer(TimeConvert::Seconds(duration).count())
-		));
-		emit AdjustmentNeeded();
+		player->play();
 	}
 
-	void Fader::Stop()
+	void Player::Stop()
 	{
-		disconnect(this,&Fader::AdjustmentNeeded,this,&Fader::Adjust);
-		deleteLater();
+		player->pause();
 	}
 
-	void Fader::Abort()
+	bool Player::Playing() const
 	{
-		Stop();
-		player->setVolume(initialVolume); // FIXME: volume doesn't return to initial value
+		return player->state() == QMediaPlayer::PlayingState;
 	}
 
-	double Fader::Step(const double &secondsPassed)
+	void Player::Volume(bool duck)
 	{
-		// uses x^4 method described here: https://www.dr-lex.be/info-stuff/volumecontrols.html#ideal3
-		// no need to find an ideal curve, this is a bot, not a DAW
-		double totalSeconds=static_cast<double>(duration.count())/TimeConvert::Milliseconds(TimeConvert::OneSecond()).count();
-		int volumeDifference=targetVolume-initialVolume;
-		return std::pow(secondsPassed/totalSeconds,4)*(volumeDifference)+initialVolume;
-	}
-
-	void Fader::Adjust()
-	{
-		double secondsPassed=static_cast<double>((TimeConvert::Now()-startTime).count())/TimeConvert::Milliseconds(TimeConvert::OneSecond()).count();
-		if (secondsPassed > TimeConvert::Seconds(duration).count())
+		if (duck)
 		{
-			deleteLater();
-			return;
+			volumeAdjustment.pause();
+			volumeAdjustment.setStartValue(player->volume());
+			player->setVolume(10);
 		}
-		double adjustment=Step(secondsPassed);
-		player->setVolume(adjustment);
-		emit AdjustmentNeeded();
+		else
+		{
+			player->setVolume(volumeAdjustment.startValue().toInt());
+			volumeAdjustment.resume();
+		}
+	}
+
+	void Player::Volume(unsigned int volume)
+	{
+		player->setVolume(volume);
+	}
+
+	void Player::Volume(unsigned int targetVolume,std::chrono::seconds duration)
+	{
+		if (volumeAdjustment.state() == QAbstractAnimation::Paused) return;
+
+		emit Print(QString("Adjusting volume from %1% to %2% over %3 seconds").arg(
+			StringConvert::Integer(player->volume()),
+			StringConvert::Integer(targetVolume),
+			StringConvert::Integer(duration.count())
+		),"volume fade");
+
+		if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.stop();
+		volumeAdjustment.setDuration(TimeConvert::Milliseconds(duration).count());
+		volumeAdjustment.setStartValue(player->volume());
+		volumeAdjustment.setEndValue(targetVolume);
+		volumeAdjustment.start();
+	}
+
+	void Player::StateChanged(QMediaPlayer::State state)
+	{
+		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(player->metaData("Title").toString(),player->metaData("AlbumArtist").toString()));
+	}
+
+	void Player::ConvertError(QMediaPlayer::Error error)
+	{
+		emit Print(QString("Failed to start: %1").arg(player->errorString()));
+	}
+
+	void Player::PlaylistLoaded()
+	{
+		sources.shuffle();
+		sources.setCurrentIndex(Random::Bounded(0,sources.mediaCount()-1)); // TODO: create bounded template that can accept QMediaPlaylist?
+		player->setPlaylist(&sources);
+		emit Print("Playlist loaded!");
 	}
 }
 

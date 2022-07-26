@@ -4,6 +4,8 @@
 #include <QImage>
 #include <QUrl>
 #include <QMediaPlayer>
+#include <QMediaPlaylist>
+#include <QPropertyAnimation>
 #include <memory>
 #include "settings.h"
 #include "security.h"
@@ -41,33 +43,34 @@ protected:
 	QString message;
 };
 
-namespace Volume
+namespace Music
 {
 	const QString SETTINGS_CATEGORY_VOLUME="Volume";
 
-	class Fader : public QObject
+	class Player : public QObject
 	{
 		Q_OBJECT
 	public:
-		Fader(QMediaPlayer *player,const QString &arguments,QObject *parent=nullptr);
-		Fader(QMediaPlayer *player,unsigned int volume,std::chrono::seconds duration,QObject *parent=nullptr);
-		void Parse(const QString &text);
+		Player(QObject *parent);
+		void Volume(bool duck);
+		void Volume(unsigned int volume);
+		void Volume(unsigned int targetVolume,std::chrono::seconds duration);
+		void Load(const QString &location);
+		void Load(const QUrl &location);
 		void Start();
 		void Stop();
-		void Abort();
+		bool Playing() const;
 	protected:
-		ApplicationSetting settingDefaultDuration;
 		QMediaPlayer *player;
-		unsigned int initialVolume;
-		unsigned int targetVolume;
-		std::chrono::milliseconds startTime;
-		std::chrono::milliseconds duration;
-		double Step(const double &secondsPassed);
+		QMediaPlaylist sources;
+		//ApplicationSetting settingSuppressedVolume;
+		QPropertyAnimation volumeAdjustment;
 	signals:
-		void AdjustmentNeeded();
-		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("volume fader"));
-	public slots:
-		void Adjust();
+		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player"));
+	protected slots:
+		void StateChanged(QMediaPlayer::State state);
+		void ConvertError(QMediaPlayer::Error error);
+		void PlaylistLoaded();
 	};
 }
 

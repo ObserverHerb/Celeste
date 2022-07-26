@@ -44,9 +44,7 @@ protected:
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
 	std::unordered_set<QString> viewers;
-	QMediaPlayer *vibeKeeper;
-	Volume::Fader *vibeFader;
-	QMediaPlaylist vibeSources;
+	Music::Player *vibeKeeper;
 	QMediaPlayer *roaster;
 	QMediaPlaylist roastSources;
 	QTimer inactivityClock;
@@ -71,7 +69,6 @@ protected:
 	static std::chrono::milliseconds launchTimestamp;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
 	bool LoadDynamicCommands();
-	void LoadVibePlaylist();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
 	void StartClocks();
@@ -123,4 +120,6 @@ public slots:
 	void Redemption(const QString &name,const QString &rewardTitle,const QString &message);
 	void Raid(const QString &viewer,const unsigned int viewers);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
+	void SuppressMusic();
+	void RestoreMusic();
 };

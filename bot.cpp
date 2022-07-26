@@ -50,8 +50,8 @@ std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconUR
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
-	vibeKeeper(new QMediaPlayer(this)),
-	vibeFader(nullptr),
+	vibeKeeper(new Music::Player(this)),
+	vibeVolumeSuppressed(false),
 	roaster(new QMediaPlayer(this)),
 	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
@@ -86,13 +86,14 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	DeclareCommand({"volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	if (!LoadDynamicCommands()) emit Print("Failed to load commands"); // do this after creating native commands or aliases to native commands won't work
 
-	if (settingVibePlaylist) LoadVibePlaylist();
 	if (settingRoasts) LoadRoasts();
 	LoadBadgeIconURLs();
 	StartClocks();
 
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
-	vibeKeeper->setVolume(0);
+
+	connect(vibeKeeper,&Music::Player::Print,this,&Bot::Print);
+	if (settingVibePlaylist) vibeKeeper->Load(settingVibePlaylist);
 }
 
 void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
@@ -164,26 +165,6 @@ bool Bot::LoadDynamicCommands()
 	}
 
 	return true;
-}
-
-void Bot::LoadVibePlaylist()
-{
-	connect(&vibeSources,&QMediaPlaylist::loadFailed,this,[this]() {
-		emit Print(QString("Failed to load vibe playlist: %1").arg(vibeSources.errorString()));
-	});
-	connect(&vibeSources,&QMediaPlaylist::loaded,this,[this]() {
-		vibeSources.shuffle();
-		vibeSources.setCurrentIndex(Random::Bounded(0,vibeSources.mediaCount()));
-		vibeKeeper->setPlaylist(&vibeSources);
-		emit Print("Vibe playlist loaded!");
-	});
-	connect(vibeKeeper,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this](QMediaPlayer::Error error) {
-		emit Print(QString("Vibe Keeper failed to start: %1").arg(vibeKeeper->errorString()));
-	});
-	connect(vibeKeeper,&QMediaPlayer::stateChanged,this,[this](QMediaPlayer::State state) {
-		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(vibeKeeper->metaData("Title").toString(),vibeKeeper->metaData("AlbumArtist").toString()));
-	});
-	vibeSources.load(QUrl::fromLocalFile(settingVibePlaylist));
 }
 
 void Bot::LoadRoasts()
@@ -277,7 +258,7 @@ void Bot::Redemption(const QString &name,const QString &rewardTitle,const QStrin
 	if (rewardTitle == "Crash Celeste")
 	{
 		DispatchPanic(name);
-		vibeKeeper->pause();
+		vibeKeeper->Stop();
 		return;
 	}
 	emit AnnounceRedemption(name,rewardTitle,message);
@@ -307,6 +288,16 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 		return;
 	}
 	emit AnnounceCheer(viewer,count,message,settingCheerVideo);
+}
+
+void Bot::SuppressMusic()
+{
+	vibeKeeper->Volume(true);
+}
+
+void Bot::RestoreMusic()
+{
+	vibeKeeper->Volume(false);
 }
 
 void Bot::DispatchArrival(const QString &login)
@@ -737,34 +728,27 @@ void Bot::DispatchUptime(bool total)
 
 void Bot::ToggleVibeKeeper()
 {
-	if (vibeKeeper->state() == QMediaPlayer::PlayingState)
+	if (vibeKeeper->Playing())
 	{
 		emit Print("Pausing the vibes...");
-		vibeKeeper->pause();
+		vibeKeeper->Stop();
 		return;
 	}
-	vibeKeeper->play();
+	vibeKeeper->Start();
 }
 
 void Bot::AdjustVibeVolume(Command command)
 {
-	if (command.Message().isEmpty())
-	{
-		if (vibeFader)
-		{
-			vibeFader->Abort();
-			emit Print("Aborting volume change...");
-		}
-		return;
-	}
-
 	try
 	{
-		vibeFader=new Volume::Fader(vibeKeeper,command.Message(),this);
-		connect(vibeFader,&Volume::Fader::Print,this,&Bot::Print);
-		vibeFader->Start();
+		QStringView window(command.Message());
+		std::optional<QStringView> targetVolume=StringView::Take(window,' ');
+		if (!targetVolume) throw std::runtime_error("Target volume is missing");
+		if (window.size() < 1) throw std::runtime_error("Duration for volume change is missing");
+		vibeKeeper->Volume(StringConvert::PositiveInteger(targetVolume->toString()),std::chrono::seconds(StringConvert::PositiveInteger(window.toString())));
 	}
-	catch (const std::range_error &exception)
+
+	catch (const std::runtime_error &exception)
 	{
 		emit Print(QString("%1: %2").arg("Failed to adjust volume",exception.what()));
 	}

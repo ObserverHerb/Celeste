@@ -29,6 +29,8 @@ signals:
 	void ChatMessage(const Chat::Message &message);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();
+	void SuppressMusic();
+	void RestoreMusic();
 public slots:
 	void ShowChat();
 	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);

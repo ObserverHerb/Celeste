@@ -176,6 +176,8 @@ int main(int argc,char *argv[])
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
 			channel->deleteLater();
 		});
+		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
+		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
 
 		if (!log.Open()) throw std::runtime_error("Could not open log file!");
 		if (!server.Listen()) throw std::runtime_error("Could not start server!");
