@@ -534,7 +534,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 				DispatchFollowage(viewer.Name());
 				break;
 			case NativeCommandFlag::HTML:
-				ChatMessage({
+				emit ChatMessage({
 					.sender=chatMessage.sender,
 					.text=chatMessage.text,
 					.color=chatMessage.color,
