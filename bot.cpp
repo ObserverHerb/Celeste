@@ -51,7 +51,6 @@ std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	vibeKeeper(new Music::Player(this)),
-	vibeVolumeSuppressed(false),
 	roaster(new QMediaPlayer(this)),
 	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
