@@ -180,7 +180,7 @@ void Bot::LoadRoasts()
 	});
 	roastSources.load(QUrl::fromLocalFile(settingRoasts));
 	connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this](QMediaPlayer::Error error) {
-		emit Print(QString("Roaster failed to start: %1").arg(vibeKeeper->errorString()));
+		emit Print(QString("Roaster failed to start: %1").arg(roaster->errorString()));
 	});
 	connect(roaster,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
 		if (status == QMediaPlayer::EndOfMedia)
