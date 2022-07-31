@@ -552,7 +552,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 				DispatchShoutout(command);
 				break;
 			case NativeCommandFlag::SONG:
-				emit ShowCurrentSong(vibeKeeper->metaData("Title").toString(),vibeKeeper->metaData("AlbumTitle").toString(),vibeKeeper->metaData("AlbumArtist").toString(),vibeKeeper->metaData("CoverArtImage").value<QImage>());
+				emit ShowCurrentSong(vibeKeeper->SongTitle(),vibeKeeper->AlbumTitle(),vibeKeeper->AlbumArtist(),vibeKeeper->AlbumCoverArt());
 				break;
 			case NativeCommandFlag::TIMEZONE:
 				emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));

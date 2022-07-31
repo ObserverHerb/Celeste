@@ -87,6 +87,26 @@ namespace Music
 		volumeAdjustment.start();
 	}
 
+	QString Player::SongTitle() const
+	{
+		return player->metaData("Title").toString();
+	}
+
+	QString Player::AlbumTitle() const
+	{
+		return player->metaData("AlbumTitle").toString();
+	}
+
+	QString Player::AlbumArtist() const
+	{
+		return player->metaData("AlbumArtist").toString();
+	}
+
+	QImage Player::AlbumCoverArt() const
+	{
+		return player->metaData("CoverArtImage").value<QImage>();
+	}
+
 	void Player::StateChanged(QMediaPlayer::State state)
 	{
 		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(player->metaData("Title").toString(),player->metaData("AlbumArtist").toString()));

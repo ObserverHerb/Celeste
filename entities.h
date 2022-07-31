@@ -60,6 +60,10 @@ namespace Music
 		void Start();
 		void Stop();
 		bool Playing() const;
+		QString SongTitle() const;
+		QString AlbumTitle() const;
+		QString AlbumArtist() const;
+		QImage AlbumCoverArt() const;
 	protected:
 		QMediaPlayer *player;
 		QMediaPlaylist sources;
