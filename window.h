@@ -14,14 +14,14 @@ class Window : public QWidget
 public:
 	Window();
 protected:
-	PersistentPane *visiblePane;
+	PersistentPane *livePersistentPane;
 	QWidget *background;
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingAccentColor;
 	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
 	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
-	void SwapPane(PersistentPane *pane);
+	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
 signals:

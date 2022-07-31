@@ -17,7 +17,7 @@
 const char *SETTINGS_CATEGORY_WINDOW="Window";
 
 Window::Window() : QWidget(nullptr),
-	visiblePane(nullptr),
+	livePersistentPane(nullptr),
 	background(new QWidget(this)),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
@@ -41,15 +41,15 @@ Window::Window() : QWidget(nullptr),
 		StringConvert::Integer(backgroundColor.alpha())));
 	layout()->addWidget(background);
 
-	SwapPane(new StatusPane(this));
+	SwapPersistentPane(new StatusPane(this));
 }
 
-void Window::SwapPane(PersistentPane *pane)
+void Window::SwapPersistentPane(PersistentPane *pane)
 {
-	if (visiblePane) visiblePane->deleteLater();
-	visiblePane=pane;
-	background->layout()->addWidget(visiblePane);
-	connect(this,&Window::Print,visiblePane,&PersistentPane::Print);
+	if (livePersistentPane) livePersistentPane->deleteLater();
+	livePersistentPane=pane;
+	background->layout()->addWidget(livePersistentPane);
+	connect(this,&Window::Print,livePersistentPane,&PersistentPane::Print);
 }
 
 void Window::AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath)
@@ -125,7 +125,7 @@ void Window::AnnounceHost(const QString &hostingChannel,const QString &audioPath
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);
-	SwapPane(chatPane);
+	SwapPersistentPane(chatPane);
 	connect(this,&Window::Print,chatPane,&ChatPane::Print);
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
@@ -173,7 +173,7 @@ void Window::ShowCommand(const QString &name,const QString &description)
 
 void Window::ShowPanicText(const QString &text)
 {
-	SwapPane(new StatusPane(this));
+	SwapPersistentPane(new StatusPane(this));
 	emit Print(text);
 }
 
@@ -248,7 +248,7 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 		{
 			if (!lowPriorityEphemeralPanes.empty()) lowPriorityEphemeralPanes.front()->hide();
 			highPriorityEphemeralPanes.push(pane);
-			visiblePane->hide();
+			livePersistentPane->hide();
 			pane->Show();
 		}
 		else
@@ -263,7 +263,7 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 		{
 			if (highPriorityEphemeralPanes.empty())
 			{
-				visiblePane->hide();
+				livePersistentPane->hide();
 				pane->Show();
 			}
 		}
@@ -299,7 +299,7 @@ void Window::ReleaseLiveEphemeralPane()
 	{
 		if (lowPriorityEphemeralPanes.empty())
 		{
-			visiblePane->show();
+			livePersistentPane->show();
 			emit RestoreMusic();
 			return;
 		}
