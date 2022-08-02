@@ -147,7 +147,9 @@ void Window::PlayAudio(const QString &viewer,const QString &message,const QStrin
 
 void Window::ShowPortraitVideo(const QString &path)
 {
-	StageEphemeralPane(new VideoPane(path,this));
+	VideoPane *pane=new VideoPane(path,this);
+	pane->LowerPriority();
+	StageEphemeralPane(pane);
 }
 
 void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
@@ -239,7 +241,6 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
-	emit SuppressMusic();
 	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
 	background->layout()->addWidget(pane);
 	if (pane->HighPriority())
@@ -250,6 +251,7 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 			highPriorityEphemeralPanes.push(pane);
 			livePersistentPane->hide();
 			pane->Show();
+			emit SuppressMusic();
 		}
 		else
 		{
@@ -298,13 +300,10 @@ void Window::ReleaseLiveEphemeralPane()
 	if (highPriorityEphemeralPanes.empty())
 	{
 		if (lowPriorityEphemeralPanes.empty())
-		{
 			livePersistentPane->show();
-			emit RestoreMusic();
-			return;
-		}
-
-		lowPriorityEphemeralPanes.front()->Show();
+		else
+			lowPriorityEphemeralPanes.front()->Show();
+		emit RestoreMusic();
 	}
 }
 
