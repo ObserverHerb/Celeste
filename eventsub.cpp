@@ -23,8 +23,7 @@ const char *JSON_KEY_EVENT_CHEER_AMOUNT="bits";
 const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
-EventSub::EventSub(Security &security,Viewer::Local broadcaster,QObject *parent) : QObject(parent),
-	broadcaster(broadcaster),
+EventSub::EventSub(Security &security,QObject *parent) : QObject(parent),
 	security(security),
 	secret(QUuid::createUuid().toString())
 {
@@ -53,7 +52,7 @@ void EventSub::Subscribe(const QString &type)
 		{"version","1"},
 		{
 			"condition",
-			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? "to_broadcaster_user_id" : "broadcaster_user_id",broadcaster.ID()}})
+			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? "to_broadcaster_user_id" : "broadcaster_user_id",security.AdministratorID()}})
 		},
 		{
 			"transport",

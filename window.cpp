@@ -122,6 +122,13 @@ void Window::AnnounceHost(const QString &hostingChannel,const QString &audioPath
 	},audioPath,this));
 }
 
+void Window::AnnounceDeniedCommand(const QString &videoPath)
+{
+	VideoPane *pane=new VideoPane(videoPath,this);
+	connect(pane,&VideoPane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
+}
+
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);
@@ -328,3 +335,7 @@ const QSize Window::ScreenThird()
 	return {shortestSide,shortestSide};
 }
 
+void Window::closeEvent(QCloseEvent *event)
+{
+	emit CloseRequested(event);
+}

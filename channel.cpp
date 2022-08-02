@@ -71,6 +71,7 @@ const std::unordered_map<QString,Notice> notices={
 Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject(parent),
 	security(security),
 	settingChannel(SETTINGS_CATEGORY_CHANNEL,"Name",""),
+	settingProtect(SETTINGS_CATEGORY_CHANNEL,"Protect",false),
 	ircSocket(socket)
 {
 	if (!ircSocket) ircSocket=new IRCSocket(this);
@@ -309,4 +310,9 @@ std::optional<char> IRCSocket::Pop()
 		return std::nullopt;
 	}
 	return {character};
+}
+
+bool Channel::Protected() const
+{
+	return static_cast<bool>(settingProtect);
 }

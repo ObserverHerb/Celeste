@@ -141,6 +141,22 @@ namespace Viewer
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("viewer retrieval"));
 		void Recognized(Local viewer);
 	};
+
+	class Attributes
+	{
+	public:
+		Attributes() : commands(true), welcomed(true), bot(false) { }
+		Attributes(bool commands,bool welcomed,bool bot);
+		bool Commands() const;
+		bool Welcomed() const;
+		bool Bot() const;
+		void Welcome();
+		void ResetWelcome();
+	protected:
+		bool commands;
+		bool welcomed;
+		bool bot;
+	};
 }
 
 namespace Chat

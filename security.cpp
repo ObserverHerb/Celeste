@@ -2,6 +2,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "security.h"
+#include "entities.h"
 
 const char *QUERY_PARAMETER_CLIENT_ID="client_id";
 const char *QUERY_PARAMETER_CLIENT_SECRET="client_secret";
@@ -150,7 +151,23 @@ void Security::RefreshToken()
 	});
 }
 
+void Security::ObtainAdministratorProfile()
+{
+	Viewer::Remote *profile=new Viewer::Remote(*this,settingAdministrator);
+	connect(profile,&Viewer::Remote::Recognized,profile,[this](Viewer::Local profile) {
+		administratorID=profile.ID();
+		emit AdministratorProfileObtained();
+	});
+
+}
+
 void Security::StartClocks()
 {
 	tokenTimer.start();
+}
+
+const QString& Security::AdministratorID() const
+{
+	if (administratorID.isNull()) throw std::logic_error("Administrator ID used before it was obtained from Twitch");
+	return administratorID;
 }

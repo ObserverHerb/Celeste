@@ -24,6 +24,7 @@ protected:
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
+	void closeEvent(QCloseEvent *event) override;
 signals:
 	void Print(const QString &message);
 	void ChatMessage(const Chat::Message &message);
@@ -31,6 +32,7 @@ signals:
 	void RefreshChat();
 	void SuppressMusic();
 	void RestoreMusic();
+	void CloseRequested(QCloseEvent *event);
 public slots:
 	void ShowChat();
 	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
@@ -40,6 +42,7 @@ public slots:
 	void AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
+	void AnnounceDeniedCommand(const QString &videoPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);
