@@ -72,7 +72,6 @@ protected:
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
 	bool LoadDynamicCommands();
 	bool LoadViewerAttributes();
-	void LoadVibePlaylist();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
 	void StartClocks();
