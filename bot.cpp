@@ -71,23 +71,38 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
 	settingHostSound(SETTINGS_CATEGORY_EVENTS,"Host"),
 	settingDeniedCommandVideo(SETTINGS_CATEGORY_COMMANDS,"Denied"),
-	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0)
+	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0),
+	settingCommandNameAgenda(SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"),
+	settingCommandNameStreamCategory(SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"),
+	settingCommandNameStreamTitle(SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"),
+	settingCommandNameCommands(SETTINGS_CATEGORY_COMMANDS,"Commands","commands"),
+	settingCommandNameEmote(SETTINGS_CATEGORY_COMMANDS,"EmoteOnly","emote"),
+	settingCommandNameFollowage(SETTINGS_CATEGORY_COMMANDS,"Followage","followage"),
+	settingCommandNameHTML(SETTINGS_CATEGORY_COMMANDS,"HTML","html"),
+	settingCommandNamePanic(SETTINGS_CATEGORY_COMMANDS,"Panic","panic"),
+	settingCommandNameShoutout(SETTINGS_CATEGORY_COMMANDS,"Shoutout","so"),
+	settingCommandNameSong(SETTINGS_CATEGORY_COMMANDS,"Song","song"),
+	settingCommandNameTimezone(SETTINGS_CATEGORY_COMMANDS,"Timezone","timezone"),
+	settingCommandNameUptime(SETTINGS_CATEGORY_COMMANDS,"Uptime","uptime"),
+	settingCommandNameTotalTime(SETTINGS_CATEGORY_COMMANDS,"TotalTime","totaltime"),
+	settingCommandNameVibe(SETTINGS_CATEGORY_COMMANDS,"Vibe","vibe"),
+	settingCommandNameVibeVolume(SETTINGS_CATEGORY_COMMANDS,"VibeVolume","volume")
 {
-	DeclareCommand({"agenda","Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
-	DeclareCommand({"category","Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
-	DeclareCommand({"commands","List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
-	DeclareCommand({"emote","Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
-	DeclareCommand({"followage","Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
-	DeclareCommand({"html","Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
-	DeclareCommand({"panic","Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
-	DeclareCommand({"so","Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
-	DeclareCommand({"song","Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
-	DeclareCommand({"timezone","Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
-	DeclareCommand({"title","Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
-	DeclareCommand({"uptime","Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
-	DeclareCommand({"totaltime","Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
-	DeclareCommand({"vibe","Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
-	DeclareCommand({"volume","Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
+	DeclareCommand({settingCommandNameAgenda,"Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
+	DeclareCommand({settingCommandNameStreamCategory,"Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
+	DeclareCommand({settingCommandNameStreamTitle,"Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
+	DeclareCommand({settingCommandNameCommands,"List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
+	DeclareCommand({settingCommandNameEmote,"Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
+	DeclareCommand({settingCommandNameFollowage,"Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
+	DeclareCommand({settingCommandNameHTML,"Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
+	DeclareCommand({settingCommandNamePanic,"Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
+	DeclareCommand({settingCommandNameShoutout,"Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
+	DeclareCommand({settingCommandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
+	DeclareCommand({settingCommandNameTimezone,"Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
+	DeclareCommand({settingCommandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
+	DeclareCommand({settingCommandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
+	DeclareCommand({settingCommandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
+	DeclareCommand({settingCommandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	if (!LoadDynamicCommands()) emit Print("Failed to load commands"); // do this after creating native commands or aliases to native commands won't work
 	LoadViewerAttributes();
 
