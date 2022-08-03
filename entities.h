@@ -67,7 +67,7 @@ namespace Music
 	protected:
 		QMediaPlayer *player;
 		QMediaPlaylist sources;
-		//ApplicationSetting settingSuppressedVolume;
+		ApplicationSetting settingSuppressedVolume;
 		QPropertyAnimation volumeAdjustment;
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player"));
