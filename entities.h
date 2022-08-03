@@ -146,7 +146,7 @@ namespace Viewer
 	{
 	public:
 		Attributes() : commands(true), welcomed(true), bot(false) { }
-		Attributes(bool commands,bool welcomed,bool bot);
+		Attributes(bool commands,bool welcomed,bool bot) : commands(commands), welcomed(welcomed), bot(bot) { }
 		bool Commands() const;
 		bool Welcomed() const;
 		bool Bot() const;

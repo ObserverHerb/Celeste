@@ -245,11 +245,6 @@ namespace Viewer
 		});
 	};
 
-	Attributes::Attributes(bool commands,bool welcomed,bool bot) : commands(commands), welcomed(welcomed), bot(bot)
-	{
-
-	}
-
 	bool Attributes::Commands() const
 	{
 		return commands;
