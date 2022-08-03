@@ -214,9 +214,9 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 	for (const std::pair<QString,Viewer::Attributes> &viewer : viewers)
 	{
 		QJsonObject attributes={
-			{JSON_KEY_COMMANDS,viewer.second.Commands()},
-			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.Welcomed()},
-			{JSON_KEY_BOT,viewer.second.Bot()}
+			{JSON_KEY_COMMANDS,viewer.second.commands},
+			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.welcomed},
+			{JSON_KEY_BOT,viewer.second.bot}
 		};
 		entries.insert(viewer.first,attributes);
 	}
@@ -361,7 +361,7 @@ void Bot::DispatchArrival(const QString &login)
 {
 	if (viewers.contains(login))
 	{
-		if (viewers.at(login).Bot() || viewers.at(login).Welcomed()) return;
+		if (viewers.at(login).bot || viewers.at(login).welcomed) return;
 	}
 	else
 	{
@@ -379,7 +379,7 @@ void Bot::DispatchArrival(const QString &login)
 			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
 				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
-				viewers.at(viewer.Name()).Welcome();
+				viewers.at(viewer.Name()).welcomed=true;
 			});
 			connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 		}

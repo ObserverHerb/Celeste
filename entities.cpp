@@ -244,29 +244,4 @@ namespace Viewer
 			{"Client-ID",security.ClientID()}
 		});
 	};
-
-	bool Attributes::Commands() const
-	{
-		return commands;
-	}
-
-	bool Attributes::Welcomed() const
-	{
-		return welcomed;
-	}
-
-	bool Attributes::Bot() const
-	{
-		return bot;
-	}
-
-	void Attributes::Welcome()
-	{
-		welcomed=true;
-	}
-
-	void Attributes::ResetWelcome()
-	{
-		welcomed=false;
-	}
 }

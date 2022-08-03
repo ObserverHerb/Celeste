@@ -142,20 +142,11 @@ namespace Viewer
 		void Recognized(Local viewer);
 	};
 
-	class Attributes
+	struct Attributes
 	{
-	public:
-		Attributes() : commands(true), welcomed(true), bot(false) { }
-		Attributes(bool commands,bool welcomed,bool bot) : commands(commands), welcomed(welcomed), bot(bot) { }
-		bool Commands() const;
-		bool Welcomed() const;
-		bool Bot() const;
-		void Welcome();
-		void ResetWelcome();
-	protected:
-		bool commands;
-		bool welcomed;
-		bool bot;
+		bool commands { true };
+		bool welcomed { false };
+		bool bot { false };
 	};
 }
 
