@@ -50,7 +50,7 @@ namespace Music
 		return player->state() == QMediaPlayer::PlayingState;
 	}
 
-	void Player::Volume(bool duck)
+	void Player::DuckVolume(bool duck)
 	{
 		if (duck)
 		{

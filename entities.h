@@ -52,7 +52,7 @@ namespace Music
 		Q_OBJECT
 	public:
 		Player(QObject *parent);
-		void Volume(bool duck);
+		void DuckVolume(bool duck);
 		void Volume(unsigned int volume);
 		void Volume(unsigned int targetVolume,std::chrono::seconds duration);
 		void Load(const QString &location);

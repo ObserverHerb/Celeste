@@ -349,12 +349,12 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 
 void Bot::SuppressMusic()
 {
-	vibeKeeper->Volume(true);
+	vibeKeeper->DuckVolume(true);
 }
 
 void Bot::RestoreMusic()
 {
-	vibeKeeper->Volume(false);
+	vibeKeeper->DuckVolume(false);
 }
 
 void Bot::DispatchArrival(const QString &login)
