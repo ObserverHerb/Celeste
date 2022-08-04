@@ -381,7 +381,6 @@ void Bot::DispatchArrival(const QString &login)
 	else
 	{
 		viewers[login]={};
-		SaveViewerAttributes(false);
 	}
 
 	if (static_cast<QString>(settingArrivalSound).isEmpty()) return; // this isn't an error; clearing the setting is how you turn arrival announcements off
@@ -395,6 +394,7 @@ void Bot::DispatchArrival(const QString &login)
 			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
 				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
 				viewers.at(viewer.Name()).welcomed=true;
+				SaveViewerAttributes(false);
 			});
 			connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 		}
