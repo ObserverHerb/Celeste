@@ -56,14 +56,15 @@ namespace Music
 
 		if (duck)
 		{
-			volumeAdjustment.pause();
+			if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.pause();
 			volumeAdjustment.setStartValue(player->volume());
 			player->setVolume(settingSuppressedVolume);
 		}
 		else
 		{
-			player->setVolume(volumeAdjustment.startValue().toInt());
-			volumeAdjustment.resume();
+			int originalVolume=volumeAdjustment.startValue().toInt();
+			if (player->volume() < originalVolume) player->setVolume(originalVolume);
+			if (volumeAdjustment.state() == QAbstractAnimation::Paused) volumeAdjustment.resume();
 		}
 	}
 
