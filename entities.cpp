@@ -198,6 +198,7 @@ namespace Music
 
 			catch (const std::runtime_error &exception)
 			{
+				Q_UNUSED(exception)
 				Destroy();
 				throw;
 			}
