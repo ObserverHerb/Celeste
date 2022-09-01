@@ -6,6 +6,7 @@
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 #include <QPropertyAnimation>
+#include <QFile>
 #include <memory>
 #include "settings.h"
 #include "security.h"
@@ -64,6 +65,7 @@ namespace Music
 		QString AlbumTitle() const;
 		QString AlbumArtist() const;
 		QImage AlbumCoverArt() const;
+		QString Filename() const;
 	protected:
 		QMediaPlayer *player;
 		QMediaPlaylist sources;
@@ -76,6 +78,117 @@ namespace Music
 		void ConvertError(QMediaPlayer::Error error);
 		void PlaylistLoaded();
 	};
+
+	namespace ID3
+	{
+		quint32 SyncSafe(const char *value);
+
+		class Header
+		{
+		public:
+			Header(QFile &file);
+			quint32 Size() const;
+		protected:
+			QFile &file;
+			unsigned short versionMajor;
+			unsigned short versionMinor;
+			bool unsynchronization;
+			bool extendedHeader;
+			quint32 size;
+			void ParseIdentifier();
+			void ParseVersion();
+			void ParseFlags();
+			void ParseSize();
+		};
+
+		namespace Frame
+		{
+			enum class Frame
+			{
+				APIC
+			};
+
+			enum class PictureType
+			{
+				OTHER=0,
+				FILE_ICON,
+				OTHER_FILE_ICON,
+				COVER_FRONT,
+				COVER_BACK,
+				LEAFLET_PAGE,
+				CD_LABEL,
+				LEAD_ARTIST,
+				ARTIST,
+				CONDUCTOR,
+				BAND,
+				COMPOSER,
+				LYRICIST,
+				RECORDING_LOCATION,
+				DURING_RECORDING,
+				DURING_PERFORMANCE,
+				VIDEO_SCREEN_CAPTURE,
+				A_BRIGHT_COLORED_FISH,
+				ILLUSTRATION,
+				BAND_LOGO,
+				STUDIO_LOGO
+			};
+
+			enum class Encoding
+			{
+				ISO_8859_1=0,
+				UTF_16,
+				UTF_16BE,
+				UTF_8
+			};
+
+			class Header
+			{
+			public:
+				Header(QFile &file);
+				QByteArray ID() const;
+				quint32 Size() const;
+			protected:
+				QFile &file;
+				QByteArray id;
+				quint32 size;
+				void ParseID();
+				void ParseSize();
+			};
+
+			class APIC
+			{
+			public:
+				APIC(QFile &file,quint32 size);
+				const QImage& Picture() const;
+			protected:
+				QFile &file;
+				quint32 size;
+				Encoding encoding;
+				QByteArray MIMEType;
+				PictureType pictureType;
+				QByteArray description;
+				QImage picture;
+				void ParseEncoding();
+				void ParseMIMEType();
+				void ParsePictureType();
+				void ParseDescription();
+				void ParsePictureData();
+				quint32 DataSize();
+			};
+		}
+
+		class Tag
+		{
+		public:
+			Tag(const QString &filename);
+			~Tag();
+			const QImage& AlbumCoverFront() const;
+		protected:
+			QFile file;
+			std::unique_ptr<Frame::APIC> APIC;
+			void Destroy();
+		};
+	}
 }
 
 namespace File
