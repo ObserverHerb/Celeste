@@ -11,8 +11,8 @@ Q_DECLARE_METATYPE(std::chrono::milliseconds)
 namespace Music
 {
 	Player::Player(QObject *parent) : player(new QMediaPlayer(this)),
-		volumeAdjustment(player,"volume"),
-		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10)
+		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10),
+		volumeAdjustment(player,"volume")
 	{
 		player->setVolume(0);
 
