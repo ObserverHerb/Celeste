@@ -107,7 +107,32 @@ namespace Music
 
 	QImage Player::AlbumCoverArt() const
 	{
-		return player->metaData("CoverArtImage").value<QImage>();
+		const char *OPERATION_ALBUM_ART="album art";
+		const QString errorMessage("Failed to capture album art (%1)");
+
+		try
+		{
+			return ID3::Tag(Filename()).AlbumCoverFront();
+		}
+
+		catch (const std::out_of_range &exception)
+		{
+			emit Print(errorMessage.arg(exception.what()),OPERATION_ALBUM_ART);
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			emit Print(errorMessage.arg(exception.what()),OPERATION_ALBUM_ART);
+		}
+
+		return {};
+	}
+
+	QString Player::Filename() const
+	{
+		// FIXME: Qt documentation states that canonicalUrl() is obsolete
+		// replace with custom m3u parser?
+		return sources.currentMedia().canonicalUrl().toLocalFile();
 	}
 
 	void Player::StateChanged(QMediaPlayer::State state)
@@ -126,6 +151,228 @@ namespace Music
 		sources.setCurrentIndex(Random::Bounded(0,sources.mediaCount()-1)); // TODO: create bounded template that can accept QMediaPlaylist?
 		player->setPlaylist(&sources);
 		emit Print("Playlist loaded!");
+	}
+
+	namespace ID3
+	{
+		quint32 SyncSafe(const char *value)
+		{
+			quint32 result;
+			std::memcpy(&result,value,sizeof(quint32));
+			quint8 out=0;
+			quint8 mask=0x7F000000;
+			while (mask)
+			{
+				out >>= 1;
+				out |= result & mask;
+				mask >>= 8;
+			}
+			return result;
+		}
+
+		Tag::Tag(const QString &filename) : APIC(nullptr)
+		{
+			static const std::unordered_map<QString,Frame::Frame> FRAMES={
+				{"APIC",Frame::Frame::APIC}
+			};
+
+			try
+			{
+				file.setFileName(filename);
+				if (!file.open(QIODevice::ReadOnly)) throw std::runtime_error("Failed to open mp3 file");
+				Header header(file);
+				while (file.pos() < header.Size())
+				{
+					Frame::Header frameHeader(file);
+					if (!FRAMES.contains(frameHeader.ID()))
+					{
+						file.skip(frameHeader.Size());
+						continue;
+					}
+					switch (FRAMES.at(frameHeader.ID()))
+					{
+					case Frame::Frame::APIC:
+						APIC=std::make_unique<Frame::APIC>(file,frameHeader.Size());
+						break;
+					}
+				}
+			}
+
+			catch (const std::runtime_error &exception)
+			{
+				Destroy();
+				throw;
+			}
+		}
+
+		Tag::~Tag()
+		{
+			Destroy();
+		}
+
+		void Tag::Destroy()
+		{
+			file.close();
+		}
+
+		const QImage& Tag::AlbumCoverFront() const
+		{
+			return APIC ? APIC->Picture() : throw std::runtime_error("No image data in mp3 file");
+		}
+		
+		Header::Header(QFile &file) : file(file)
+		{
+			ParseIdentifier();
+			ParseVersion();
+			ParseFlags();
+			ParseSize();
+		}
+
+		void Header::ParseIdentifier()
+		{
+			QByteArray header=file.read(3);
+			if (header.size() < 3) throw std::runtime_error("Failed to read header from mp3 file");
+			if (header != "ID3") throw std::runtime_error("File is not a valid mp3 file");
+		}
+
+		void Header::ParseVersion()
+		{
+			char major;
+			char minor;
+			if (!file.getChar(&major) || !file.getChar(&minor)) throw std::runtime_error("Failed to read version information from mp3 file");
+			versionMajor=major;
+			versionMinor=minor;
+		}
+
+		void Header::ParseFlags()
+		{
+			char flags;
+			if (!file.getChar(&flags)) throw std::runtime_error("Failed to read flags from mp3 file");
+			extendedHeader=flags & 0x1000000;
+			unsynchronization=flags & 0x10000000;
+		}
+
+		void Header::ParseSize()
+		{
+			char data[4];
+			for (int index=3; index >= 0; index--)
+			{
+				if (!file.getChar(&data[index])) throw std::runtime_error("Failed to read size of frame from mp3 file");
+			}
+			std::memcpy(&size,data,sizeof(quint32));
+		}
+
+		quint32 Header::Size() const
+		{
+			return size+10; // entire size of tag is size + 10 byte header
+		}
+
+		namespace Frame
+		{
+			Header::Header(QFile &file) : file(file)
+			{
+				ParseID();
+				ParseSize();
+				file.skip(2); // skip frame flags
+			}
+
+			void Header::ParseID()
+			{
+				id=file.read(4);
+				if (id.size() < 4) throw std::runtime_error("Invalid frame ID in mp3 file");
+			}
+
+			QByteArray Header::ID() const
+			{
+				return id;
+			}
+
+			void Header::ParseSize()
+			{
+				char data[4];
+				for (int index=3; index >= 0; index--)
+				{
+					if (!file.getChar(&data[index])) throw std::runtime_error("Failed to read size of frame from mp3 file");
+				}
+				size=SyncSafe(data);
+			}
+			
+			quint32 Header::Size() const
+			{
+				return size;
+			}
+
+			APIC::APIC(QFile &file,quint32 size) : file(file), size(size)
+			{
+				ParseEncoding();
+				ParseMIMEType();
+				ParsePictureType();
+				ParseDescription();
+				ParsePictureData();
+			}
+
+			void APIC::ParseEncoding()
+			{
+				char data;
+				if (!file.getChar(&data)) throw std::runtime_error("Invalid encoding in frame of mp3 file");
+				unsigned short numeric=data;
+				if (numeric > 3) throw std::out_of_range("Unrecognized encoding in frame of mp3 file");
+				encoding=static_cast<Encoding>(numeric);
+			}
+
+			void APIC::ParseMIMEType()
+			{
+				char byte;
+				do
+				{
+					if (!file.getChar(&byte)) throw std::runtime_error("Invalie MIME type in frame of mp3 file");
+					MIMEType.append(byte);
+				}
+				while (byte != '\0');
+			}
+
+			void APIC::ParsePictureType()
+			{
+				char data;
+				if (!file.getChar(&data)) throw std::runtime_error("Invalid picture type in frame of mp3 file");
+				unsigned short numeric=data;
+				if (numeric > 14) throw std::out_of_range("Unrecognized picture type in frame of mp3 file");
+				pictureType=static_cast<PictureType>(numeric);
+			}
+
+			void APIC::ParseDescription()
+			{
+				int chunkSize=encoding == Encoding::UTF_16 || encoding == Encoding::UTF_16BE ? 2 : 1;
+				QByteArray terminator(chunkSize,'\0');
+				QByteArray data;
+				do
+				{
+					data=file.read(chunkSize);
+					if (data.size() < chunkSize) throw std::runtime_error("Invalid description in frame of mp3 file");
+					description.append(data);
+				}
+				while (data != terminator);
+			}
+
+			void APIC::ParsePictureData()
+			{
+				quint32 length=DataSize();
+				QByteArray data=file.read(length);
+				if (data.size() < length) throw std::runtime_error("Invalid image data in frame of mp3 file");
+				picture=QImage::fromData(data);
+			}
+
+			const QImage& APIC::Picture() const
+			{
+				return picture;
+			}
+
+			quint32 APIC::DataSize()
+			{
+				int value=size-2-MIMEType.size()-description.size(); // 2 = 1 byte for encoding, 1 byte for picture type
+				return value;
+			}
+		}
 	}
 }
 
