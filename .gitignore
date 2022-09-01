@@ -7,3 +7,6 @@ latex/
 kdevelopbuild/
 .vs
 CMakeSettings.json
+.vscode/
+obs-build-dependencies/
+obs-studio/
