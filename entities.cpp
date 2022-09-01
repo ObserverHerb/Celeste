@@ -130,9 +130,7 @@ namespace Music
 
 	QString Player::Filename() const
 	{
-		// FIXME: Qt documentation states that canonicalUrl() is obsolete
-		// replace with custom m3u parser?
-		return sources.currentMedia().canonicalUrl().toLocalFile();
+		return sources.currentMedia().request().url().toLocalFile();
 	}
 
 	void Player::StateChanged(QMediaPlayer::State state)
