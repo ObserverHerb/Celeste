@@ -158,7 +158,7 @@ namespace Music
 			quint32 result;
 			std::memcpy(&result,value,sizeof(quint32));
 			quint8 out=0;
-			quint8 mask=0x7F000000;
+			quint32 mask=0x7F000000;
 			while (mask)
 			{
 				out >>= 1;
