@@ -31,9 +31,8 @@ public:
 protected:
 	QPropertyAnimation scrollTransition;
 	void showEvent(QShowEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
 	const static int PAUSE;
 signals:
 	void Finished();
-protected slots:
-	void Scroll();
 };

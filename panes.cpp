@@ -183,10 +183,16 @@ VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent
 	layout()->addWidget(viewport);
 }
 
-void VideoPane::Show()
+void VideoPane::showEvent(QShowEvent *event)
 {
-	show();
 	videoPlayer->play();
+	QWidget::showEvent(event);
+}
+
+void VideoPane::hideEvent(QHideEvent *event)
+{
+	videoPlayer->pause();
+	QWidget::hideEvent(event);
 }
 
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
@@ -226,10 +232,16 @@ bool AnnouncePane::event(QEvent *event)
 	return QWidget::event(event);
 }
 
-void AnnouncePane::Show()
+void AnnouncePane::showEvent(QShowEvent *event)
 {
-	show();
 	clock.start();
+	QWidget::showEvent(event);
+}
+
+void AnnouncePane::hideEvent(QHideEvent *event)
+{
+	clock.stop();
+	QWidget::hideEvent(event);
 }
 
 void AnnouncePane::Polish()
@@ -272,11 +284,6 @@ ScrollingAnnouncePane::ScrollingAnnouncePane(const Lines &lines,QWidget *parent)
 	commands->setText(BuildParagraph(lines));
 }
 
-void ScrollingAnnouncePane::Show()
-{
-	show();
-}
-
 void ScrollingAnnouncePane::Polish()
 {
 	layout()->addWidget(commands);
@@ -301,10 +308,16 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 	output->setText(BuildParagraph(lines));
 }
 
-void AudioAnnouncePane::Show()
+void AudioAnnouncePane::showEvent(QShowEvent *event)
 {
-	show();
 	audioPlayer->play();
+	QWidget::showEvent(event);
+}
+
+void AudioAnnouncePane::hideEvent(QHideEvent *event)
+{
+	audioPlayer->pause();
+	QWidget::hideEvent(event);
 }
 
 ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
@@ -368,9 +381,14 @@ void MultimediaAnnouncePane::Polish()
 	layout()->addWidget(imagePane);
 }
 
-void MultimediaAnnouncePane::Show()
+void MultimediaAnnouncePane::showEvent(QShowEvent *event)
 {
-	imagePane->Show();
-	audioPane->Show();
-	show();
+	audioPane->show();
+	imagePane->show();
+}
+
+void MultimediaAnnouncePane::hideEvent(QHideEvent *event)
+{
+	audioPane->hide();
+	imagePane->hide();
 }

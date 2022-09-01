@@ -1,4 +1,5 @@
 #include <QScrollBar>
+#include <QShowEvent>
 #include "globals.h"
 #include "widgets.h"
 
@@ -33,7 +34,6 @@ void PinnedTextEdit::resizeEvent(QResizeEvent *event)
 
 void PinnedTextEdit::Scroll(int minimum,int maximum)
 {
-	if (scrollTransition.state() == QAbstractAnimation::Running) return;
 	scrollTransition.setDuration((maximum-verticalScrollBar()->value())*10); // distance remaining * ms/step (10ms/1step)
 	scrollTransition.setStartValue(verticalScrollBar()->value());
 	scrollTransition.setEndValue(maximum);
@@ -62,15 +62,30 @@ ScrollingTextEdit::ScrollingTextEdit(QWidget *parent) : QTextEdit(parent), scrol
 
 void ScrollingTextEdit::showEvent(QShowEvent *event)
 {
-	scrollTransition.setDuration((verticalScrollBar()->maximum()-verticalScrollBar()->value())*25); // distance remaining * ms/step (10ms/1step)
-	scrollTransition.setStartValue(verticalScrollBar()->value());
-	scrollTransition.setEndValue(verticalScrollBar()->maximum());
-	QTimer::singleShot(PAUSE,this,&ScrollingTextEdit::Scroll);
+	if (!event->spontaneous())
+	{
+		if (scrollTransition.state() == QAbstractAnimation::Paused)
+		{
+			scrollTransition.start();
+		}
+		else
+		{
+			scrollTransition.setDuration((verticalScrollBar()->maximum()-verticalScrollBar()->value())*25); // distance remaining * ms/step (10ms/1step)
+			scrollTransition.setStartValue(verticalScrollBar()->value());
+			scrollTransition.setEndValue(verticalScrollBar()->maximum());
+			QTimer::singleShot(PAUSE,&scrollTransition,SLOT(&QPropertyAnimation::start())); // FIXME: this circumvents show/hide process
+		}
+	}
 
 	QTextEdit::showEvent(event);
 }
 
-void ScrollingTextEdit::Scroll()
+void ScrollingTextEdit::hideEvent(QHideEvent *event)
 {
-	scrollTransition.start();
+	if (!event->spontaneous())
+	{
+		if (scrollTransition.state() == QAbstractAnimation::Running) scrollTransition.pause();
+	}
+
+	QTextEdit::hideEvent(event);
 }

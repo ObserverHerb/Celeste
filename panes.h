@@ -76,7 +76,6 @@ class EphemeralPane : public QWidget
 	Q_OBJECT
 public:
 	EphemeralPane(QWidget *parent,bool highPriority=true);
-	virtual void Show()=0;
 	void LowerPriority();
 	bool HighPriority() const;
 protected:
@@ -94,10 +93,11 @@ class VideoPane : public EphemeralPane
 	Q_OBJECT
 public:
 	VideoPane(const QString &path,QWidget *parent);
-	void Show() override;
 protected:
 	QMediaPlayer *videoPlayer;
 	QVideoWidget *viewport;
+	void showEvent(QShowEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
 };
 
 class AnnouncePane : public EphemeralPane
@@ -106,8 +106,6 @@ class AnnouncePane : public EphemeralPane
 public:
 	AnnouncePane(const QString &text,QWidget *parent);
 	AnnouncePane(const Lines &lines,QWidget *parent);
-	void Show() override;
-	bool event(QEvent *event) override;
 	virtual void Polish();
 	void AccentColor(const QColor &color) { accentColor=color; }
 	void Duration(const int duration) { clock.setInterval(duration); }
@@ -122,6 +120,9 @@ protected:
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
+	bool event(QEvent *event) override;
+	void showEvent(QShowEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
 };
 
 class ScrollingAnnouncePane : public AnnouncePane
@@ -130,7 +131,6 @@ class ScrollingAnnouncePane : public AnnouncePane
 public:
 	ScrollingAnnouncePane(const QString &text,QWidget *parent);
 	ScrollingAnnouncePane(const Lines &lines,QWidget *parent);
-	void Show() override;
 	void Polish() override;
 protected:
 	ScrollingTextEdit *commands;
@@ -142,9 +142,10 @@ class AudioAnnouncePane : public AnnouncePane
 public:
 	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent);
 	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent);
-	void Show() override;
 protected:
 	QMediaPlayer *audioPlayer;
+	void showEvent(QShowEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
 signals:
 	void DurationAvailable(qint64 duration);
 };
@@ -156,7 +157,6 @@ public:
 	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
 	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent);
 	void Polish() override;
-	void resizeEvent(QResizeEvent *event) override;
 protected:
 	QGraphicsScene *scene;
 	QGraphicsView *view;
@@ -164,6 +164,7 @@ protected:
 	QGraphicsDropShadowEffect *shadow;
 	QImage image;
 	QGraphicsPixmapItem *pixmap;
+	void resizeEvent(QResizeEvent *event) override;
 };
 
 class MultimediaAnnouncePane : public AnnouncePane
@@ -173,9 +174,10 @@ public:
 	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
 	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent);
 	void Polish() override;
-	void Show() override;
 protected:
 	MultimediaAnnouncePane(const QString &path,QWidget *parent);
 	AudioAnnouncePane *audioPane;
 	ImageAnnouncePane *imagePane;
+	void showEvent(QShowEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
 };

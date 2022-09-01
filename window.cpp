@@ -257,12 +257,12 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 			if (!lowPriorityEphemeralPanes.empty()) lowPriorityEphemeralPanes.front()->hide();
 			highPriorityEphemeralPanes.push(pane);
 			livePersistentPane->hide();
-			pane->Show();
+			pane->show();
 			emit SuppressMusic();
 		}
 		else
 		{
-			connect(highPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::Show);
+			connect(highPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::show);
 			highPriorityEphemeralPanes.push(pane);
 		}
 	}
@@ -273,12 +273,12 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 			if (highPriorityEphemeralPanes.empty())
 			{
 				livePersistentPane->hide();
-				pane->Show();
+				pane->show();
 			}
 		}
 		else
 		{
-			connect(lowPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::Show);
+			connect(lowPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::show);
 		}
 		lowPriorityEphemeralPanes.push(pane);
 	}
@@ -309,7 +309,7 @@ void Window::ReleaseLiveEphemeralPane()
 		if (lowPriorityEphemeralPanes.empty())
 			livePersistentPane->show();
 		else
-			lowPriorityEphemeralPanes.front()->Show();
+			lowPriorityEphemeralPanes.front()->show();
 		emit RestoreMusic();
 	}
 }
