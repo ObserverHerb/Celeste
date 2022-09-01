@@ -107,7 +107,25 @@ namespace Music
 
 	QImage Player::AlbumCoverArt() const
 	{
-		return ID3::Tag(Filename()).AlbumCoverFront();
+		const char *OPERATION_ALBUM_ART="album art";
+		const QString errorMessage("Failed to capture album art (%1)");
+
+		try
+		{
+			return ID3::Tag(Filename()).AlbumCoverFront();
+		}
+
+		catch (const std::out_of_range &exception)
+		{
+			emit Print(errorMessage.arg(exception.what()),OPERATION_ALBUM_ART);
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			emit Print(errorMessage.arg(exception.what()),OPERATION_ALBUM_ART);
+		}
+
+		return {};
 	}
 
 	QString Player::Filename() const
@@ -175,7 +193,7 @@ namespace Music
 					{
 					case Frame::Frame::APIC:
 						APIC=std::make_unique<Frame::APIC>(file,frameHeader.Size());
-						break;						
+						break;
 					}
 				}
 			}
@@ -199,7 +217,7 @@ namespace Music
 
 		const QImage& Tag::AlbumCoverFront() const
 		{
-			return APIC->Picture();
+			return APIC ? APIC->Picture() : throw std::runtime_error("No image data in mp3 file");
 		}
 		
 		Header::Header(QFile &file) : file(file)

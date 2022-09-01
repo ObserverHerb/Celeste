@@ -72,7 +72,7 @@ namespace Music
 		ApplicationSetting settingSuppressedVolume;
 		QPropertyAnimation volumeAdjustment;
 	signals:
-		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player"));
+		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player")) const;
 	protected slots:
 		void StateChanged(QMediaPlayer::State state);
 		void ConvertError(QMediaPlayer::Error error);
