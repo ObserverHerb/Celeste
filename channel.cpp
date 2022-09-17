@@ -95,7 +95,7 @@ Channel::~Channel()
 
 void Channel::DataAvailable()
 {
-	static QString cache;
+	static QByteArray cache;
 
 	while (!ircSocket->atEnd())
 	{
