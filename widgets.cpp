@@ -73,7 +73,9 @@ void ScrollingTextEdit::showEvent(QShowEvent *event)
 			scrollTransition.setDuration((verticalScrollBar()->maximum()-verticalScrollBar()->value())*25); // distance remaining * ms/step (10ms/1step)
 			scrollTransition.setStartValue(verticalScrollBar()->value());
 			scrollTransition.setEndValue(verticalScrollBar()->maximum());
-			QTimer::singleShot(PAUSE,&scrollTransition,SLOT(&QPropertyAnimation::start())); // FIXME: this circumvents show/hide process
+			QTimer::singleShot(PAUSE,&scrollTransition,[this]() {
+				scrollTransition.start(); // have to use lambda because start() has a default parameter that breaks usual connection syntax
+			});
 		}
 	}
 
