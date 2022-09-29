@@ -14,10 +14,6 @@
 #include <concepts>
 #include <stdexcept>
 
-inline const char *TWITCH_API_VERSION_5="application/vnd.twitchtv.v5+json";
-inline const short KEY=0;
-inline const short VALUE=1;
-
 namespace NumberConvert
 {
 	template <std::integral T>
