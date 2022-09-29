@@ -3,6 +3,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <cstring>
 #include "entities.h"
 #include "globals.h"
 
@@ -182,12 +183,15 @@ namespace Music
 				while (file.pos() < header.Size())
 				{
 					Frame::Header frameHeader(file);
-					if (!FRAMES.contains(frameHeader.ID()))
+
+					auto headerID=FRAMES.find(frameHeader.ID());
+					if (headerID == FRAMES.end())
 					{
 						file.skip(frameHeader.Size());
 						continue;
 					}
-					switch (FRAMES.at(frameHeader.ID()))
+
+					switch (headerID->second)
 					{
 					case Frame::Frame::APIC:
 						APIC=std::make_unique<Frame::APIC>(file,frameHeader.Size());

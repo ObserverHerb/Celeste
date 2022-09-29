@@ -141,7 +141,14 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 
 	bool numeric=false;
 	int code=command.toInt(&numeric);
-	if (!numeric) code=nonNumericIRCCommands.contains(command) ? static_cast<int>(nonNumericIRCCommands.at(command)) : -1;
+	if (!numeric)
+	{
+		auto nonNumericIRCCommand=nonNumericIRCCommands.find(command);
+		if (nonNumericIRCCommand != nonNumericIRCCommands.end())
+			code=static_cast<int>(nonNumericIRCCommand->second);
+		else
+			code=-1;
+	}
 	switch (code) // I'd rather static_cast the code, but if Twitch sends a command I haven't implemented, code will be outside the enum's range
 	{
 	case static_cast<int>(IRCCommand::RPL_WELCOME):
@@ -209,7 +216,8 @@ void Channel::ParseCapabilities(const QStringList &parameters,const QString &cap
 
 void Channel::DispatchCapabilities(const QString &clientIdentifier,const QString &subCommand,const QStringList &capabilities)
 {
-	int code=capabilitiesSubcommands.contains(subCommand) ? static_cast<int>(capabilitiesSubcommands.at(subCommand)) : -1;
+	int code=-1;
+	if (auto capabilitiesSubcommand=capabilitiesSubcommands.find(subCommand); capabilitiesSubcommand != capabilitiesSubcommands.end()) code=static_cast<int>(capabilitiesSubcommand->second);
 	switch (code)
 	{
 	case static_cast<int>(CapabilitiesSubcommand::ACK):
@@ -226,26 +234,22 @@ void Channel::DispatchCapabilities(const QString &clientIdentifier,const QString
 
 void Channel::ParseNotice(const QString &message)
 {
-	try
+	auto notice=notices.find(message);
+	if (notice == notices.end())
 	{
-		if (!notices.contains(message)) throw std::runtime_error("Unrecognized notice received");
-		Notice notice=notices.at(message);
-
-		switch (notice)
-		{
-		case Notice::DENIED:
-			emit Print("Server denied login",OPERATION_NOTICES);
-			emit Denied();
-			break;
-		case Notice::MALFORMATTED_AUTH:
-			emit Print("Authentication information was sent incorrectly",OPERATION_NOTICES);
-			break;
-		}
+		emit Print("Unrecognized notice received",OPERATION_NOTICES);
+		return;
 	}
 
-	catch (const std::runtime_error &exception)
+	switch (notice->second)
 	{
-		emit Print(exception.what(),OPERATION_NOTICES);
+	case Notice::DENIED:
+		emit Print("Server denied login",OPERATION_NOTICES);
+		emit Denied();
+		break;
+	case Notice::MALFORMATTED_AUTH:
+		emit Print("Authentication information was sent incorrectly",OPERATION_NOTICES);
+		break;
 	}
 }
 

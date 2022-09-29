@@ -12,34 +12,42 @@ const char *JSON_KEY_SOURCES="sources";
 
 bool Pulsar::LoadTriggers()
 {
-	try
+	static const char *OPERATION="load Pulsar triggers";
+
+	QFile operationListFile(Filesystem::DataPath().filePath(TRIGGER_LIST_FILENAME));
+	if (!operationListFile.open(QIODevice::ReadWrite))
 	{
-		QFile operationListFile(Filesystem::DataPath().filePath(TRIGGER_LIST_FILENAME));
-		if (!operationListFile.open(QIODevice::ReadWrite)) throw std::runtime_error(QString("Failed to open command list file: %1").arg(operationListFile.fileName()).toStdString());
-
-		QJsonParseError jsonError;
-		QByteArray data=operationListFile.readAll();
-		QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
-		if (json.isNull()) throw std::runtime_error(jsonError.errorString().toStdString());
-
-		const QJsonArray objects=json.array();
-		for (const QJsonValue &jsonValue : objects)
-		{
-			QJsonObject jsonObject=jsonValue.toObject();
-			if (jsonObject.isEmpty()) throw std::runtime_error("Malformatted source object");
-
-			if (!jsonObject.contains(JSON_KEY_TRIGGER)) throw std::runtime_error("No trigger specified");
-			const QString message=jsonObject.value(JSON_KEY_TRIGGER).toString();
-
-			if (!jsonObject.contains(JSON_KEY_SOURCES)) throw std::runtime_error("No sources specified");
-			triggers[message]=jsonObject.value(JSON_KEY_SOURCES).toArray();
-		}
+		emit Print(QString("Failed to open command list file: %1").arg(operationListFile.fileName()),OPERATION);
+		return false;
 	}
 
-	catch (const std::runtime_error &exception)
+	const JSON::ParseResult parsedJSON=JSON::Parse(operationListFile.readAll());
+	if (!parsedJSON)
 	{
-		emit Print(QString("Error: %1").arg(exception.what()),"load Pulsar triggers");
+		emit Print("Failed to parse JSON",OPERATION);
 		return false;
+	}
+
+	const QJsonArray objects=parsedJSON().array();
+	for (const QJsonValue &jsonValue : objects)
+	{
+		QJsonObject jsonObjectTrigger=jsonValue.toObject();
+
+		auto jsonFieldTrigger=jsonObjectTrigger.find(JSON_KEY_TRIGGER);
+		if (jsonFieldTrigger == jsonObjectTrigger.end())
+		{
+			emit Print("No trigger specified",OPERATION);
+			return false;
+		}
+
+		auto jsonFieldSources=jsonObjectTrigger.find(JSON_KEY_SOURCES);
+		if (jsonFieldSources == jsonObjectTrigger.end())
+		{
+			emit Print("No sources specified",OPERATION);
+			return false;
+		}
+
+		triggers[jsonFieldTrigger->toString()]=jsonFieldSources->toArray();
 	}
 
 	return true;
@@ -47,25 +55,24 @@ bool Pulsar::LoadTriggers()
 
 void Pulsar::Pulse(const QString &trigger)
 {
-	try
-	{
-		if (!triggers.contains(trigger)) throw std::runtime_error("Unrecognized trigger forwarded to Pulsar");
+	static const char *OPERATION="dispatch pulse";
 
-		QLocalSocket *socket=new QLocalSocket();
-		connect(socket,&QLocalSocket::connected,socket,[this,socket,trigger]() {
-			socket->write(QJsonDocument(triggers.at(trigger)).toJson(QJsonDocument::Compact)+'\n');
-		});
-		connect(socket,&QLocalSocket::errorOccurred,socket,[this,socket]() {
-			emit Print(QString("Failed to connect to Pulsar: %1").arg(socket->errorString()));
-		});
-		connect(socket,&QLocalSocket::bytesWritten,socket,[socket]() {
-			socket->deleteLater();
-		});
-		socket->connectToServer(PULSAR_SOCKET_NAME,QIODevice::WriteOnly);
+	auto payload=triggers.find(trigger);
+	if (payload == triggers.end())
+	{
+		emit Print("Unrecognized trigger forwarded to Pulsar",OPERATION);
+		return;
 	}
 
-	catch (const std::runtime_error &exception)
-	{
-		emit Print(exception.what(),"dispatch pulse");
-	}
+	QLocalSocket *socket=new QLocalSocket();
+	connect(socket,&QLocalSocket::connected,socket,[socket,trigger,payload]() {
+		socket->write(QJsonDocument(payload->second).toJson(QJsonDocument::Compact)+'\n');
+	});
+	connect(socket,&QLocalSocket::errorOccurred,socket,[this,socket]() {
+		emit Print(QString("Failed to connect to Pulsar: %1").arg(socket->errorString()),OPERATION);
+	});
+	connect(socket,&QLocalSocket::bytesWritten,socket,[socket]() {
+		socket->deleteLater();
+	});
+	socket->connectToServer(PULSAR_SOCKET_NAME,QIODevice::WriteOnly);
 }

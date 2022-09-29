@@ -68,53 +68,57 @@ void EventSub::Subscribe(const QString &type)
 void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content)
 {
 	const char *PARSE_REQUEST="parse request";
-	if (headers.find(HEADER_SUBSCRIPTION_TYPE) == headers.end() || subscriptionTypes.find(headers.at(HEADER_SUBSCRIPTION_TYPE)) == subscriptionTypes.end())
+	auto headerSubscriptionType=headers.find(HEADER_SUBSCRIPTION_TYPE);
+	if (headerSubscriptionType == headers.end())
 	{
 		emit Print("Ignoring request with no subscription type",PARSE_REQUEST);
 		return;
 	}
 
-	QJsonParseError jsonError;
-	QJsonDocument json=QJsonDocument::fromJson(StringConvert::ByteArray(content.trimmed()),&jsonError);
-	if (json.isNull())
+	auto subscriptionType=subscriptionTypes.find(headerSubscriptionType->second);
+	if (subscriptionType == subscriptionTypes.end()) return;
+
+	const JSON::ParseResult parsedJSON=JSON::Parse(StringConvert::ByteArray(content.trimmed()));
+	if (!parsedJSON)
 	{
-		Print(QString("Invalid JSON: %1").arg(jsonError.errorString()),PARSE_REQUEST);
+		Print(QString("Invalid JSON: %1").arg(parsedJSON.error),PARSE_REQUEST);
 		return;
 	}
 
-	if (json.object().contains(JSON_KEY_CHALLENGE))
+	QJsonObject jsonObject=parsedJSON().object();
+	if (auto challenge=jsonObject.find(JSON_KEY_CHALLENGE); challenge != jsonObject.end())
 	{
-		QString response=json.object().value(JSON_KEY_CHALLENGE).toString();
+		QString response=challenge->toString();
 		emit Print(StringConvert::Dump(response),"challenge");
 		emit Response(socketID,response);
 		return;
 	}
 
-	QJsonObject event=json.object().value(JSON_KEY_EVENT).toObject(); // TODO: check event for validity
-	switch (subscriptionTypes.at(headers.at(HEADER_SUBSCRIPTION_TYPE)))
+	auto event=jsonObject.find(JSON_KEY_EVENT);
+	if (event == jsonObject.end())
+	{
+		Print("Event field missing from request");
+		return;
+	}
+
+	QJsonObject eventObject=event->toObject();
+	switch (subscriptionType->second)
 	{
 	case SubscriptionType::CHANNEL_FOLLOW:
 		emit Follow();
-		emit Response(socketID);
-		return;
+		break;
 	case SubscriptionType::CHANNEL_REDEMPTION:
-	{
-		emit Redemption(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),event.value(JSON_KEY_EVENT_USER_INPUT).toString());
-		emit Response(socketID);
-		return;
-	}
+		emit Redemption(eventObject.value(JSON_KEY_EVENT_USER_NAME).toString(),eventObject.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),eventObject.value(JSON_KEY_EVENT_USER_INPUT).toString());
+		break;
 	case SubscriptionType::CHANNEL_CHEER:
-		emit Cheer(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),event.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
-		emit Response(socketID);
-		return;
+		emit Cheer(eventObject.value(JSON_KEY_EVENT_USER_NAME).toString(),eventObject.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),eventObject.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
+		break;
 	case SubscriptionType::CHANNEL_RAID:
-		emit Raid(event.value("from_broadcaster_user_name").toString(),event.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
-		emit Response(socketID);
-		return;
+		emit Raid(eventObject.value("from_broadcaster_user_name").toString(),eventObject.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
+		break;
 	case SubscriptionType::CHANNEL_SUBSCRIPTION:
-		emit Subscription(event.value(JSON_KEY_EVENT_USER_NAME).toString());
-		emit Response(socketID);
-		return;
+		emit Subscription(eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
+		break;
 	}
 
 	emit Response(socketID);

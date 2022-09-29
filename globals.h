@@ -6,6 +6,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QUrlQuery>
+#include <QJsonDocument>
 #include <chrono>
 #include <optional>
 #include <random>
@@ -245,6 +246,39 @@ namespace Network
 			break;
 		}
 		}
+	}
+}
+
+namespace JSON
+{
+	struct ParseResult
+	{
+		bool success;
+		QJsonDocument json;
+		QString error;
+		operator bool() const { return success; }
+		QJsonDocument operator()() const { return json; }
+	};
+
+	inline ParseResult Parse(const QByteArray &data)
+	{
+		QJsonParseError jsonError={
+			.offset=0,
+			.error=QJsonParseError::NoError
+		};
+		const QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
+		QString error;
+		bool success=true;
+		if (jsonError.error != QJsonParseError::NoError)
+		{
+			success=false;
+			error=jsonError.errorString();
+		}
+		return {
+			.success=success,
+			.json=json,
+			.error=error
+		};
 	}
 }
 

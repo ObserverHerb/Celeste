@@ -33,8 +33,16 @@ const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/
 const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
 const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
 const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
-const char *TWITCH_API_ENDPOING_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
+const char *TWITCH_API_ENDPOINT_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
+const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
+const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
+const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
+const char *TWITCH_API_OPERATION_STREAM_CATEGORY="stream category";
+const char *TWITCH_API_OPERATION_LOAD_BADGES="badges";
+const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 was incomplete";
+const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
+const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
 const char16_t *TWITCH_SYSTEM_ACCOUNT_NAME=u"jtv";
 const char16_t *CHAT_BADGE_BROADCASTER=u"broadcaster";
 const char16_t *CHAT_BADGE_MODERATOR=u"moderator";
@@ -43,14 +51,14 @@ const char16_t *CHAT_TAG_BADGES=u"badges";
 const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
 
-const std::unordered_map<QString,CommandType> COMMAND_TYPES={
+const Bot::CommandTypeLookup Bot::COMMAND_TYPE_LOOKUP={
 	{"native",CommandType::NATIVE},
 	{"video",CommandType::VIDEO},
 	{"announce",CommandType::AUDIO},
 	{"pulsar",CommandType::PULSAR}
 };
 
-std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconURLs;
+Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
@@ -150,37 +158,44 @@ bool Bot::LoadDynamicCommands()
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
-			const QString type=jsonObject.value(JSON_KEY_COMMAND_TYPE).toString();
-			if (!COMMAND_TYPES.contains(type))
+			auto type=COMMAND_TYPE_LOOKUP.find(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
+			if (type == COMMAND_TYPE_LOOKUP.end())
 			{
-				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type,name),OPERATION_LOAD_COMMANDS);
+				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type->first,name),OPERATION_LOAD_COMMANDS);
 				continue;
 			}
-			commands[name]={
+
+			bool random=false;
+			if (auto commandRandomPath=jsonObject.find(JSON_KEY_COMMAND_RANDOM_PATH); commandRandomPath != jsonObject.end()) random=commandRandomPath->toBool();
+			QString message;
+			if (auto commandMessage=jsonObject.find(JSON_KEY_COMMAND_MESSAGE); commandMessage != jsonObject.end()) message=commandMessage->toString();
+			commands.insert({name,{
 				name,
 				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-				COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
-				jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
+				type->second,
+				random,
 				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-				jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
-			};
+				message
+			}});
 		}
-		if (jsonObject.contains(JSON_KEY_COMMAND_ALIASES))
+
+		auto jsonObjectAliases=jsonObject.find(JSON_KEY_COMMAND_ALIASES);
+		if (jsonObjectAliases == jsonObject.end()) continue;
+		const QJsonArray aliases=jsonObjectAliases->toArray();
+		for (const QJsonValue &jsonValue : aliases)
 		{
-			const QJsonArray aliases=jsonObject.value(JSON_KEY_COMMAND_ALIASES).toArray();
-			for (const QJsonValue &jsonValue : aliases)
-			{
-				const QString alias=jsonValue.toString();
-				commands[alias]={
-					alias,
-					commands.at(name).Description(),
-					commands.at(name).Type(),
-					commands.at(name).Random(),
-					commands.at(name).Path(),
-					commands.at(name).Message(),
-				};
-				if (commands.at(alias).Type() == CommandType::NATIVE) nativeCommandFlags.insert({alias,nativeCommandFlags.at(name)});
-			}
+			const QString alias=jsonValue.toString();
+			const Command &command=commands.at(name);
+			const CommandType type=command.Type();
+			commands[alias]={
+				alias,
+				command.Description(),
+				command.Type(),
+				command.Random(),
+				command.Path(),
+				command.Message(),
+			};
+			if (type == CommandType::NATIVE) nativeCommandFlags.insert({alias,nativeCommandFlags.at(name)});
 		}
 	}
 
@@ -210,10 +225,16 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 	for (QJsonObject::const_iterator viewer=entries.begin(); viewer != entries.end(); ++viewer)
 	{
 		const QJsonObject attributes=viewer->toObject();
+		bool commands=true;
+		if (QJsonObject::const_iterator attributeCommands=attributes.find(JSON_KEY_COMMANDS); attributeCommands != attributes.end()) commands=attributeCommands->toBool();
+		bool welcome=false;
+		if (QJsonObject::const_iterator attributeWelcome=attributes.find(JSON_KEY_WELCOME); attributeWelcome != attributes.end()) welcome=attributeWelcome->toBool();
+		bool bot=false;
+		if (QJsonObject::const_iterator attributeBot=attributes.find(JSON_KEY_BOT); attributeBot != attributes.end()) bot=attributeBot->toBool();
 		viewers[viewer.key()]={
-			attributes.contains(JSON_KEY_COMMANDS) ? attributes.value(JSON_KEY_COMMANDS).toBool() : true,
-			attributes.contains(JSON_KEY_WELCOME) ? attributes.value(JSON_KEY_WELCOME).toBool() : false,
-			attributes.contains(JSON_KEY_BOT) ? attributes.value(JSON_KEY_BOT).toBool() : false
+			commands,
+			welcome,
+			bot,
 		};
 	}
 
@@ -266,30 +287,35 @@ void Bot::LoadRoasts()
 
 void Bot::LoadBadgeIconURLs()
 {
-	Network::Request({TWITCH_API_ENDPOINT_BADGES},Network::Method::GET,[](QNetworkReply *reply) {
-		const char *JSON_KEY_ID="id";
-		const char *JSON_KEY_SET_ID="set_id";
-		const char *JSON_KEY_VERSIONS="versions";
-		const char *JSON_KEY_IMAGE_URL="image_url_1x";
+	Network::Request({TWITCH_API_ENDPOINT_BADGES},Network::Method::GET,[this](QNetworkReply *reply) {
+		static const char *JSON_KEY_ID="id";
+		static const char *JSON_KEY_SET_ID="set_id";
+		static const char *JSON_KEY_VERSIONS="versions";
+		static const char *JSON_KEY_IMAGE_URL="image_url_1x";
 
-		const QJsonDocument json=QJsonDocument::fromJson(reply->readAll());
-		if (json.isNull()) return;
-		const QJsonObject object=json.object();
-		if (object.isEmpty() || !object.contains(JSON_KEY_DATA)) return;
-		const QJsonArray sets=object.value(JSON_KEY_DATA).toArray();
-		for (const QJsonValue &set : sets)
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
 		{
-			const QJsonObject object=set.toObject();
-			if (!object.contains(JSON_KEY_SET_ID) || !object.contains(JSON_KEY_VERSIONS)) continue;
-			const QString setID=object.value(JSON_KEY_SET_ID).toString();
-			const QJsonArray versions=object.value(JSON_KEY_VERSIONS).toArray();
-			for (const QJsonValue &version : versions)
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_LOAD_BADGES,parsedJSON.error));
+			return;
+		}
+
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		if (jsonFieldData == object.end()) return;
+		for (const QJsonValue &set : jsonFieldData->toArray())
+		{
+			const QJsonObject objectBadgeSet=set.toObject();
+			auto jsonFieldSetID=objectBadgeSet.find(JSON_KEY_SET_ID);
+			auto jsonFieldVersions=objectBadgeSet.find(JSON_KEY_VERSIONS);
+			if (jsonFieldSetID == objectBadgeSet.end() || jsonFieldVersions == objectBadgeSet.end()) return;
+			for (const QJsonValue &version : jsonFieldVersions->toArray())
 			{
-				const QJsonObject object=version.toObject();
-				if (!object.contains(JSON_KEY_ID) || !object.contains(JSON_KEY_IMAGE_URL)) continue;
-				const QString setVersion=object.value(JSON_KEY_ID).toVariant().toString();
-				const QString versionURL=object.value(JSON_KEY_IMAGE_URL).toString();
-				badgeIconURLs[setID][setVersion]=versionURL;
+				const QJsonObject objectImageVersions=version.toObject();
+				auto jsonFieldID=objectImageVersions.find(JSON_KEY_ID);
+				auto jsonFieldVersionURL=objectImageVersions.find(JSON_KEY_IMAGE_URL);
+				if (jsonFieldID == objectImageVersions.end() || jsonFieldVersionURL == objectImageVersions.end()) return;
+				badgeIconURLs[jsonFieldSetID->toString()][jsonFieldID->toString()]=jsonFieldVersionURL->toString();
 			}
 		}
 	},{},{
@@ -374,13 +400,13 @@ void Bot::RestoreMusic()
 
 void Bot::DispatchArrival(const QString &login)
 {
-	if (viewers.contains(login))
+	if (auto viewer=viewers.find(login); viewer != viewers.end())
 	{
-		if (viewers.at(login).bot || viewers.at(login).welcomed) return;
+		if (viewer->second.bot || viewer->second.welcomed) return;
 	}
 	else
 	{
-		viewers[login]={};
+		viewers.insert({login,{}});
 	}
 
 	if (static_cast<QString>(settingArrivalSound).isEmpty()) return; // this isn't an error; clearing the setting is how you turn arrival announcements off
@@ -388,21 +414,22 @@ void Bot::DispatchArrival(const QString &login)
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
-		if (security.Administrator() != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
-		{
-			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
-				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
-				viewers.at(viewer.Name()).welcomed=true;
-				SaveViewerAttributes(false);
-			});
-			connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
-		}
+		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settingRaidInterruptDuration)) return;
+		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
+			emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+			viewers.at(viewer.Name()).welcomed=true;
+			SaveViewerAttributes(false);
+		});
+		connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 	});
 }
 
 void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message)
 {
+	using StringViewLookup=std::unordered_map<QStringView,QStringView>;
+	using StringViewTakeResult=std::optional<QStringView>;
+
 	std::optional<QStringView> window;
 
 	QStringView remainingText(message);
@@ -411,57 +438,57 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 
 	// parse tags
 	window=prefix;
-	std::unordered_map<QStringView,QStringView> tags;
+	StringViewLookup tags;
 	while (!window->isEmpty())
 	{
-		std::optional<QStringView> pair=StringView::Take(*window,';');
+		StringViewTakeResult pair=StringView::Take(*window,';');
 		if (!pair) continue; // skip malformated badges rather than making a visible fuss
-		std::optional<QStringView> key=StringView::Take(*pair,'=');
+		StringViewTakeResult key=StringView::Take(*pair,'=');
 		if (!key) continue; // same as above
-		std::optional<QStringView> value=StringView::Last(*pair,'=');
+		StringViewTakeResult value=StringView::Last(*pair,'=');
 		if (!value) continue; // I'll rely on "missing" to represent an empty value
 		tags[*key]=*value;
 	}
-	if (tags.contains(CHAT_TAG_DISPLAY_NAME)) chatMessage.sender=tags.at(CHAT_TAG_DISPLAY_NAME).toString();
-	if (tags.contains(CHAT_TAG_COLOR)) chatMessage.color=tags.at(CHAT_TAG_COLOR).toString();
+	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.sender=displayName->second.toString();
+	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
 
 	// badges
-	if (tags.contains(CHAT_TAG_BADGES))
+	if (auto tagBadges=tags.find(CHAT_TAG_BADGES); tagBadges != tags.end())
 	{
-		std::unordered_map<QStringView,QStringView> badges;
-		QStringView &versions=tags.at(CHAT_TAG_BADGES);
+		StringViewLookup badges;
+		QStringView &versions=tagBadges->second;
 		while (!versions.isEmpty())
 		{
-			std::optional<QStringView> pair=StringView::Take(versions,',');
+			StringViewTakeResult pair=StringView::Take(versions,',');
 			if (!pair) continue;
-			std::optional<QStringView> name=StringView::Take(*pair,'/');
+			StringViewTakeResult name=StringView::Take(*pair,'/');
 			if (!name) continue;
-			std::optional<QStringView> version=StringView::Last(*pair,'/');
+			StringViewTakeResult version=StringView::Last(*pair,'/');
 			if (!version) continue; // a badge must have a version
 			badges.insert({*name,*version});
 			std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
 			if (!badgeIconPath) continue;
 			chatMessage.badges.append(*badgeIconPath);
 		}
-		if (badges.contains(CHAT_BADGE_BROADCASTER) && badges.at(CHAT_BADGE_BROADCASTER) == u"1") chatMessage.broadcaster=true;
-		if (badges.contains(CHAT_BADGE_MODERATOR) && badges.at(CHAT_BADGE_MODERATOR) == u"1") chatMessage.moderator=true;
+		if (auto badgeBroadcaster=badges.find(CHAT_BADGE_BROADCASTER); badgeBroadcaster != badges.end() && badgeBroadcaster->second == u"1") chatMessage.broadcaster=true;
+		if (auto badgeModerator=badges.find(CHAT_BADGE_MODERATOR); badgeModerator != badges.end() && badgeModerator->second == u"1") chatMessage.moderator=true;
 	}
 
 	// emotes
-	if (tags.contains(CHAT_TAG_EMOTES))
+	if (auto tagEmotes=tags.find(CHAT_TAG_EMOTES); tagEmotes != tags.end())
 	{
-		QStringView &entries=tags.at(CHAT_TAG_EMOTES);
+		QStringView &entries=tagEmotes->second;
 		while (!entries.isEmpty())
 		{
-			std::optional<QStringView> entry=StringView::Take(entries,'/');
+			StringViewTakeResult entry=StringView::Take(entries,'/');
 			if (!entry) continue;
-			std::optional<QStringView> id=StringView::Take(*entry,':');
+			StringViewTakeResult id=StringView::Take(*entry,':');
 			if (!id) continue;
 			while(!entry->isEmpty())
 			{
-				std::optional<QStringView> occurrence=StringView::Take(*entry,',');
-				std::optional<QStringView> left=StringView::First(*occurrence,'-');
-				std::optional<QStringView> right=StringView::Last(*occurrence,'-');
+				StringViewTakeResult occurrence=StringView::Take(*entry,',');
+				StringViewTakeResult left=StringView::First(*occurrence,'-');
+				StringViewTakeResult right=StringView::Last(*occurrence,'-');
 				if (!left || !right) continue;
 				unsigned int start=StringConvert::PositiveInteger(left->toString());
 				unsigned int end=StringConvert::PositiveInteger(right->toString());
@@ -480,9 +507,9 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 
 	// hostmask
 	// TODO: break these down in the Channel class, not here
-	std::optional<QStringView> hostmask=StringView::Take(*window,' ');
+	StringViewTakeResult hostmask=StringView::Take(*window,' ');
 	if (!hostmask) return;
-	std::optional<QStringView> user=StringView::Take(*hostmask,'!');
+	StringViewTakeResult user=StringView::Take(*hostmask,'!');
 	if (!user) return;
 	login=*user;
 
@@ -494,7 +521,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	// determine if this is a command, and if so, process it as such
 	// and if it's valid, we're done
 	window=message;
-	if (std::optional<QStringView> command=StringView::Take(*window,' '); command)
+	if (StringViewTakeResult command=StringView::Take(*window,' '); command)
 	{
 		if (command->size() > 0 && command->at(0) == '!')
 		{
@@ -531,8 +558,11 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 
 std::optional<QString> Bot::DownloadBadgeIcon(const QString &badge,const QString &version)
 {
-	if (!badgeIconURLs.contains(badge) || !badgeIconURLs.at(badge).contains(version)) return std::nullopt;
-	QString badgeIconURL=badgeIconURLs.at(badge).at(version);
+	auto badgeIconVersions=badgeIconURLs.find(badge);
+	if (badgeIconVersions == badgeIconURLs.end()) return std::nullopt;
+	auto badgeIconVersion=badgeIconVersions->second.find(version);
+	if (badgeIconVersion == badgeIconVersions->second.end()) return std::nullopt;
+	const QString badgeIconURL=badgeIconVersion->second;
 	static const QString CHAT_BADGE_ICON_PATH_TEMPLATE=Filesystem::TemporaryPath().filePath(QString("%1_%2.png"));
 	QString badgePath=CHAT_BADGE_ICON_PATH_TEMPLATE.arg(badge,version);
 	if (!QFile(badgePath).exists())
@@ -708,22 +738,37 @@ void Bot::DispatchFollowage(const QString &name)
 	Viewer::Remote *viewer=new Viewer::Remote(security,name);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
-		Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
-			QJsonParseError jsonError;
-			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-			if (json.isNull() || !json.object().contains("data"))
+		Network::Request({TWITCH_API_ENDPOINT_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
+			const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+			if (!parsedJSON)
 			{
-				emit Print("Something went wrong obtaining stream information");
+				emit Print(QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_USER_FOLLOWS,parsedJSON.error));
 				return;
 			}
-			QJsonArray data=json.object().value("data").toArray();
-			if (data.size() < 1)
+
+			const QJsonObject object=parsedJSON().object();
+			auto jsonFieldData=object.find(JSON_KEY_DATA);
+			if (jsonFieldData == object.end())
 			{
-				emit Print("Response from requesting stream information was incomplete ");
+				emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_USER_FOLLOWS));
 				return;
 			}
-			QJsonObject details=data.at(0).toObject();
-			QDateTime start=QDateTime::fromString(details.value("followed_at").toString(),Qt::ISODate);
+
+			const QJsonArray jsonUsers=jsonFieldData->toArray();
+			if (jsonUsers.size() < 1)
+			{
+				emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_USER_FOLLOWS));
+				return;
+			}
+
+			const QJsonObject jsonUserDetails=jsonUsers.at(0).toObject(); // because I fill in both from_id and to_id fields, there is only one result, so just grab the first one out of the array
+			auto jsonFieldFollowDate=jsonUserDetails.find("followed_at");
+			if (jsonFieldFollowDate == jsonUserDetails.end())
+			{
+				emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_USER_FOLLOWS));
+				return;
+			}
+			const QDateTime start=QDateTime::fromString(jsonFieldFollowDate->toString(),Qt::ISODate);
 			std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
 			std::chrono::years years=std::chrono::duration_cast<std::chrono::years>(duration);
 			std::chrono::months months=std::chrono::duration_cast<std::chrono::months>(duration-years);
@@ -767,21 +812,37 @@ void Bot::DispatchShoutout(Command command)
 void Bot::DispatchUptime(bool total)
 {
 	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this,total](QNetworkReply *reply) {
-		QJsonParseError jsonError;
-		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-		if (json.isNull() || !json.object().contains("data"))
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
 		{
-			emit Print("Something went wrong obtaining stream information");
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_STREAM_INFORMATION,parsedJSON.error));
 			return;
 		}
-		QJsonArray data=json.object().value("data").toArray();
-		if (data.size() < 1)
+
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		if (jsonFieldData == object.end())
 		{
-			emit Print("Response from requesting stream information was incomplete ");
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_STREAM_INFORMATION));
 			return;
 		}
-		QJsonObject details=data.at(0).toObject();
-		QDateTime start=QDateTime::fromString(details.value("started_at").toString(),Qt::ISODate);
+
+		const QJsonArray jsonUsers=jsonFieldData->toArray();
+		if (jsonUsers.size() < 1)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_STREAM_INFORMATION));
+			return;
+		}
+
+		const QJsonObject details=jsonUsers.at(0).toObject(); // we're only specifying one user ID so just grab the first result in the array
+		auto jsonFieldStartDate=details.find("started_at");
+		if (jsonFieldStartDate == details.end())
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_STREAM_INFORMATION));
+			return;
+		}
+
+		const QDateTime start=QDateTime::fromString(jsonFieldStartDate->toString(),Qt::ISODate);
 		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
 		if (total) duration+=std::chrono::minutes(static_cast<qint64>(settingUptimeHistory));
 		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
@@ -831,21 +892,37 @@ void Bot::AdjustVibeVolume(Command command)
 void Bot::ToggleEmoteOnly()
 {
 	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this](QNetworkReply *reply) {
-		QJsonParseError jsonError;
-		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-		if (json.isNull() || !json.object().contains("data"))
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
 		{
-			emit Print("Something went wrong changing emote only mode");
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_EMOTE_ONLY,parsedJSON.error));
 			return;
 		}
-		QJsonArray data=json.object().value("data").toArray();
-		if (data.size() < 1)
+
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		if (jsonFieldData == object.end())
 		{
-			emit Print("Response was incomplete changing emote only mode");
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_EMOTE_ONLY));
 			return;
 		}
-		QJsonObject details=data.at(0).toObject();
-		if (details.value("emote_mode").toBool())
+
+		const QJsonArray details=jsonFieldData->toArray();
+		if (details.size() < 1)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_EMOTE_ONLY));
+			return;
+		}
+
+		const QJsonObject fields=details.at(0).toObject();
+		auto jsonFieldEmoteMode=fields.find("emote_mode");
+		if (jsonFieldEmoteMode == fields.end())
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_EMOTE_ONLY));
+			return;
+		}
+
+		if (jsonFieldEmoteMode->toBool())
 			EmoteOnly(false);
 		else
 			EmoteOnly(true);
@@ -901,20 +978,38 @@ void Bot::StreamTitle(const QString &title)
 void Bot::StreamCategory(const QString &category)
 {
 	Network::Request({TWITCH_API_ENDPOINT_GAME_INFORMATION},Network::Method::GET,[this,category](QNetworkReply *reply) {
-		QJsonParseError jsonError;
-		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-		if (json.isNull() || !json.object().contains("data"))
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
 		{
-			emit Print("Something went wrong finding stream category");
+			Print (QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_STREAM_CATEGORY,parsedJSON.error));
 			return;
 		}
-		QJsonArray data=json.object().value("data").toArray();
-		if (data.size() < 1)
+
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		if (jsonFieldData == object.end())
 		{
-			emit Print("Response was incomplete finding stream category");
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_STREAM_CATEGORY));
 			return;
 		}
-		Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,category](QNetworkReply *reply) {
+
+		const QJsonArray details=jsonFieldData->toArray();
+		if (details.size() < 1)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_STREAM_CATEGORY));
+			return;
+		}
+
+		const QJsonObject fields=details.at(0).toObject();
+		auto jsonFieldID=fields.find("id");
+		if (jsonFieldID == fields.end())
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_STREAM_CATEGORY));
+			return;
+		}
+
+		const QString categoryID=jsonFieldID->toString();
+		Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,category,categoryID](QNetworkReply *reply) {
 			if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
 			{
 				emit Print("Failed to change stream category");
@@ -929,7 +1024,7 @@ void Bot::StreamCategory(const QString &category)
 			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		},
 		{
-			QJsonDocument(QJsonObject({{"game_id",data.at(0).toObject().value("id").toString()}})).toJson(QJsonDocument::Compact)
+			QJsonDocument(QJsonObject({{"game_id",categoryID}})).toJson(QJsonDocument::Compact)
 		});
 	},{
 		{"name",category}

@@ -92,27 +92,29 @@ void Security::RequestToken(const QString &code,const QString &scopes)
 			emit TokenRequestFailed();
 			return;
 		}
-		QJsonDocument json=QJsonDocument::fromJson(reply->readAll());
-		if (json.isNull())
-		{
-			emit TokenRequestFailed();
-			return;
-		}
-		if (!json.object().contains(JSON_KEY_ACCESS_TOKEN) || !json.object().contains(JSON_KEY_REFRESH_TOKEN))
+
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
 		{
 			emit TokenRequestFailed();
 			return;
 		}
 
-		settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
-		settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
-
-		if (json.object().contains(JSON_KEY_EXPIRY))
+		const QJsonObject jsonObject=parsedJSON().object();
+		auto jsonFieldAccessToken=jsonObject.find(JSON_KEY_ACCESS_TOKEN);
+		auto jsonFieldRefreshToken=jsonObject.find(JSON_KEY_REFRESH_TOKEN);
+		if (jsonFieldAccessToken == jsonObject.end() || jsonFieldRefreshToken == jsonObject.end())
 		{
-			std::chrono::milliseconds margin=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::minutes(30));
-			std::chrono::milliseconds expiry=std::chrono::duration_cast<std::chrono::milliseconds>(static_cast<std::chrono::seconds>(json.object().value("expires_in").toInt()))-margin;
-			if (expiry.count() > 0)	tokenTimer.setInterval(expiry.count());
+			emit TokenRequestFailed();
+			return;
 		}
+		settingOAuthToken.Set(jsonFieldAccessToken->toString());
+		settingRefreshToken.Set(jsonFieldRefreshToken->toString());
+		auto jsonObjectExpiry=jsonObject.find(JSON_KEY_EXPIRY);
+		if (jsonObjectExpiry == jsonObject.end()) return;
+		std::chrono::milliseconds margin=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::minutes(30));
+		std::chrono::milliseconds expiry=std::chrono::duration_cast<std::chrono::milliseconds>(static_cast<std::chrono::seconds>(jsonObjectExpiry->toInt()))-margin;
+		if (expiry.count() > 0) tokenTimer.setInterval(expiry.count());
 	},{
 		{QUERY_PARAMETER_CODE,code},
 		{QUERY_PARAMETER_CLIENT_ID,settingClientID},
@@ -132,15 +134,23 @@ void Security::RefreshToken()
 			emit TokenRequestFailed();
 			return;
 		}
-		QJsonDocument json=QJsonDocument::fromJson(reply->readAll());
-		if (json.isNull())
+
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
 		{
 			emit TokenRequestFailed();
 			return;
 		}
-		if (!json.object().contains(JSON_KEY_REFRESH_TOKEN) || !json.object().contains(JSON_KEY_ACCESS_TOKEN)) return;
-		settingOAuthToken.Set(json.object().value(JSON_KEY_ACCESS_TOKEN).toString());
-		settingRefreshToken.Set(json.object().value(JSON_KEY_REFRESH_TOKEN).toString());
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldAccessToken=object.find(JSON_KEY_ACCESS_TOKEN);
+		auto jsonFieldRefreshToken=object.find(JSON_KEY_REFRESH_TOKEN);
+		if (jsonFieldAccessToken == object.end() || jsonFieldRefreshToken == object.end())
+		{
+			emit TokenRequestFailed();
+			return;
+		}
+		settingOAuthToken.Set(jsonFieldAccessToken->toString());
+		settingRefreshToken.Set(jsonFieldRefreshToken->toString());
 	},{
 		{QUERY_PARAMETER_CLIENT_ID,settingClientID},
 		{QUERY_PARAMETER_CLIENT_SECRET,settingClientSecret},
