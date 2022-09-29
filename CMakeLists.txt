@@ -37,7 +37,6 @@ add_executable(Celeste
 	panes.cpp
 	pulsar.h
 	pulsar.cpp
-	platform.cpp
 	log.h
 	log.cpp
 	window.h
@@ -56,9 +55,10 @@ else()
 	include(CheckIPOSupported)
 	check_ipo_supported(RESULT result)
 	if(result)
-	  set_property(TARGET Celeste PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+		set_property(TARGET Celeste PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
+	target_sources(Celeste PRIVATE unix.cpp)
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
 endif()
 
