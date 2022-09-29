@@ -25,8 +25,8 @@ class Command
 public:
 	Command() : Command(QString(),QString(),CommandType::BLANK,false,QString(),QString()) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), path(path), message(message), protect(protect) { }
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), path(command.path), message(message), protect(command.protect) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), protect(protect), path(path), message(message) { }
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message) { }
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
