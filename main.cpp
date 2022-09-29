@@ -28,9 +28,11 @@ enum
 	UNKNOWN_ERROR
 };
 
+using ApplicationWindow=std::conditional<Platform::Windows(),Win32Window,Window>::type;
+
 int main(int argc,char *argv[])
 {
-	qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmediafoundation");
+	if constexpr (Platform::Windows()) qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmediafoundation");
 
 	QApplication application(argc,argv);
 	application.setOrganizationName(ORGANIZATION_NAME);
@@ -79,11 +81,7 @@ int main(int argc,char *argv[])
 		Server server;
 		Bot celeste(security);
 		Pulsar pulsar;
-#ifdef Q_OS_WIN
-		Win32Window window;
-#else
-		Window window;
-#endif
+		ApplicationWindow window;
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;

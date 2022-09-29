@@ -16,7 +16,7 @@
 
 const char *SETTINGS_CATEGORY_WINDOW="Window";
 
-Window::Window() : QWidget(nullptr),
+Window::Window() : QMainWindow(nullptr),
 	livePersistentPane(nullptr),
 	background(new QWidget(this)),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
@@ -29,7 +29,6 @@ Window::Window() : QWidget(nullptr),
 	else
 		setFixedSize(ScreenThird());
 
-	setLayout(new QGridLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
 	background->setLayout(new QGridLayout(background)); // for translucency to work, there has to be a widget covering the window, otherwise the entire thing is clear
 	background->layout()->setContentsMargins(0,0,0,0);
@@ -38,8 +37,15 @@ Window::Window() : QWidget(nullptr),
 		StringConvert::Integer(backgroundColor.red()),
 		StringConvert::Integer(backgroundColor.green()),
 		StringConvert::Integer(backgroundColor.blue()),
-		StringConvert::Integer(backgroundColor.alpha())));
-	layout()->addWidget(background);
+		StringConvert::Integer(backgroundColor.alpha()))
+	);
+	setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4);").arg(
+		StringConvert::Integer(backgroundColor.red()),
+		StringConvert::Integer(backgroundColor.green()),
+		StringConvert::Integer(backgroundColor.blue()),
+		StringConvert::Integer(backgroundColor.alpha()))
+	);
+	setCentralWidget(background);
 
 	SwapPersistentPane(new StatusPane(this));
 }

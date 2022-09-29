@@ -50,6 +50,7 @@ add_executable(Celeste
 
 if (WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+	target_sources(Celeste PRIVATE win32.cpp)
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::WinExtras)
 else()
 	include(CheckIPOSupported)

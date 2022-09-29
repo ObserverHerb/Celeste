@@ -8,7 +8,7 @@
 #include "panes.h"
 #include "settings.h"
 
-class Window : public QWidget
+class Window : public QMainWindow
 {
 	Q_OBJECT
 public:
@@ -58,15 +58,8 @@ protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
 };
 
-#ifdef Q_OS_WIN
-#include <QtWin>
 class Win32Window : public Window
 {
-	Q_OBJECT
 public:
-	Win32Window()
-	{
-		QtWin::enableBlurBehindWindow(this);
-	}
+	Win32Window();
 };
-#endif
