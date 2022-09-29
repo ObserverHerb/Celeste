@@ -180,10 +180,12 @@ void Window::ShowCommandList(std::vector<std::pair<QString,QString>> description
 void Window::ShowCommand(const QString &name,const QString &description)
 {
 	if (!highPriorityEphemeralPanes.empty()) return;
-	StageEphemeralPane(new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
+	AnnouncePane *pane=new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
 		name,
 		description
-	),this));
+	),this);
+	pane->LowerPriority();
+	StageEphemeralPane(pane);
 }
 
 void Window::ShowPanicText(const QString &text)
