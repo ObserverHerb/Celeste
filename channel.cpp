@@ -314,5 +314,5 @@ std::optional<char> IRCSocket::Pop()
 
 bool Channel::Protected() const
 {
-	return settingProtect.Enabled();
+	return settingProtect;
 }

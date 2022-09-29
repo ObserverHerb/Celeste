@@ -383,7 +383,7 @@ void Bot::DispatchArrival(const QString &login)
 		viewers[login]={};
 	}
 
-	if (static_cast<QString>(settingArrivalSound).isEmpty()) return; // this isn't an error; clearing the setting is how you turn arrival announcements off
+	if (settingArrivalSound) return; // this isn't an error; clearing the setting is how you turn arrival announcements off
 
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
