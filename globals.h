@@ -212,20 +212,22 @@ namespace Network
 		switch (method)
 		{
 		case Method::GET:
+		{
 			url.setQuery(queryParameters);
 			request.setUrl(url);
-			if (auto sendRequest=[request,callback]() {
+			auto sendRequest=[request,callback]() {
 				QNetworkReply *reply=networkManager.get(request);
 				networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback);
 				reply->connect(reply,&QNetworkReply::finished,[]() {
+					int size=queue.size();
 					queue.pop();
 					if (queue.size() > 0) queue.front().first();
 				});
-			}; queue.size() == 0)
-				sendRequest();
-			else
-				queue.push({sendRequest,callback});
+			};
+			if (queue.size() == 0) sendRequest();
+			queue.push({sendRequest,callback});
 			break;
+		}
 		case Method::POST:
 			request.setUrl(url);
 			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
