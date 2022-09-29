@@ -289,6 +289,13 @@ void ScrollingAnnouncePane::Polish()
 	layout()->addWidget(commands);
 }
 
+void ScrollingAnnouncePane::showEvent(QShowEvent *event)
+{
+	// override standard announce pane show event so we don't start the clock
+	// let the scrolling text edit tell us when to finish
+	QWidget::showEvent(event);
+}
+
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer(this))
 {
 	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {

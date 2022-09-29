@@ -106,7 +106,6 @@ class AnnouncePane : public EphemeralPane
 public:
 	AnnouncePane(const QString &text,QWidget *parent);
 	AnnouncePane(const Lines &lines,QWidget *parent);
-	virtual void Polish();
 	void AccentColor(const QColor &color) { accentColor=color; }
 	void Duration(const int duration) { clock.setInterval(duration); }
 	const QString BuildParagraph(const Lines &lines);
@@ -120,6 +119,7 @@ protected:
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
+	virtual void Polish();
 	bool event(QEvent *event) override;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
@@ -131,9 +131,10 @@ class ScrollingAnnouncePane : public AnnouncePane
 public:
 	ScrollingAnnouncePane(const QString &text,QWidget *parent);
 	ScrollingAnnouncePane(const Lines &lines,QWidget *parent);
-	void Polish() override;
 protected:
 	ScrollingTextEdit *commands;
+	void Polish() override;
+	void showEvent(QShowEvent *event) override;
 };
 
 class AudioAnnouncePane : public AnnouncePane
@@ -156,7 +157,6 @@ class ImageAnnouncePane : public AnnouncePane
 public:
 	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
 	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent);
-	void Polish() override;
 protected:
 	QGraphicsScene *scene;
 	QGraphicsView *view;
@@ -164,6 +164,7 @@ protected:
 	QGraphicsDropShadowEffect *shadow;
 	QImage image;
 	QGraphicsPixmapItem *pixmap;
+	void Polish() override;
 	void resizeEvent(QResizeEvent *event) override;
 };
 
@@ -173,11 +174,11 @@ class MultimediaAnnouncePane : public AnnouncePane
 public:
 	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
 	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent);
-	void Polish() override;
 protected:
 	MultimediaAnnouncePane(const QString &path,QWidget *parent);
 	AudioAnnouncePane *audioPane;
 	ImageAnnouncePane *imagePane;
+	void Polish() override;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
 };
