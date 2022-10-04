@@ -148,7 +148,8 @@ namespace UI
 
 			connect(&name,&QLineEdit::textChanged,this,&Entry::ValidateName);
 			connect(&description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
-			connect(&path,&QLineEdit::textChanged,this,&Entry::ValidatePath);
+			connect(&path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
+			connect(&random,&QCheckBox::stateChanged,this,QOverload<const int>::of(&Entry::ValidatePath));
 			connect(&message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 			connect(&type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 			connect(&browse,&QPushButton::clicked,this,&Entry::Browse);
@@ -250,7 +251,51 @@ namespace UI
 
 		void Entry::ValidatePath(const QString &text)
 		{
-			Require(&path,text.isEmpty());
+			ValidatePath(text,Random(),Type());
+		}
+
+		void Entry::ValidatePath(const int state)
+		{
+			ValidatePath(Path(),state == Qt::Checked ? true : false,Type());
+		}
+
+		void Entry::ValidatePath(const QString &text,bool random,const enum class Type type)
+		{
+			QFileInfo candidate(text);
+
+			if (!candidate.exists())
+			{
+				Valid(&path,false);
+				return;
+			}
+
+			if (random)
+			{
+				Valid(&path,candidate.isDir());
+				return;
+			}
+			else
+			{
+				if (candidate.isDir())
+				{
+					Valid(&path,false);
+					return;
+				}
+
+				const QString extension=candidate.suffix();
+				switch (type)
+				{
+				case Type::VIDEO:
+					Valid(&path,extension == "mp4");
+					break;
+				case Type::AUDIO:
+					Valid(&path,extension == "mp3");
+					break;
+				default:
+					Valid(&path,false);
+					break;
+				}
+			}
 		}
 
 		void Entry::ValidateMessage()
@@ -260,21 +305,20 @@ namespace UI
 
 		void Entry::Require(QWidget *widget,bool empty)
 		{
-			if (empty)
-				widget->setStyleSheet("background-color: LavenderBlush;");
-			else
-				widget->setStyleSheet("background-color: none;");
+			Valid(widget,!empty);
 		}
 
 		void Entry::TypeChanged(int index)
 		{
-			if (static_cast<enum class Type>(index) == Type::PULSAR)
+			enum class Type currentType=static_cast<enum class Type>(index);
+
+			if (currentType == Type::PULSAR)
 			{
 				Pulsar();
 				return;
 			}
 
-			if (static_cast<enum class Type>(index) == Type::NATIVE)
+			if (currentType == Type::NATIVE)
 			{
 				Native();
 				return;
@@ -288,7 +332,9 @@ namespace UI
 			browse.setEnabled(true);
 			type.setEnabled(true);
 			random.setEnabled(true);
-			message.setEnabled(static_cast<enum class Type>(index) == Type::VIDEO ? false : true);
+			message.setEnabled(currentType == Type::VIDEO ? false : true);
+
+			ValidatePath(Path(),Random(),currentType);
 		}
 
 		void Entry::Native()
@@ -318,7 +364,29 @@ namespace UI
 
 		void Entry::Browse()
 		{
-			QFileDialog::getOpenFileName(this,"Open File","/home","Videos (*.mp4)");
+			static const char *TITLE="Choose File";
+			static const char *HOME="/home";
+			QString candidate;
+			if (Random())
+			{
+				candidate=QFileDialog::getExistingDirectory(this, "Choose Directory",HOME,QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
+			}
+			else
+			{
+				if (Type() == Type::VIDEO)
+					candidate=QFileDialog::getOpenFileName(this,TITLE,HOME,"Videos (*.mp4)");
+				else
+					candidate=QFileDialog::getOpenFileName(this,TITLE,HOME,"Audios (*.mp3)");
+			}
+			if (!candidate.isEmpty()) path.setText(candidate);
+		}
+
+		void Entry::Valid(QWidget *widget,bool valid)
+		{
+			if (valid)
+				widget->setStyleSheet("background-color: none;");
+			else
+				widget->setStyleSheet("background-color: LavenderBlush;");
 		}
 
 		bool Entry::eventFilter(QObject *object,QEvent *event)

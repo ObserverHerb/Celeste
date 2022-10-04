@@ -107,13 +107,16 @@ namespace UI
 			void Native();
 			void Pulsar();
 			void Browse();
+			void Valid(QWidget *widget,bool valid);
+			void ValidatePath(const QString &text,bool random,const enum class Type type);
 			bool eventFilter(QObject *object,QEvent *event) override;
 		signals:
 			void Help(const QString &text);
-		public slots:
+		protected slots:
 			void ValidateName(const QString &text);
 			void ValidateDescription(const QString &text);
 			void ValidatePath(const QString &text);
+			void ValidatePath(const int state);
 			void ValidateMessage();
 		};
 
