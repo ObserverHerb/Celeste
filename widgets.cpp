@@ -104,18 +104,51 @@ namespace UI
 {
 	namespace Commands
 	{
+		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
+			layout(this),
+			list(this),
+			name(this),
+			add("Add",this),
+			remove("Remove",this)
+		{
+			setModal(true);
+			setWindowTitle("Command Aliases");
+
+			setLayout(&layout);
+
+			name.setPlaceholderText("Alias");
+
+			layout.addWidget(&list,0,0,1,3);
+			layout.addWidget(&name,1,0);
+			layout.addWidget(&add,1,1);
+			layout.addWidget(&remove,1,2);
+
+			setSizeGripEnabled(true);
+		}
+
+		void Aliases::Populate(const QStringList &names)
+		{
+			for (const QString &name : names) list.addItem(name);
+		}
+
+		QStringList Aliases::operator()() const
+		{
+			QStringList result;
+			for (int index=0; index < list.count(); index++) result.append(list.item(index)->text());
+			return result;
+		}
+
 		Entry::Entry(QWidget *parent) : layout(this),
 			name(this),
 			description(this),
-			aliases(this),
-			newAlias(this),
-			addAlias("Add &Alias"),
+			openAliases("Aliases",this),
 			path(this),
 			browse("Browse",this),
 			type(this),
 			random("Random",this),
+			protect("Protect",this),
 			message(this),
-			protect("Protect",this)
+			aliases(this)
 		{
 			setLayout(&layout);
 
@@ -126,28 +159,26 @@ namespace UI
 			layout.addWidget(frame);
 
 			name.setPlaceholderText("Command Name");
-			frameLayout->addWidget(&name,0,0,1,3);
-			newAlias.setPlaceholderText("Alias");
-			frameLayout->addWidget(&newAlias,1,0,1,1);
-			frameLayout->addWidget(&addAlias,1,1,1,1);
-			frameLayout->addWidget(&protect,1,2,1,1);
-			frameLayout->addWidget(&aliases,2,0,2,3);
+			frameLayout->addWidget(&name,0,0);
+			frameLayout->addWidget(&openAliases,0,1);
+			frameLayout->addWidget(&protect,0,2);
 			description.setPlaceholderText("Command Description");
-			frameLayout->addWidget(&description,0,3,1,3);
-			frameLayout->addWidget(&path,1,3,1,2);
-			frameLayout->addWidget(&browse,1,5,1,1);
+			frameLayout->addWidget(&description,1,0,1,3);
+			frameLayout->addWidget(&path,2,0,1,2);
+			frameLayout->addWidget(&browse,2,2,1,1);
 			type.addItems({
 				"Video",
 				"Announce",
 				"Pulsar"
 			});
 			type.setPlaceholderText("Native");
-			frameLayout->addWidget(&type,2,3,1,2);
-			frameLayout->addWidget(&random,2,5,1,1);
-			frameLayout->addWidget(&message,3,3,1,3);
+			frameLayout->addWidget(&type,3,0,1,2);
+			frameLayout->addWidget(&random,3,2,1,1);
+			frameLayout->addWidget(&message,4,0,1,3);
 
 			connect(&name,&QLineEdit::textChanged,this,&Entry::ValidateName);
 			connect(&description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
+			connect(&openAliases,&QPushButton::clicked,&aliases,&QDialog::exec);
 			connect(&path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 			connect(&random,&QCheckBox::stateChanged,this,QOverload<const int>::of(&Entry::ValidatePath));
 			connect(&message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
@@ -204,14 +235,12 @@ namespace UI
 
 		QStringList Entry::Aliases() const
 		{
-			QStringList list;
-			for (int index=0; index < aliases.count(); index++) list.append(aliases.item(index)->text());
-			return list;
+			return aliases();
 		}
 
 		void Entry::Aliases(const QStringList &names)
 		{
-			for (const QString &name : names) aliases.addItem(name);
+			aliases.Populate(names);
 		}
 
 		QString Entry::Path() const

@@ -74,6 +74,21 @@ namespace UI
 			PULSAR
 		};
 
+		class Aliases : public QDialog
+		{
+			Q_OBJECT
+		public:
+			Aliases(QWidget *parent);
+			void Populate(const QStringList &names);
+			QStringList operator()() const;
+		protected:
+			QGridLayout layout;
+			QListWidget list;
+			QLineEdit name;
+			QPushButton add;
+			QPushButton remove;
+		};
+
 		class Entry : public QWidget
 		{
 			Q_OBJECT
@@ -93,15 +108,14 @@ namespace UI
 			QGridLayout layout;
 			QLineEdit name;
 			QLineEdit description;
-			QListWidget aliases;
-			QLineEdit newAlias;
-			QPushButton addAlias;
+			QPushButton openAliases;
 			QLineEdit path;
 			QPushButton browse;
 			QComboBox type;
 			QCheckBox random;
 			QCheckBox protect;
 			QTextEdit message;
+			UI::Commands::Aliases aliases;
 			void Require(QWidget *widget,bool empty);
 			void TypeChanged(int index);
 			void Native();
