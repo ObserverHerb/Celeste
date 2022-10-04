@@ -138,7 +138,14 @@ namespace UI
 			return result;
 		}
 
+		void Aliases::hideEvent(QHideEvent *event)
+		{
+			emit Finished();
+		}
+
 		Entry::Entry(QWidget *parent) : layout(this),
+			details(this),
+			header(this),
 			name(this),
 			description(this),
 			openAliases("Aliases",this),
@@ -158,32 +165,44 @@ namespace UI
 			frame->setFrameShape(QFrame::Box);
 			layout.addWidget(frame);
 
+			header.setStyleSheet(QString("font-size: %1pt; font-weight: bold; text-align: left;").arg(header.font().pointSizeF()*1.25));
+			header.setCursor(Qt::PointingHandCursor);
+			header.setFlat(true);
+			frameLayout->addWidget(&header);
+
+			QGridLayout *detailsLayout=new QGridLayout(&details);
+			details.setLayout(detailsLayout);
+			details.setFrameShape(QFrame::NoFrame);
 			name.setPlaceholderText("Command Name");
-			frameLayout->addWidget(&name,0,0);
-			frameLayout->addWidget(&openAliases,0,1);
-			frameLayout->addWidget(&protect,0,2);
+			detailsLayout->addWidget(&name,0,0);
+			detailsLayout->addWidget(&openAliases,0,1);
+			detailsLayout->addWidget(&protect,0,2);
 			description.setPlaceholderText("Command Description");
-			frameLayout->addWidget(&description,1,0,1,3);
-			frameLayout->addWidget(&path,2,0,1,2);
-			frameLayout->addWidget(&browse,2,2,1,1);
+			detailsLayout->addWidget(&description,1,0,1,3);
+			detailsLayout->addWidget(&path,2,0,1,2);
+			detailsLayout->addWidget(&browse,2,2,1,1);
 			type.addItems({
 				"Video",
 				"Announce",
 				"Pulsar"
 			});
 			type.setPlaceholderText("Native");
-			frameLayout->addWidget(&type,3,0,1,2);
-			frameLayout->addWidget(&random,3,2,1,1);
-			frameLayout->addWidget(&message,4,0,1,3);
+			detailsLayout->addWidget(&type,3,0,1,2);
+			detailsLayout->addWidget(&random,3,2,1,1);
+			detailsLayout->addWidget(&message,4,0,1,3);
+			frameLayout->addWidget(&details);
 
+			connect(&header,&QPushButton::clicked,this,&Entry::ToggleFold);
 			connect(&name,&QLineEdit::textChanged,this,&Entry::ValidateName);
+			connect(&name,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::UpdateHeader));
 			connect(&description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
-			connect(&openAliases,&QPushButton::clicked,&aliases,&QDialog::exec);
+			connect(&openAliases,&QPushButton::clicked,&aliases,&QDialog::show);
 			connect(&path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 			connect(&random,&QCheckBox::stateChanged,this,QOverload<const int>::of(&Entry::ValidatePath));
 			connect(&message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 			connect(&type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 			connect(&browse,&QPushButton::clicked,this,&Entry::Browse);
+			connect(&aliases,&Aliases::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
 
 			name.installEventFilter(this);
 			description.installEventFilter(this);
@@ -241,6 +260,7 @@ namespace UI
 		void Entry::Aliases(const QStringList &names)
 		{
 			aliases.Populate(names);
+			UpdateHeader();
 		}
 
 		QString Entry::Path() const
@@ -266,6 +286,27 @@ namespace UI
 		bool Entry::Protected() const
 		{
 			return protect.isChecked();
+		}
+
+		void Entry::UpdateHeader()
+		{
+			UpdateHeader(Name());
+		}
+
+		void Entry::UpdateHeader(const QString &commandName)
+		{
+			QString text=commandName;
+			const QStringList commandAliases=Aliases();
+			if (!commandAliases.isEmpty())
+			{
+				text.append(QString(" (%1)").arg(commandAliases.join(", ")));
+			}
+			header.setText(text);
+		}
+
+		void Entry::ToggleFold()
+		{
+			details.setVisible(!details.isVisible());
 		}
 
 		void Entry::ValidateName(const QString &text)
@@ -442,7 +483,7 @@ namespace UI
 			save("&Save",this),
 			newEntry("&New",this)
 		{
-			setStyleSheet("QFrame { background-color: palette(window); } QListWidget:enabled { background-color: palette(base); }");
+			setStyleSheet("QFrame { background-color: palette(window); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
 
 			setModal(true);
 			setWindowTitle("Commands Editor");

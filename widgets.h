@@ -87,6 +87,9 @@ namespace UI
 			QLineEdit name;
 			QPushButton add;
 			QPushButton remove;
+			void hideEvent(QHideEvent *event) override;
+		signals:
+			void Finished();
 		};
 
 		class Entry : public QWidget
@@ -106,6 +109,8 @@ namespace UI
 			bool Protected() const;
 		protected:
 			QGridLayout layout;
+			QFrame details;
+			QPushButton header;
 			QLineEdit name;
 			QLineEdit description;
 			QPushButton openAliases;
@@ -122,11 +127,14 @@ namespace UI
 			void Pulsar();
 			void Browse();
 			void Valid(QWidget *widget,bool valid);
+			void UpdateHeader();
+			void ToggleFold();
 			void ValidatePath(const QString &text,bool random,const enum class Type type);
 			bool eventFilter(QObject *object,QEvent *event) override;
 		signals:
 			void Help(const QString &text);
 		protected slots:
+			void UpdateHeader(const QString &commandName);
 			void ValidateName(const QString &text);
 			void ValidateDescription(const QString &text);
 			void ValidatePath(const QString &text);
