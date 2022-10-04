@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
+#include <QMenu>
 #include <QDateTime>
 #include <QTimeZone>
 #include <QJsonDocument>
@@ -17,11 +18,12 @@
 const char *SETTINGS_CATEGORY_WINDOW="Window";
 
 Window::Window() : QWidget(nullptr),
-	livePersistentPane(nullptr),
 	background(new QWidget(this)),
+	livePersistentPane(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
-	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000")
+	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
+	configureCommands("Commands",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -40,6 +42,8 @@ Window::Window() : QWidget(nullptr),
 		StringConvert::Integer(backgroundColor.blue()),
 		StringConvert::Integer(backgroundColor.alpha())));
 	layout()->addWidget(background);
+
+	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
 
 	SwapPersistentPane(new StatusPane(this));
 }
@@ -137,6 +141,7 @@ void Window::ShowChat()
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
 	connect(this,&Window::SetAgenda,chatPane,&ChatPane::SetAgenda);
+	connect(chatPane,&ChatPane::ContextMenu,this,&Window::contextMenuEvent);
 }
 
 void Window::PlayVideo(const QString &path)
@@ -333,6 +338,14 @@ const QSize Window::ScreenThird()
 	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
 	int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
 	return {shortestSide,shortestSide};
+}
+
+void Window::contextMenuEvent(QContextMenuEvent *event)
+{
+	QMenu menu(this);
+	menu.addAction(&configureCommands);
+	menu.exec(event->globalPos());
+	event->accept();
 }
 
 void Window::closeEvent(QCloseEvent *event)

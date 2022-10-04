@@ -1,12 +1,13 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QtConcurrent>
+#include <QAction>
 #include <queue>
 #include <unordered_map>
 #include "globals.h"
 #include "panes.h"
 #include "settings.h"
+#include "widgets.h"
 
 class Window : public QWidget
 {
@@ -14,16 +15,18 @@ class Window : public QWidget
 public:
 	Window();
 protected:
-	PersistentPane *livePersistentPane;
 	QWidget *background;
+	PersistentPane *livePersistentPane;
+	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
+	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingAccentColor;
-	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
-	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
+	QAction configureCommands;
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
+	void contextMenuEvent(QContextMenuEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
 signals:
 	void Print(const QString &message);
@@ -32,6 +35,7 @@ signals:
 	void RefreshChat();
 	void SuppressMusic();
 	void RestoreMusic();
+	void ConfigureCommands();
 	void CloseRequested(QCloseEvent *event);
 public slots:
 	void ShowChat();

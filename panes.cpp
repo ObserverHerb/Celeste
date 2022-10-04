@@ -70,6 +70,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	chat->setFrameStyle(QFrame::NoFrame);
 	chat->setCursorWidth(0);
 	layout()->addWidget(chat);
+	connect(chat,&PinnedTextEdit::ContextMenu,this,&ChatPane::ContextMenu);
 
 	status=new QLabel(this);
 	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));

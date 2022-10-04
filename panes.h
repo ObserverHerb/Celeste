@@ -63,6 +63,8 @@ protected:
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
+signals:
+	void ContextMenu(QContextMenuEvent *event);
 public slots:
 	void Refresh();
 	void Print(const QString &text) override;

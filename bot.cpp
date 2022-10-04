@@ -9,6 +9,10 @@
 #include "globals.h"
 
 const char *COMMANDS_LIST_FILENAME="commands.json";
+const char *COMMAND_TYPE_NATIVE="native";
+const char *COMMAND_TYPE_AUDIO="announce";
+const char *COMMAND_TYPE_VIDEO="video";
+const char *COMMAND_TYPE_PULSAR="pulsar";
 const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
 const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
 const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
@@ -44,10 +48,10 @@ const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
 
 const std::unordered_map<QString,CommandType> COMMAND_TYPES={
-	{"native",CommandType::NATIVE},
-	{"video",CommandType::VIDEO},
-	{"announce",CommandType::AUDIO},
-	{"pulsar",CommandType::PULSAR}
+	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
+	{COMMAND_TYPE_VIDEO,CommandType::VIDEO},
+	{COMMAND_TYPE_AUDIO,CommandType::AUDIO},
+	{COMMAND_TYPE_PULSAR,CommandType::PULSAR}
 };
 
 std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconURLs;
@@ -173,11 +177,7 @@ bool Bot::LoadDynamicCommands()
 				const QString alias=jsonValue.toString();
 				commands[alias]={
 					alias,
-					commands.at(name).Description(),
-					commands.at(name).Type(),
-					commands.at(name).Random(),
-					commands.at(name).Path(),
-					commands.at(name).Message(),
+					&commands.at(name)
 				};
 				if (commands.at(alias).Type() == CommandType::NATIVE) nativeCommandFlags.insert({alias,nativeCommandFlags.at(name)});
 			}
@@ -185,6 +185,16 @@ bool Bot::LoadDynamicCommands()
 	}
 
 	return true;
+}
+
+void Bot::SaveDynamicCommands(const Command::Lookup &entries)
+{
+
+}
+
+const Command::Lookup& Bot::Commands() const
+{
+	return commands;
 }
 
 bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather than return a bool
@@ -695,12 +705,7 @@ void Bot::DispatchRandomVideo(Command command)
 
 void Bot::DispatchCommandList()
 {
-	std::vector<std::pair<QString,QString>> descriptions;
-	for (const std::pair<const QString,Command> &command : commands)
-	{
-		if (!command.second.Protected()) descriptions.push_back({command.first,command.second.Description()});
-	}
-	emit ShowCommandList(descriptions);
+
 }
 
 void Bot::DispatchFollowage(const QString &name)

@@ -35,15 +35,17 @@ class Bot : public QObject
 {
 	Q_OBJECT
 public:
+	using NativeCommandFlagLookup=std::unordered_map<QString,NativeCommandFlag>;
 	Bot(Security &security,QObject *parent=nullptr);
 	Bot(const Bot& other)=delete;
 	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
 	void EmoteOnly(bool enable);
 	void SaveViewerAttributes(bool resetWelcomes);
+	const Command::Lookup& Commands() const;
 protected:
-	std::unordered_map<QString,Command> commands;
-	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
+	Command::Lookup commands;
+	NativeCommandFlagLookup nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
 	Music::Player *vibeKeeper;
 	QMediaPlayer *roaster;
@@ -141,4 +143,5 @@ public slots:
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void SuppressMusic();
 	void RestoreMusic();
+	void SaveDynamicCommands(const Command::Lookup &entries);
 };

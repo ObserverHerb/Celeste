@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "window.h"
+#include "widgets.h"
 #include "channel.h"
 #include "bot.h"
 #include "log.h"
@@ -84,6 +85,9 @@ int main(int argc,char *argv[])
 #else
 		Window window;
 #endif
+		Dialog::Commands::Dialog configureCommands(celeste.Commands(),&window);
+
+		configureCommands.connect(&configureCommands,QOverload<const Command::Lookup&>::of(&Dialog::Commands::Dialog::Save),&celeste,&Bot::SaveDynamicCommands);
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;
@@ -182,6 +186,9 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
+		window.connect(&window,&Window::ConfigureCommands,[&configureCommands]() {
+			configureCommands.exec();
+		});
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protected()) {
 				QMessageBox emoteOnlyDialog;
