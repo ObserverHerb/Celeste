@@ -54,7 +54,7 @@ signals:
 	void Finished();
 };
 
-namespace Dialog
+namespace UI
 {
 	namespace Commands
 	{

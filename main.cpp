@@ -85,9 +85,9 @@ int main(int argc,char *argv[])
 #else
 		Window window;
 #endif
-		Dialog::Commands::Dialog configureCommands(celeste.Commands(),&window);
+		UI::Commands::Dialog configureCommands(celeste.Commands(),&window);
 
-		configureCommands.connect(&configureCommands,QOverload<const Command::Lookup&>::of(&Dialog::Commands::Dialog::Save),&celeste,&Bot::SaveDynamicCommands);
+		configureCommands.connect(&configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,&Bot::SaveDynamicCommands);
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;

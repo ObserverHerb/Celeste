@@ -100,7 +100,7 @@ void ScrollingTextEdit::hideEvent(QHideEvent *event)
 	QTextEdit::hideEvent(event);
 }
 
-namespace Dialog
+namespace UI
 {
 	namespace Commands
 	{
