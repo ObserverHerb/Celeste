@@ -534,27 +534,24 @@ namespace UI
 			setLayout(mainLayout);
 
 			QWidget *upperContent=new QWidget(this);
-			QHBoxLayout *upperLayout=new QHBoxLayout(this);
+			QHBoxLayout *upperLayout=new QHBoxLayout(upperContent);
 			upperContent->setLayout(upperLayout);
 			mainLayout->addWidget(upperContent);
 			
-			QPalette palette=qApp->palette();
-			palette.setColor(QPalette::Window,qApp->palette().color(QPalette::Active,QPalette::Base));
 			QScrollArea *scroll=new QScrollArea(this);
 			scroll->setWidgetResizable(true);
 			entriesFrame.setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed));
-			entriesFrame.setPalette(palette);
+			entriesFrame.setObjectName("commands");
 			scroll->setWidget(&entriesFrame);
 			scroll->setSizePolicy(QSizePolicy(QSizePolicy::Expanding,QSizePolicy::MinimumExpanding));
 			upperLayout->addWidget(scroll);
 
 			QVBoxLayout *scrollLayout=new QVBoxLayout(&entriesFrame);
 			entriesFrame.setLayout(scrollLayout);
-			palette.setColor(QPalette::Window,qApp->palette().color(QPalette::Inactive,QPalette::AlternateBase));
 			PopulateEntries(commands,scrollLayout);
 
 			QWidget *rightPane=new QWidget(this);
-			QGridLayout *rightLayout=new QGridLayout(this);
+			QGridLayout *rightLayout=new QGridLayout(rightPane);
 			rightPane->setLayout(rightLayout);
 			help.setEnabled(false);
 			help.setSizePolicy(QSizePolicy(QSizePolicy::Preferred,QSizePolicy::MinimumExpanding));
@@ -568,7 +565,7 @@ namespace UI
 			upperLayout->addWidget(rightPane);
 
 			QWidget *lowerContent=new QWidget(this);
-			QHBoxLayout *lowerLayout=new QHBoxLayout(this);
+			QHBoxLayout *lowerLayout=new QHBoxLayout(lowerContent);
 			lowerContent->setLayout(lowerLayout);
 			mainLayout->addWidget(lowerContent);
 
