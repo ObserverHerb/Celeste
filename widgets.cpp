@@ -5,6 +5,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFileDialog>
+#include <QVideoWidget>
+#include <QScreen>
 #include "globals.h"
 #include "widgets.h"
 
@@ -102,6 +104,64 @@ void ScrollingTextEdit::hideEvent(QHideEvent *event)
 
 namespace UI
 {
+	void Valid(QWidget *widget,bool valid)
+	{
+		if (valid)
+			widget->setStyleSheet("background-color: none;");
+		else
+			widget->setStyleSheet("background-color: LavenderBlush;");
+	}
+
+	void Require(QWidget *widget,bool empty)
+	{
+		Valid(widget,!empty);
+	}
+
+	QString OpenVideo(QWidget *parent,QString initialPath)
+	{
+		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Text::DIRECTORY_HOME : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO)));
+	}
+
+	QString OpenAudio(QWidget *parent,QString initialPath)
+	{
+		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Text::DIRECTORY_HOME : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
+	}
+
+	void PlayVideo(QWidget *parent,const QString &filename)
+	{
+		QDialog *dialog=new QDialog(parent);
+		dialog->setWindowTitle(filename);
+		dialog->resize(720,480);
+		QGridLayout *layout=new QGridLayout(dialog);
+		layout->setContentsMargins(0,0,0,0);
+		dialog->setLayout(layout);
+		QVideoWidget *output=new QVideoWidget(dialog);
+		layout->addWidget(output);
+		dialog->open();
+
+		QMediaPlayer *player=new QMediaPlayer(dialog);
+		player->setVideoOutput(output);
+		parent->connect(player,&QMediaPlayer::mediaStatusChanged,parent,[parent,player,dialog](QMediaPlayer::MediaStatus status) {
+			if (status == QMediaPlayer::LoadedMedia) player->play();
+			if (status == QMediaPlayer::UnknownMediaStatus || status == QMediaPlayer::InvalidMedia || status == QMediaPlayer::EndOfMedia) { dialog->close(); }
+		});
+		parent->connect(dialog,&QDialog::finished,parent,[dialog,player]() {
+			player->stop();
+			dialog->deleteLater();
+		});
+		player->setMedia(QUrl::fromLocalFile(filename));
+	}
+
+	void PlaySound(QWidget *parent,const QString &filename)
+	{
+		QMediaPlayer *player=new QMediaPlayer(parent);
+		player->connect(player,&QMediaPlayer::mediaStatusChanged,player,[parent,player](QMediaPlayer::MediaStatus status) {
+			if (status == QMediaPlayer::LoadedMedia) player->play();
+			if (status == QMediaPlayer::UnknownMediaStatus || status == QMediaPlayer::InvalidMedia || status == QMediaPlayer::EndOfMedia) player->deleteLater();
+		});
+		player->setMedia(QUrl::fromLocalFile(filename));
+	}
+
 	namespace Commands
 	{
 		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
@@ -150,7 +210,7 @@ namespace UI
 			description(this),
 			openAliases("Aliases",this),
 			path(this),
-			browse("Browse",this),
+			browse(Text::BROWSE,this),
 			type(this),
 			random("Random",this),
 			protect("Protect",this),
@@ -356,10 +416,10 @@ namespace UI
 				switch (type)
 				{
 				case Type::VIDEO:
-					Valid(&path,extension == "mp4");
+					Valid(&path,extension == Text::FILE_TYPE_VIDEO);
 					break;
 				case Type::AUDIO:
-					Valid(&path,extension == "mp3");
+					Valid(&path,extension == Text::FILE_TYPE_AUDIO);
 					break;
 				default:
 					Valid(&path,false);
@@ -371,11 +431,6 @@ namespace UI
 		void Entry::ValidateMessage()
 		{
 			if (Type() == Type::AUDIO) Require(&message,Message().isEmpty());
-		}
-
-		void Entry::Require(QWidget *widget,bool empty)
-		{
-			Valid(widget,!empty);
 		}
 
 		void Entry::TypeChanged(int index)
@@ -434,29 +489,19 @@ namespace UI
 
 		void Entry::Browse()
 		{
-			static const char *TITLE="Choose File";
-			static const char *HOME="/home";
 			QString candidate;
 			if (Random())
 			{
-				candidate=QFileDialog::getExistingDirectory(this, "Choose Directory",HOME,QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
+				candidate=QFileDialog::getExistingDirectory(this, Text::DIALOG_TITLE_DIRECTORY,Text::DIRECTORY_HOME,QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
 			}
 			else
 			{
 				if (Type() == Type::VIDEO)
-					candidate=QFileDialog::getOpenFileName(this,TITLE,HOME,"Videos (*.mp4)");
+					candidate=OpenVideo(this);
 				else
-					candidate=QFileDialog::getOpenFileName(this,TITLE,HOME,"Audios (*.mp3)");
+					candidate=OpenAudio(this);
 			}
 			if (!candidate.isEmpty()) path.setText(candidate);
-		}
-
-		void Entry::Valid(QWidget *widget,bool valid)
-		{
-			if (valid)
-				widget->setStyleSheet("background-color: none;");
-			else
-				widget->setStyleSheet("background-color: LavenderBlush;");
 		}
 
 		bool Entry::eventFilter(QObject *object,QEvent *event)
@@ -483,7 +528,7 @@ namespace UI
 			save("&Save",this),
 			newEntry("&New",this)
 		{
-			setStyleSheet("QFrame { background-color: palette(window); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
+			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#commands { background-color: palette(base); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
 
 			setModal(true);
 			setWindowTitle("Commands Editor");
@@ -652,6 +697,219 @@ namespace UI
 			}
 
 			emit Save(commands);
+		}
+	}
+
+	namespace Options
+	{
+		namespace Categories
+		{
+			Category::Category(QWidget *parent,const QString &name) : QFrame(parent),
+				layout(this),
+				header(this),
+				details(this),
+				detailsLayout(&details)
+			{
+				setLayout(&layout);
+				setFrameShape(QFrame::Box);
+
+				header.setStyleSheet(QString("font-size: %1pt; font-weight: bold; text-align: left;").arg(header.font().pointSizeF()*1.25));
+				header.setCursor(Qt::PointingHandCursor);
+				header.setFlat(true);
+				header.setText(name);
+				layout.addWidget(&header);
+				layout.addWidget(&details);
+
+				connect(&header,&QPushButton::clicked,this,&Category::ToggleDetails);
+			}
+
+			QLabel* Category::Label(const QString &text)
+			{
+				QLabel *label=new QLabel(text+":",this);
+				label->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+				return label;
+			}
+
+			void Category::Rows(std::vector<Row> widgets)
+			{
+				int row=0;
+				for (int row=0; row < widgets.size(); row++)
+				{
+					Row &candidate=widgets[row];
+					detailsLayout.addWidget(candidate.first,row,0);
+					if (candidate.third)
+					{
+						detailsLayout.addWidget(candidate.second,row,1);
+						if (candidate.fourth)
+						{
+							detailsLayout.addWidget(candidate.third,row,2);
+							detailsLayout.addWidget(candidate.fourth,row,3);
+						}
+						else
+						{
+							detailsLayout.addWidget(candidate.third,row,2,1,2);
+						}
+					}
+					else
+					{
+						detailsLayout.addWidget(candidate.second,row,1,1,3);
+					}
+				}
+			}
+
+			void Category::ToggleDetails()
+			{
+				details.setVisible(!details.isVisible());
+			}
+
+			void Category::PickColor(QLineEdit &control)
+			{
+				QColor color=QColorDialog::getColor(control.text(),this,QStringLiteral("Choose a Color"),QColorDialog::ShowAlphaChannel);
+				if (color.isValid()) control.setText(color.name(QColor::HexArgb));
+			}
+
+			Channel::Channel(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Channel")),
+				name(this),
+				protection(this)
+
+			{
+				connect(&name,&QLineEdit::textChanged,this,&Channel::ValidateName);
+
+				name.setText(settings.name);
+				protection.setChecked(settings.protection);
+
+				Rows({
+					{Label(QStringLiteral("Name")),&name},
+					{Label(QStringLiteral("Protection")),&protection}
+				});
+			}
+
+			void Channel::ValidateName(const QString &text)
+			{
+				Require(&name,text.isEmpty());
+			}
+
+			Window::Window(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Main Window")),
+				backgroundColor(this),
+				selectBackgroundColor(Text::CHOOSE,this),
+				accentColor(this),
+				selectAccentColor(Text::CHOOSE,this),
+				width(this),
+				height(this)
+			{
+				connect(&selectBackgroundColor,&QPushButton::clicked,this,[this]() { PickColor(backgroundColor); });
+				connect(&selectAccentColor,&QPushButton::clicked,this,[this]() { PickColor(accentColor); });
+
+				backgroundColor.setText(settings.backgroundColor);
+				accentColor.setText(settings.accentColor);
+				QRect desktop=QGuiApplication::primaryScreen()->availableVirtualGeometry();
+				width.setRange(1,desktop.width());
+				width.setValue(static_cast<QSize>(settings.dimensions).width());
+				height.setRange(1,desktop.height());
+				height.setValue(static_cast<QSize>(settings.dimensions).height());
+
+				Rows({
+					{Label(QStringLiteral("Background Color")),&backgroundColor,&selectBackgroundColor},
+					{Label(QStringLiteral("Accent Color")),&accentColor,&selectAccentColor},
+					{Label(QStringLiteral("Width")),&width},
+					{Label(QStringLiteral("Height")),&height}
+				});
+			}
+
+			Bot::Bot(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Bot Core")),
+				arrivalSound(this),
+				selectArrivalSound(Text::BROWSE,this),
+				previewArrivalSound(Text::PREVIEW,this),
+				portraitVideo(this),
+				selectPortraitVideo(Text::BROWSE,this),
+				previewPortraitVideo(Text::PREVIEW,this)
+			{
+				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
+				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
+				connect(&previewArrivalSound,&QPushButton::clicked,this,&Bot::PlayArrivalSound);
+				connect(&portraitVideo,&QLineEdit::textChanged,this,&Bot::ValidatePortraitVideo);
+				connect(&selectPortraitVideo,&QPushButton::clicked,this,&Bot::OpenPortraitVideo);
+				connect(&previewPortraitVideo,&QPushButton::clicked,this,&Bot::PlayPortraitVideo);
+
+				arrivalSound.setText(settings.arrivalSound);
+				portraitVideo.setText(settings.portraitVideo);
+
+				Rows({
+					{Label(QStringLiteral("Arrival Announcement Audio")),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
+					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo}
+				});
+			}
+
+			void Bot::OpenArrivalSound()
+			{
+				QString candidate=OpenAudio(this,arrivalSound.text());
+				if (!candidate.isEmpty()) arrivalSound.setText(candidate);
+			}
+
+			void Bot::PlayArrivalSound()
+			{
+				const QString filename=arrivalSound.text();
+				PlaySound(this,QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
+			}
+
+			void Bot::OpenPortraitVideo()
+			{
+				QString candidate=OpenVideo(this,portraitVideo.text());
+				if (!candidate.isEmpty()) portraitVideo.setText(candidate);
+			}
+
+			void Bot::PlayPortraitVideo()
+			{
+				PlayVideo(this,portraitVideo.text());
+			}
+
+			void Bot::ValidateArrivalSound(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && (candidate.isDir() || candidate.suffix() == Text::FILE_TYPE_AUDIO);
+				Valid(&arrivalSound,valid);
+				previewArrivalSound.setEnabled(valid);
+			}
+
+			void Bot::ValidatePortraitVideo(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
+				Valid(&portraitVideo,valid);
+				previewPortraitVideo.setEnabled(valid);
+			}
+		}
+
+		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
+			entriesFrame(this),
+			scrollLayout(nullptr)
+		{
+			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#options { background-color: palette(base); }");
+
+			setModal(true);
+			setWindowTitle("Options");
+
+			QGridLayout *layout=new QGridLayout(this);
+			setLayout(layout);
+
+			QScrollArea *scroll=new QScrollArea(this);
+			scroll->setWidgetResizable(true);
+			entriesFrame.setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed));
+			entriesFrame.setObjectName("options");
+			scroll->setWidget(&entriesFrame);
+			scroll->setSizePolicy(QSizePolicy(QSizePolicy::Expanding,QSizePolicy::MinimumExpanding));
+			layout->addWidget(scroll);
+
+			scrollLayout=new QVBoxLayout(&entriesFrame);
+			scrollLayout->setAlignment(Qt::AlignBottom);
+			entriesFrame.setLayout(scrollLayout);
+
+			setSizeGripEnabled(true);
+		}
+
+		void Dialog::AddCategory(Categories::Category *category)
+		{
+			scrollLayout->addWidget(category);
 		}
 	}
 }

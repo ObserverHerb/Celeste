@@ -43,6 +43,8 @@ public:
 	void EmoteOnly(bool enable);
 	void SaveViewerAttributes(bool resetWelcomes);
 	const Command::Lookup& Commands() const;
+	ApplicationSetting& ArrivalSound();
+	ApplicationSetting& PortraitVideo();
 protected:
 	Command::Lookup commands;
 	NativeCommandFlagLookup nativeCommandFlags;

@@ -9,10 +9,12 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QSpinBox>
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QScrollArea>
+#include <QColorDialog>
 #include <QDialogButtonBox>
 #include <QSizeGrip>
 #include <QDialog>
@@ -56,6 +58,25 @@ signals:
 
 namespace UI
 {
+	void Valid(QWidget *widget,bool valid);
+	void Require(QWidget *widget,bool empty);
+	QString OpenVideo(QWidget *parent,QString initialPath=QString());
+	QString OpenAudio(QWidget *parent,QString initialPath=QString());
+	void PlayVideo(QWidget *parent,const QString &filename);
+	void PlaySound(QWidget *parent,const QString &filename);
+
+	namespace Text
+	{
+		inline const char *BROWSE="Browse";
+		inline const char *CHOOSE="Pick";
+		inline const char *PREVIEW="Preview";
+		inline const char *DIALOG_TITLE_FILE="Choose File";
+		inline const char *DIALOG_TITLE_DIRECTORY="Choose Directory";
+		inline const char *FILE_TYPE_VIDEO="mp4";
+		inline const char *FILE_TYPE_AUDIO="mp3";
+		inline const char *DIRECTORY_HOME="/home";
+	}
+
 	namespace Commands
 	{
 		enum class Type
@@ -121,12 +142,10 @@ namespace UI
 			QCheckBox protect;
 			QTextEdit message;
 			UI::Commands::Aliases aliases;
-			void Require(QWidget *widget,bool empty);
 			void TypeChanged(int index);
 			void Native();
 			void Pulsar();
 			void Browse();
-			void Valid(QWidget *widget,bool valid);
 			void UpdateHeader();
 			void ToggleFold();
 			void ValidatePath(const QString &text,bool random,const enum class Type type);
@@ -165,5 +184,113 @@ namespace UI
 		public slots:
 			void FilterChanged(int index);
 		};
+	}
+
+	namespace Options
+	{
+		namespace Categories
+		{
+			class Category : public QFrame
+			{
+				Q_OBJECT
+			public:
+				Category(QWidget *parent,const QString &name);
+			protected:
+				struct Row
+				{
+					Row(QWidget *first,QWidget *second,QWidget *third=nullptr,QWidget *fourth=nullptr) : first(first), second(second), third(third), fourth(fourth) { }
+					QWidget *first;
+					QWidget *second;
+					QWidget *third;
+					QWidget *fourth;
+				};
+				QPushButton header;
+				QFrame details;
+				QGridLayout detailsLayout;
+				QLabel* Label(const QString &text);
+				void Rows(std::vector<Row> widgets);
+			private:
+				QVBoxLayout layout;
+			protected slots:
+				void ToggleDetails();
+				void PickColor(QLineEdit &control);
+			};
+
+			class Channel : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting &name;
+					ApplicationSetting &protection;
+				};
+				Channel(QWidget *parent,Settings settings);
+			protected:
+				QLineEdit name;
+				QCheckBox protection;
+			protected slots:
+				void ValidateName(const QString &text);
+			};
+
+			class Window : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting &backgroundColor;
+					ApplicationSetting &accentColor;
+					ApplicationSetting &dimensions;
+				};
+				Window(QWidget *parent,Settings settings);
+			protected:
+				QLineEdit backgroundColor;
+				QPushButton selectBackgroundColor;
+				QLineEdit accentColor;
+				QPushButton selectAccentColor;
+				QSpinBox width;
+				QSpinBox height;
+			};
+
+			class Bot : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					//ApplicationSetting &vibePlaylist; // TODO: implement this when the decision as to how I will be changing playlists for Qt 6 is made
+					ApplicationSetting &arrivalSound;
+					ApplicationSetting &portraitVideo;
+				};
+				Bot(QWidget *parent,Settings settings);
+			protected:
+				QLineEdit arrivalSound;
+				QPushButton selectArrivalSound;
+				QPushButton previewArrivalSound;
+				QLineEdit portraitVideo;
+				QPushButton selectPortraitVideo;
+				QPushButton previewPortraitVideo;
+			protected slots:
+				void OpenArrivalSound();
+				void PlayArrivalSound();
+				void OpenPortraitVideo();
+				void PlayPortraitVideo();
+				void ValidateArrivalSound(const QString &path);
+				void ValidatePortraitVideo(const QString &path);
+			};
+		}
+
+		class Dialog : public QDialog
+		{
+			Q_OBJECT
+		public:
+			Dialog(QWidget *parent);
+			void AddCategory(Categories::Category *category);
+		protected:
+			QWidget entriesFrame;
+			QVBoxLayout *scrollLayout;
+		};
+
 	}
 }

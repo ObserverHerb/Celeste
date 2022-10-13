@@ -316,3 +316,13 @@ bool Channel::Protected() const
 {
 	return settingProtect;
 }
+
+ApplicationSetting& Channel::Name()
+{
+	return settingChannel;
+}
+
+ApplicationSetting& Channel::Protection()
+{
+	return settingProtect;
+}

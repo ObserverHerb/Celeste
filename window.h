@@ -14,6 +14,9 @@ class Window : public QWidget
 	Q_OBJECT
 public:
 	Window();
+	ApplicationSetting& BackgroundColor();
+	ApplicationSetting& AccentColor();
+	ApplicationSetting& Dimensions();
 protected:
 	QWidget *background;
 	PersistentPane *livePersistentPane;
@@ -22,6 +25,7 @@ protected:
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingAccentColor;
+	QAction configureOptions;
 	QAction configureCommands;
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
@@ -35,6 +39,7 @@ signals:
 	void RefreshChat();
 	void SuppressMusic();
 	void RestoreMusic();
+	void ConfigureOptions();
 	void ConfigureCommands();
 	void CloseRequested(QCloseEvent *event);
 public slots:

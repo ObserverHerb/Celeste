@@ -23,6 +23,7 @@ Window::Window() : QWidget(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
+	configureOptions("Options",this),
 	configureCommands("Commands",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
@@ -43,6 +44,7 @@ Window::Window() : QWidget(nullptr),
 		StringConvert::Integer(backgroundColor.alpha())));
 	layout()->addWidget(background);
 
+	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
 	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
 
 	SwapPersistentPane(new StatusPane(this));
@@ -340,9 +342,25 @@ const QSize Window::ScreenThird()
 	return {shortestSide,shortestSide};
 }
 
+ApplicationSetting& Window::BackgroundColor()
+{
+	return settingBackgroundColor;
+}
+
+ApplicationSetting& Window::AccentColor()
+{
+	return settingAccentColor;
+}
+
+ApplicationSetting& Window::Dimensions()
+{
+	return settingWindowSize;
+}
+
 void Window::contextMenuEvent(QContextMenuEvent *event)
 {
 	QMenu menu(this);
+	menu.addAction(&configureOptions);
 	menu.addAction(&configureCommands);
 	menu.exec(event->globalPos());
 	event->accept();

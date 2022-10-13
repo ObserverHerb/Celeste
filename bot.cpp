@@ -402,7 +402,7 @@ void Bot::DispatchArrival(const QString &login)
 		{
 			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 			connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
-				emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+				emit AnnounceArrival(viewer.DisplayName(),profileImage,QFileInfo(settingArrivalSound).isDir() ? File::List(settingArrivalSound).Random() : settingArrivalSound);
 				viewers.at(viewer.Name()).welcomed=true;
 				SaveViewerAttributes(false);
 			});
@@ -943,4 +943,14 @@ void Bot::StreamCategory(const QString &category)
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
+}
+
+ApplicationSetting& Bot::ArrivalSound()
+{
+	return settingArrivalSound;
+}
+
+ApplicationSetting& Bot::PortraitVideo()
+{
+	return settingPortraitVideo;
 }

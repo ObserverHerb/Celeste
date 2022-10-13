@@ -85,6 +85,21 @@ int main(int argc,char *argv[])
 #else
 		Window window;
 #endif
+
+		UI::Options::Dialog configureOptions(&window);
+		configureOptions.AddCategory(new UI::Options::Categories::Channel(&configureOptions,{
+			.name=channel->Name(),
+			.protection=channel->Protection()
+		}));
+		configureOptions.AddCategory(new UI::Options::Categories::Window(&configureOptions,{
+			.backgroundColor=window.BackgroundColor(),
+			.accentColor=window.AccentColor(),
+			.dimensions=window.Dimensions()
+		}));
+		configureOptions.AddCategory(new UI::Options::Categories::Bot(&configureOptions,{
+			.arrivalSound=celeste.ArrivalSound(),
+			.portraitVideo=celeste.PortraitVideo()
+		}));
 		UI::Commands::Dialog configureCommands(celeste.Commands(),&window);
 
 		configureCommands.connect(&configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,&Bot::SaveDynamicCommands);
@@ -186,6 +201,9 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
+		window.connect(&window,&Window::ConfigureOptions,[&configureOptions]() {
+			configureOptions.exec();
+		});
 		window.connect(&window,&Window::ConfigureCommands,[&configureCommands]() {
 			configureCommands.exec();
 		});
