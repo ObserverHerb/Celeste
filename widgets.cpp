@@ -357,10 +357,7 @@ namespace UI
 		{
 			QString text=commandName;
 			const QStringList commandAliases=Aliases();
-			if (!commandAliases.isEmpty())
-			{
-				text.append(QString(" (%1)").arg(commandAliases.join(", ")));
-			}
+			if (!commandAliases.isEmpty()) text.append(QString(" (%1)").arg(commandAliases.join(", ")));
 			header.setText(text);
 		}
 
