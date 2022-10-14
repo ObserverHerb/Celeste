@@ -569,11 +569,12 @@ namespace UI
 			lowerContent->setLayout(lowerLayout);
 			mainLayout->addWidget(lowerContent);
 
-			connect(&save,&QPushButton::clicked,this,QOverload<>::of(&Dialog::Save));
 			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
-			connect(&discard,&QPushButton::clicked,this,&Dialog::reject);
 			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
 			buttons.addButton(&newEntry,QDialogButtonBox::ActionRole);
+			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
+			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
+			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
 			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);

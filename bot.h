@@ -2,6 +2,9 @@
 
 #include <QObject>
 #include <QString>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 #include <QDateTime>
@@ -43,6 +46,8 @@ public:
 	void EmoteOnly(bool enable);
 	void SaveViewerAttributes(bool resetWelcomes);
 	const Command::Lookup& Commands() const;
+	Command::Lookup DeserializeCommands(const QJsonDocument &json);
+	QJsonDocument LoadDynamicCommands();
 	ApplicationSetting& ArrivalSound();
 	ApplicationSetting& PortraitVideo();
 protected:
@@ -89,7 +94,6 @@ protected:
 	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
-	bool LoadDynamicCommands();
 	bool LoadViewerAttributes();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
@@ -145,5 +149,6 @@ public slots:
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void SuppressMusic();
 	void RestoreMusic();
-	void SaveDynamicCommands(const Command::Lookup &entries);
+	QJsonDocument SerializeCommands(const Command::Lookup &entries);
+	bool SaveDynamicCommands(const QJsonDocument &json);
 };

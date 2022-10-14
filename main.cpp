@@ -21,6 +21,7 @@
 
 const char *ORGANIZATION_NAME="Sky-Meyg";
 const char *APPLICATION_NAME="Celeste";
+const char *SUBSYSTEM="initialization";
 
 enum
 {
@@ -100,9 +101,6 @@ int main(int argc,char *argv[])
 			.arrivalSound=celeste.ArrivalSound(),
 			.portraitVideo=celeste.PortraitVideo()
 		}));
-		UI::Commands::Dialog configureCommands(celeste.Commands(),&window);
-
-		configureCommands.connect(&configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,&Bot::SaveDynamicCommands);
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;
@@ -204,9 +202,6 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::ConfigureOptions,[&configureOptions]() {
 			configureOptions.exec();
 		});
-		window.connect(&window,&Window::ConfigureCommands,[&configureCommands]() {
-			configureCommands.exec();
-		});
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protected()) {
 				QMessageBox emoteOnlyDialog;
@@ -232,7 +227,36 @@ int main(int argc,char *argv[])
 		if (!server.Listen()) throw std::runtime_error("Could not start server!");
 		pulsar.LoadTriggers();
 		window.show();
-		channel->Connect();
+
+		UI::Commands::Dialog *configureCommands=nullptr;
+		try
+		{
+			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
+			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
+				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to disk.";
+				if (!celeste.SaveDynamicCommands(celeste.SerializeCommands(commands)))
+				{
+					QMessageBox failureDialog(&window);
+					failureDialog.setWindowTitle("Save Commands Failed");
+					failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
+					failureDialog.setIcon(QMessageBox::Warning);
+					failureDialog.setStandardButtons(QMessageBox::Ok);
+					failureDialog.setDefaultButton(QMessageBox::Ok);
+					failureDialog.exec();
+					log.Write(ERROR_COMMANDS_LIST_FILE,"save commands",SUBSYSTEM);
+				}
+			});
+			window.connect(&window,&Window::ConfigureCommands,[configureCommands]() {
+				configureCommands->open();
+			});
+
+			channel->Connect();
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			log.Write(exception.what(),"load commands",SUBSYSTEM);
+		}
 
 		return application.exec();
 	}

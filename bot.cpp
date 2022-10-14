@@ -1,7 +1,5 @@
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
+
 #include <QApplication>
 #include <QTimeZone>
 #include <QNetworkReply>
@@ -23,6 +21,7 @@ const char *JSON_KEY_COMMAND_ALIASES="aliases";
 const char *JSON_KEY_COMMAND_DESCRIPTION="description";
 const char *JSON_KEY_COMMAND_TYPE="type";
 const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
+const char *JSON_KEY_COMMAND_PROTECTED="protected";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
 const char *JSON_KEY_DATA="data";
@@ -46,6 +45,9 @@ const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
 const char16_t *CHAT_TAG_BADGES=u"badges";
 const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
+const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_CREATE="Failed to create command list file: %1";
+const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN="Failed to open command list file: %1";
+const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_PARSE="Failed to parse command list file: %1";
 
 const std::unordered_map<QString,CommandType> COMMAND_TYPES={
 	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
@@ -107,7 +109,6 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	DeclareCommand({settingCommandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
 	DeclareCommand({settingCommandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
 	DeclareCommand({settingCommandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
-	if (!LoadDynamicCommands()) emit Print("Failed to load commands"); // do this after creating native commands or aliases to native commands won't work
 	LoadViewerAttributes();
 
 	if (settingRoasts) LoadRoasts();
@@ -126,27 +127,26 @@ void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
 	nativeCommandFlags.insert({{command.Name(),flag}});
 }
 
-bool Bot::LoadDynamicCommands()
+QJsonDocument Bot::LoadDynamicCommands()
 {
-	const char *OPERATION_LOAD_COMMANDS="load dynamic commands";
-
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
-	if (!commandListFile.open(QIODevice::ReadWrite))
+	if (!commandListFile.exists())
 	{
-		emit Print(QString("Failed to open command list file: %1").arg(commandListFile.fileName()),OPERATION_LOAD_COMMANDS);
-		return false;
+		if (!Filesystem::Touch(commandListFile)) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_CREATE).arg(commandListFile.fileName()).toStdString());
 	}
+	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN).arg(commandListFile.fileName()).toStdString());
 
 	QJsonParseError jsonError;
 	QByteArray data=commandListFile.readAll();
 	if (data.isEmpty()) data="[]";
 	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
-	if (json.isNull())
-	{
-		emit Print(jsonError.errorString(),OPERATION_LOAD_COMMANDS);
-		return false;
-	}
+	if (json.isNull()) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_PARSE).arg(jsonError.errorString()).toStdString());
 
+	return json;
+}
+
+Command::Lookup Bot::DeserializeCommands(const QJsonDocument &json)
+{
 	const QJsonArray objects=json.array();
 	for (const QJsonValue &jsonValue : objects)
 	{
@@ -157,7 +157,7 @@ bool Bot::LoadDynamicCommands()
 			const QString type=jsonObject.value(JSON_KEY_COMMAND_TYPE).toString();
 			if (!COMMAND_TYPES.contains(type))
 			{
-				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type,name),OPERATION_LOAD_COMMANDS);
+				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type,name));
 				continue;
 			}
 			commands[name]={
@@ -166,7 +166,8 @@ bool Bot::LoadDynamicCommands()
 				COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
 				jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
 				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-				jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
+				jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
+				jsonObject.contains(JSON_KEY_COMMAND_PROTECTED) ? jsonObject.value(JSON_KEY_COMMAND_PROTECTED).toBool() : false
 			};
 		}
 		if (jsonObject.contains(JSON_KEY_COMMAND_ALIASES))
@@ -183,13 +184,102 @@ bool Bot::LoadDynamicCommands()
 			}
 		}
 	}
-
-	return true;
+	return commands;
 }
 
-void Bot::SaveDynamicCommands(const Command::Lookup &entries)
+QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 {
+	NativeCommandFlagLookup mergedNativeCommandFlags;
+	QJsonArray array;
+	std::unordered_map<QString,QStringList> aliases;
+	for (const Command::Entry &entry : entries)
+	{
+		const Command &command=entry.second;
 
+		if (command.Parent())
+		{
+			aliases[command.Parent()->Name()].push_back(command.Name());
+			continue; // if this is just an alias, move on without processing it as a full command
+		}
+
+		QJsonObject object;
+		object.insert(JSON_KEY_COMMAND_NAME,command.Name());
+
+		QString type;
+		switch (command.Type())
+		{
+		case CommandType::NATIVE:
+			mergedNativeCommandFlags.insert(std::move(nativeCommandFlags.extract(command.Name())));
+			continue;
+		case CommandType::AUDIO:
+			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
+			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
+			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
+			if (command.Random()) object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+			if (!command.Message().isEmpty()) object.insert(JSON_KEY_COMMAND_MESSAGE,command.Message());
+			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
+			break;
+		case CommandType::VIDEO:
+			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
+			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
+			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
+			if (command.Random()) object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
+			break;
+		case CommandType::PULSAR:
+			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_PULSAR);
+			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
+			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
+			break;
+		}
+
+		array.append(object);
+	}
+
+	for (QJsonValueRef value : array)
+	{
+		// if aliases exist for this object, attach the array of aliases to it
+		QJsonObject object=value.toObject();
+		QString name=object.value(JSON_KEY_COMMAND_NAME).toString();
+		auto candidate=aliases.find(name);
+		if (candidate != aliases.end())
+		{
+			QJsonArray names;
+			QStringList nodes=aliases.extract(candidate).mapped();
+			for (const QString &alias : nodes) names.append(alias);
+			object.insert(JSON_KEY_COMMAND_ALIASES,names);
+		}
+		value=object;
+	}
+
+	// catch the aliases that were for native commands,
+	// which normally aren't listed in the commands file
+	for (const std::pair<QString,QStringList> &pair : aliases)
+	{
+		QJsonArray names;
+		for (const QString &name : pair.second) names.append(name);
+		array.append(QJsonObject({
+			{JSON_KEY_COMMAND_NAME,pair.first},
+			{JSON_KEY_COMMAND_ALIASES,names}
+		}));
+	}
+
+	this->commands.swap(commands);
+	nativeCommandFlags.swap(mergedNativeCommandFlags);
+
+	return QJsonDocument(array);
+}
+
+bool Bot::SaveDynamicCommands(const QJsonDocument &json)
+{
+	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
+	if (!commandListFile.open(QIODevice::WriteOnly))
+	{
+		emit Print(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN).arg(commandListFile.fileName()),QStringLiteral("load dynamic commands"));
+		return false;
+	}
+	commandListFile.write(json.toJson(QJsonDocument::Indented));
+	return true;
 }
 
 const Command::Lookup& Bot::Commands() const
