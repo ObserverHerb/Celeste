@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QVideoWidget>
 #include <QScreen>
+#include <QMessageBox>
 #include "globals.h"
 #include "widgets.h"
 
@@ -183,6 +184,9 @@ namespace UI
 			layout.addWidget(&add,1,1);
 			layout.addWidget(&remove,1,2);
 
+			connect(&add,&QPushButton::clicked,this,&Aliases::Add);
+			connect(&remove,&QPushButton::clicked,this,&Aliases::Remove);
+
 			setSizeGripEnabled(true);
 		}
 
@@ -196,6 +200,32 @@ namespace UI
 			QStringList result;
 			for (int index=0; index < list.count(); index++) result.append(list.item(index)->text());
 			return result;
+		}
+
+		void Aliases::Add()
+		{
+			const QString candidate=name.text();
+			if (!list.findItems(candidate,Qt::MatchExactly).isEmpty())
+			{
+				QMessageBox duplicateDialog;
+				duplicateDialog.setWindowTitle("Duplicate Alias");
+				duplicateDialog.setText("Alias already exists in the list");
+				duplicateDialog.setIcon(QMessageBox::Warning);
+				duplicateDialog.setStandardButtons(QMessageBox::Ok);
+				duplicateDialog.setDefaultButton(QMessageBox::Ok);
+				duplicateDialog.exec();
+				return;
+			}
+
+			list.addItem(candidate);
+		}
+
+		void Aliases::Remove()
+		{
+			QListWidgetItem *item=list.currentItem();
+			if (!item) return;
+			item=list.takeItem(list.row(item));
+			if (item) delete item;
 		}
 
 		void Aliases::hideEvent(QHideEvent *event)

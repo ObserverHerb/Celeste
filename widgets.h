@@ -108,6 +108,8 @@ namespace UI
 			QLineEdit name;
 			QPushButton add;
 			QPushButton remove;
+			void Add();
+			void Remove();
 			void hideEvent(QHideEvent *event) override;
 		signals:
 			void Finished();

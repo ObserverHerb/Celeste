@@ -108,6 +108,7 @@ int main(int argc,char *argv[])
 			failureDialog.setText("Attempt to obtain OAuth token failed.");
 			failureDialog.setStandardButtons(QMessageBox::Ok);
 			failureDialog.setDefaultButton(QMessageBox::Ok);
+			failureDialog.exec();
 		});
 
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
