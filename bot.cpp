@@ -21,6 +21,7 @@ const char *JSON_KEY_COMMAND_TYPE="type";
 const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
+const char *JSON_KEY_COMMAND_REDEMPTION="redemption";
 const char *JSON_KEY_DATA="data";
 const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
@@ -147,6 +148,14 @@ bool Bot::LoadDynamicCommands()
 	for (const QJsonValue &jsonValue : objects)
 	{
 		QJsonObject jsonObject=jsonValue.toObject();
+
+		// check if this is triggered by a redemption
+		if (jsonObject.contains(JSON_KEY_COMMAND_REDEMPTION))
+		{
+			StageRedemptionCommand(jsonObject);
+			continue;
+		}
+
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
@@ -185,6 +194,19 @@ bool Bot::LoadDynamicCommands()
 	}
 
 	return true;
+}
+
+void Bot::StageRedemptionCommand(const QJsonObject &jsonObject)
+{
+	const QString name=jsonObject.value(JSON_KEY_COMMAND_REDEMPTION).toString();
+	redemptions[name]={
+		name,
+		jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
+		COMMAND_TYPES.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
+		jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
+		jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
+		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
+	};
 }
 
 bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather than return a bool
@@ -325,7 +347,7 @@ void Bot::Ping()
 		emit Print("Letting Twitch server know we're still here...");
 }
 
-void Bot::Redemption(const QString &name,const QString &rewardTitle,const QString &message)
+void Bot::Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message)
 {
 	if (rewardTitle == "Crash Celeste")
 	{
@@ -333,6 +355,14 @@ void Bot::Redemption(const QString &name,const QString &rewardTitle,const QStrin
 		vibeKeeper->Stop();
 		return;
 	}
+
+	if (auto redemption=redemptions.find(rewardTitle); redemption != redemptions.end())
+	{
+		const Command &command=redemption->second;
+		DispatchCommand(command,login);
+		return;
+	}
+
 	emit AnnounceRedemption(name,rewardTitle,message);
 }
 
@@ -579,9 +609,30 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 		return false;
 	}
 
+	if (command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
+	{
+		emit ChatMessage({
+			.sender=chatMessage.sender,
+			.text=chatMessage.text,
+			.color=chatMessage.color,
+			.badges=chatMessage.badges,
+			.emotes={},
+			.action=chatMessage.action,
+			.broadcaster=chatMessage.broadcaster,
+			.moderator=chatMessage.moderator
+		});
+		return true;
+	}
+
+	DispatchCommand(command,login);
+	return true;
+}
+
+void Bot::DispatchCommand(const Command &command,const QString &login)
+{
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command,chatMessage](Viewer::Local viewer) {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command](Viewer::Local viewer) {
 		switch (command.Type())
 		{
 		case CommandType::VIDEO:
@@ -609,19 +660,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 				ToggleEmoteOnly();
 				break;
 			case NativeCommandFlag::FOLLOWAGE:
-				DispatchFollowage(viewer.Name());
-				break;
-			case NativeCommandFlag::HTML:
-				emit ChatMessage({
-					.sender=chatMessage.sender,
-					.text=chatMessage.text,
-					.color=chatMessage.color,
-					.badges=chatMessage.badges,
-					.emotes={},
-					.action=chatMessage.action,
-					.broadcaster=chatMessage.broadcaster,
-					.moderator=chatMessage.moderator
-				});
+				DispatchFollowage(viewer);
 				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());
@@ -656,8 +695,6 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 			break;
 		};
 	});
-
-	return true;
 }
 
 bool Bot::DispatchChatNotification(const QStringView &message)
@@ -703,40 +740,36 @@ void Bot::DispatchCommandList()
 	emit ShowCommandList(descriptions);
 }
 
-void Bot::DispatchFollowage(const QString &name)
+void Bot::DispatchFollowage(Viewer::Local viewer)
 {
-	Viewer::Remote *viewer=new Viewer::Remote(security,name);
-	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
-		Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
-			QJsonParseError jsonError;
-			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-			if (json.isNull() || !json.object().contains("data"))
-			{
-				emit Print("Something went wrong obtaining stream information");
-				return;
-			}
-			QJsonArray data=json.object().value("data").toArray();
-			if (data.size() < 1)
-			{
-				emit Print("Response from requesting stream information was incomplete ");
-				return;
-			}
-			QJsonObject details=data.at(0).toObject();
-			QDateTime start=QDateTime::fromString(details.value("followed_at").toString(),Qt::ISODate);
-			std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
-			std::chrono::years years=std::chrono::duration_cast<std::chrono::years>(duration);
-			std::chrono::months months=std::chrono::duration_cast<std::chrono::months>(duration-years);
-			std::chrono::days days=std::chrono::duration_cast<std::chrono::days>(duration-years-months);
-			emit ShowFollowage(viewer.DisplayName(),years,months,days);
-		},{
-			{"from_id",viewer.ID()},
-			{"to_id",security.AdministratorID()}
-		},{
-			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
-		});
+	Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
+		QJsonParseError jsonError;
+		QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
+		if (json.isNull() || !json.object().contains("data"))
+		{
+			emit Print("Something went wrong obtaining stream information");
+			return;
+		}
+		QJsonArray data=json.object().value("data").toArray();
+		if (data.size() < 1)
+		{
+			emit Print("Response from requesting stream information was incomplete ");
+			return;
+		}
+		QJsonObject details=data.at(0).toObject();
+		QDateTime start=QDateTime::fromString(details.value("followed_at").toString(),Qt::ISODate);
+		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
+		std::chrono::years years=std::chrono::duration_cast<std::chrono::years>(duration);
+		std::chrono::months months=std::chrono::duration_cast<std::chrono::months>(duration-years);
+		std::chrono::days days=std::chrono::duration_cast<std::chrono::days>(duration-years-months);
+		emit ShowFollowage(viewer.DisplayName(),years,months,days);
+	},{
+		{"from_id",viewer.ID()},
+		{"to_id",security.AdministratorID()}
+	},{
+		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
 }
 

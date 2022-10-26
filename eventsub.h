@@ -38,7 +38,7 @@ signals:
 	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub")) const;
 	void Response(qintptr socketID,const QString &content=QString("Acknowledged: %1").arg(QDateTime::currentDateTime().toString()));
 	void Follow();
-	void Redemption(const QString &viewer,const QString &rewardTitle,const QString &message);
+	void Redemption(const QString &login,const QString &viewer,const QString &rewardTitle,const QString &message);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void Raid(const QString &raider,const unsigned int viewers);
 	void Subscription(const QString &viewer);

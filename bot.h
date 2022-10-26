@@ -43,6 +43,7 @@ public:
 	void SaveViewerAttributes(bool resetWelcomes);
 protected:
 	std::unordered_map<QString,Command> commands;
+	std::unordered_map<QString,Command> redemptions;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
 	Music::Player *vibeKeeper;
@@ -86,6 +87,7 @@ protected:
 	static std::chrono::milliseconds launchTimestamp;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
 	bool LoadDynamicCommands();
+	void StageRedemptionCommand(const QJsonObject &jsonObject);
 	bool LoadViewerAttributes();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
@@ -93,12 +95,13 @@ protected:
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
 	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
+	void DispatchCommand(const Command &command,const QString &login);
 	void DispatchArrival(const QString &login);
 	bool DispatchChatNotification(const QStringView &message);
 	void DispatchVideo(Command command);
 	void DispatchRandomVideo(Command command);
 	void DispatchCommandList();
-	void DispatchFollowage(const QString &name);
+	void DispatchFollowage(Viewer::Local viewer);
 	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
 	void DispatchUptime(bool total);
@@ -136,7 +139,7 @@ public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void Ping();
 	void Subscription(const QString &viewer);
-	void Redemption(const QString &name,const QString &rewardTitle,const QString &message);
+	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);
 	void Raid(const QString &viewer,const unsigned int viewers);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void SuppressMusic();

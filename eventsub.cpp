@@ -16,6 +16,7 @@ const char *JSON_KEY_EVENT_REWARD="reward";
 const char *JSON_KEY_EVENT_REWARD_TITLE="title";
 const char *JSON_KEY_EVENT_FOLLOW="followed at";
 const char *JSON_KEY_EVENT_USER_NAME="user_name";
+const char *JSON_KEY_EVENT_USER_LOGIN="user_login";
 const char *JSON_KEY_EVENT_USER_INPUT="user_input";
 const char *JSON_KEY_EVENT_VIEWERS="viewers";
 const char *JSON_KEY_EVENT_MESSAGE="message";
@@ -99,7 +100,7 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 		return;
 	case SubscriptionType::CHANNEL_REDEMPTION:
 	{
-		emit Redemption(event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),event.value(JSON_KEY_EVENT_USER_INPUT).toString());
+		emit Redemption(event.value(JSON_KEY_EVENT_USER_LOGIN).toString(),event.value(JSON_KEY_EVENT_USER_NAME).toString(),event.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),event.value(JSON_KEY_EVENT_USER_INPUT).toString());
 		emit Response(socketID);
 		return;
 	}
