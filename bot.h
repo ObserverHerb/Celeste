@@ -122,7 +122,7 @@ signals:
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &name,const QString &message,const QString &path);
 	void SetAgenda(const QString &agenda);
-	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
+	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void Panic(const QString &text);
 	void Pulse(const QString &trigger);

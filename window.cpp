@@ -166,12 +166,19 @@ void Window::ShowPortraitVideo(const QString &path)
 	StageEphemeralPane(pane);
 }
 
-void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
+void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions)
 {
 	QString text;
-	for (const std::pair<QString,QString> &command : descriptions)
+	for (std::tuple<QString,QStringList,QString> &command : descriptions)
 	{
-		text.append(QString("<div class='name'>!%1<br><span class='description'> %2<br></div>").arg(command.first,command.second));
+		// https://doc.qt.io/qt-6/qstring.html#prepend
+		// This operation is typically very fast (constant time),
+		// because QString preallocates extra space at the beginning
+		// of the string data, so it can grow without reallocating
+		// the entire string each time.
+		text.append(QString("<div class='name'>!%1<br>").arg(std::get<0>(command)));
+		if (QStringList aliases=std::get<1>(command); !aliases.empty()) text.append(QString("<span class='aliases'>%1<br></span>").arg("!"+std::get<1>(command).join(", !")));
+		text.append(QString("<span class='description'>%1</span><br></div>").arg(std::get<2>(command)));
 	}
 	ScrollingAnnouncePane *pane=new ScrollingAnnouncePane(text,this);
 	pane->LowerPriority();

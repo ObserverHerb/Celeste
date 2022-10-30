@@ -29,7 +29,7 @@ public:
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), path(path), message(message), protect(protect), parent(nullptr) { }
 	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), path(command.path), message(message), protect(command.protect), parent(command.parent) { }
-	Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), path(parent->path), message(parent->message), protect(parent->protect), parent(parent) { }
+	Command(const QString &name,Command* const parent);
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
@@ -38,6 +38,7 @@ public:
 	const QString& Path() const { return path; }
 	const QString& Message() const { return message; }
 	const Command* Parent() const { return parent; }
+	const std::vector<Command*>& Children() const { return children; }
 protected:
 	QString name;
 	QString description;
@@ -47,6 +48,7 @@ protected:
 	QString path;
 	QString message;
 	Command *parent;
+	std::vector<Command*> children;
 };
 
 namespace Music

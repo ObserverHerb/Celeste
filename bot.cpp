@@ -176,10 +176,7 @@ Command::Lookup Bot::DeserializeCommands(const QJsonDocument &json)
 			for (const QJsonValue &jsonValue : aliases)
 			{
 				const QString alias=jsonValue.toString();
-				commands[alias]={
-					alias,
-					&commands.at(name)
-				};
+				commands.try_emplace(alias,alias,&commands.at(name));
 				if (commands.at(alias).Type() == CommandType::NATIVE) nativeCommandFlags.insert({alias,nativeCommandFlags.at(name)});
 			}
 		}
@@ -209,7 +206,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 		switch (command.Type())
 		{
 		case CommandType::NATIVE:
-			mergedNativeCommandFlags.insert(std::move(nativeCommandFlags.extract(command.Name())));
+			mergedNativeCommandFlags.insert(nativeCommandFlags.extract(command.Name()));
 			continue;
 		case CommandType::AUDIO:
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
@@ -795,7 +792,17 @@ void Bot::DispatchRandomVideo(Command command)
 
 void Bot::DispatchCommandList()
 {
-
+	std::vector<std::tuple<QString,QStringList,QString>> descriptions;
+	for (const std::pair<const QString,Command> &pair : commands)
+	{
+		const Command &command=pair.second;
+		if (command.Parent() || command.Protected()) continue;
+		QStringList aliases;
+		const std::vector<Command*> &children=command.Children();
+		for (const Command *child : children) aliases.append(child->Name());
+		descriptions.push_back({command.Name(),aliases,command.Description()});
+	}
+	emit ShowCommandList(descriptions);
 }
 
 void Bot::DispatchFollowage(const QString &name)
