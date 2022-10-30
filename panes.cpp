@@ -70,6 +70,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	chat->setFrameStyle(QFrame::NoFrame);
 	chat->setCursorWidth(0);
 	layout()->addWidget(chat);
+	connect(chat,&PinnedTextEdit::ContextMenu,this,&ChatPane::ContextMenu);
 
 	status=new QLabel(this);
 	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
@@ -268,7 +269,7 @@ ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent
 	commands->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	commands->setFontFamily(settingFont);
 	commands->setFontPointSize(settingFontSize);
-	commands->document()->setDefaultStyleSheet(QString("div.name { font-family: '%1'; font-size: %2pt; } div.description, span.description { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)),StringConvert::Integer(static_cast<int>(settingFontSize)*0.7)));
+	commands->document()->setDefaultStyleSheet(QString("div.name { font-family: '%1'; font-size: %2pt; } span.description, span.aliases { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)),StringConvert::Integer(static_cast<int>(settingFontSize)*0.7)));
 	commands->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
 	commands->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	commands->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

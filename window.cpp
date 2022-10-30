@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QLayout>
 #include <QGridLayout>
+#include <QMenu>
 #include <QDateTime>
 #include <QTimeZone>
 #include <QJsonDocument>
@@ -17,11 +18,13 @@
 const char *SETTINGS_CATEGORY_WINDOW="Window";
 
 Window::Window() : QMainWindow(nullptr),
-	livePersistentPane(nullptr),
 	background(new QWidget(this)),
+	livePersistentPane(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
-	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000")
+	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
+	configureOptions("Options",this),
+	configureCommands("Commands",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -46,6 +49,9 @@ Window::Window() : QMainWindow(nullptr),
 		StringConvert::Integer(backgroundColor.alpha()))
 	);
 	setCentralWidget(background);
+
+	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
+	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
 
 	SwapPersistentPane(new StatusPane(this));
 }
@@ -143,6 +149,7 @@ void Window::ShowChat()
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
 	connect(this,&Window::SetAgenda,chatPane,&ChatPane::SetAgenda);
+	connect(chatPane,&ChatPane::ContextMenu,this,&Window::contextMenuEvent);
 }
 
 void Window::PlayVideo(const QString &path)
@@ -165,12 +172,19 @@ void Window::ShowPortraitVideo(const QString &path)
 	StageEphemeralPane(pane);
 }
 
-void Window::ShowCommandList(std::vector<std::pair<QString,QString>> descriptions)
+void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions)
 {
 	QString text;
-	for (const std::pair<QString,QString> &command : descriptions)
+	for (std::tuple<QString,QStringList,QString> &command : descriptions)
 	{
-		text.append(QString("<div class='name'>!%1<br><span class='description'> %2<br></div>").arg(command.first,command.second));
+		// https://doc.qt.io/qt-6/qstring.html#prepend
+		// This operation is typically very fast (constant time),
+		// because QString preallocates extra space at the beginning
+		// of the string data, so it can grow without reallocating
+		// the entire string each time.
+		text.append(QString("<div class='name'>!%1<br>").arg(std::get<0>(command)));
+		if (QStringList aliases=std::get<1>(command); !aliases.empty()) text.append(QString("<span class='aliases'>%1<br></span>").arg("!"+std::get<1>(command).join(", !")));
+		text.append(QString("<span class='description'>%1</span><br></div>").arg(std::get<2>(command)));
 	}
 	ScrollingAnnouncePane *pane=new ScrollingAnnouncePane(text,this);
 	pane->LowerPriority();
@@ -341,6 +355,30 @@ const QSize Window::ScreenThird()
 	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
 	int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
 	return {shortestSide,shortestSide};
+}
+
+ApplicationSetting& Window::BackgroundColor()
+{
+	return settingBackgroundColor;
+}
+
+ApplicationSetting& Window::AccentColor()
+{
+	return settingAccentColor;
+}
+
+ApplicationSetting& Window::Dimensions()
+{
+	return settingWindowSize;
+}
+
+void Window::contextMenuEvent(QContextMenuEvent *event)
+{
+	QMenu menu(this);
+	menu.addAction(&configureOptions);
+	menu.addAction(&configureCommands);
+	menu.exec(event->globalPos());
+	event->accept();
 }
 
 void Window::closeEvent(QCloseEvent *event)

@@ -316,7 +316,12 @@ std::optional<char> IRCSocket::Pop()
 	return {character};
 }
 
-bool Channel::Protected() const
+ApplicationSetting& Channel::Name()
+{
+	return settingChannel;
+}
+
+ApplicationSetting& Channel::Protection()
 {
 	return settingProtect;
 }

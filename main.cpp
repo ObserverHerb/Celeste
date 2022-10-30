@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "window.h"
+#include "widgets.h"
 #include "channel.h"
 #include "bot.h"
 #include "log.h"
@@ -20,6 +21,7 @@
 
 const char *ORGANIZATION_NAME="Sky-Meyg";
 const char *APPLICATION_NAME="Celeste";
+const char *SUBSYSTEM="initialization";
 
 enum
 {
@@ -83,12 +85,28 @@ int main(int argc,char *argv[])
 		Pulsar pulsar;
 		ApplicationWindow window;
 
+		UI::Options::Dialog configureOptions(&window);
+		configureOptions.AddCategory(new UI::Options::Categories::Channel(&configureOptions,{
+			.name=channel->Name(),
+			.protection=channel->Protection()
+		}));
+		configureOptions.AddCategory(new UI::Options::Categories::Window(&configureOptions,{
+			.backgroundColor=window.BackgroundColor(),
+			.accentColor=window.AccentColor(),
+			.dimensions=window.Dimensions()
+		}));
+		configureOptions.AddCategory(new UI::Options::Categories::Bot(&configureOptions,{
+			.arrivalSound=celeste.ArrivalSound(),
+			.portraitVideo=celeste.PortraitVideo()
+		}));
+
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;
 			failureDialog.setWindowTitle("Re-Authentication Failed");
 			failureDialog.setText("Attempt to obtain OAuth token failed.");
 			failureDialog.setStandardButtons(QMessageBox::Ok);
 			failureDialog.setDefaultButton(QMessageBox::Ok);
+			failureDialog.exec();
 		});
 
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
@@ -180,15 +198,17 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
+		window.connect(&window,&Window::ConfigureOptions,[&configureOptions]() {
+			configureOptions.exec();
+		});
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
-			if (channel->Protected()) {
+			if (channel->Protection()) {
 				QMessageBox emoteOnlyDialog;
 				emoteOnlyDialog.setWindowTitle("Channel Protection");
 				emoteOnlyDialog.setText("Enable emote-only chat?");
 				emoteOnlyDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
 				emoteOnlyDialog.setDefaultButton(QMessageBox::No);
-				if (emoteOnlyDialog.exec() == QMessageBox::Yes)
-					celeste.EmoteOnly(true);
+				if (emoteOnlyDialog.exec() == QMessageBox::Yes) celeste.EmoteOnly(true);
 			}
 
 			QMessageBox resetDialog;
@@ -205,7 +225,36 @@ int main(int argc,char *argv[])
 		if (!server.Listen()) throw std::runtime_error("Could not start server!");
 		pulsar.LoadTriggers();
 		window.show();
-		channel->Connect();
+
+		UI::Commands::Dialog *configureCommands=nullptr;
+		try
+		{
+			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
+			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
+				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to disk.";
+				if (!celeste.SaveDynamicCommands(celeste.SerializeCommands(commands)))
+				{
+					QMessageBox failureDialog(&window);
+					failureDialog.setWindowTitle("Save Commands Failed");
+					failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
+					failureDialog.setIcon(QMessageBox::Warning);
+					failureDialog.setStandardButtons(QMessageBox::Ok);
+					failureDialog.setDefaultButton(QMessageBox::Ok);
+					failureDialog.exec();
+					log.Write(ERROR_COMMANDS_LIST_FILE,"save commands",SUBSYSTEM);
+				}
+			});
+			window.connect(&window,&Window::ConfigureCommands,[configureCommands]() {
+				configureCommands->open();
+			});
+
+			channel->Connect();
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			log.Write(exception.what(),"load commands",SUBSYSTEM);
+		}
 
 		return application.exec();
 	}

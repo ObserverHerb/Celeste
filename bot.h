@@ -2,6 +2,9 @@
 
 #include <QObject>
 #include <QString>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 #include <QDateTime>
@@ -35,18 +38,24 @@ class Bot : public QObject
 {
 	Q_OBJECT
 public:
+	using NativeCommandFlagLookup=std::unordered_map<QString,NativeCommandFlag>;
 	Bot(Security &security,QObject *parent=nullptr);
 	Bot(const Bot& other)=delete;
 	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
 	void EmoteOnly(bool enable);
 	void SaveViewerAttributes(bool resetWelcomes);
+	const Command::Lookup& Commands() const;
+	const Command::Lookup& DeserializeCommands(const QJsonDocument &json);
+	QJsonDocument LoadDynamicCommands();
+	ApplicationSetting& ArrivalSound();
+	ApplicationSetting& PortraitVideo();
 protected:
 	using BadgeIconURLsLookup=std::unordered_map<QString,std::unordered_map<QString,QString>>;
 	using CommandTypeLookup=std::unordered_map<QString,CommandType>;
-	std::unordered_map<QString,Command> commands;
-	std::unordered_map<QString,Command> redemptions;
-	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
+	Command::Lookup commands;
+	Command::Lookup redemptions;
+	NativeCommandFlagLookup nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
 	Music::Player *vibeKeeper;
 	QMediaPlayer *roaster;
@@ -89,7 +98,6 @@ protected:
 	static std::chrono::milliseconds launchTimestamp;
 	static const CommandTypeLookup COMMAND_TYPE_LOOKUP;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
-	bool LoadDynamicCommands();
 	void StageRedemptionCommand(const QJsonObject &jsonObject);
 	bool LoadViewerAttributes();
 	void LoadRoasts();
@@ -120,7 +128,7 @@ signals:
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &name,const QString &message,const QString &path);
 	void SetAgenda(const QString &agenda);
-	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
+	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void Panic(const QString &text);
 	void Pulse(const QString &trigger);
@@ -147,4 +155,6 @@ public slots:
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void SuppressMusic();
 	void RestoreMusic();
+	QJsonDocument SerializeCommands(const Command::Lookup &entries);
+	bool SaveDynamicCommands(const QJsonDocument &json);
 };

@@ -23,10 +23,13 @@ enum class CommandType
 class Command
 {
 public:
+	using Lookup=std::unordered_map<QString,Command>;
+	using Entry=std::pair<const QString,Command>;
 	Command() : Command(QString(),QString(),CommandType::BLANK,false,QString(),QString()) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), protect(protect), path(path), message(message) { }
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), protect(protect), path(path), message(message), parent(nullptr) { }
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message), parent(nullptr) { }
+	Command(const QString &name,Command* const parent);
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
@@ -34,6 +37,8 @@ public:
 	bool Protected() const { return protect; }
 	const QString& Path() const { return path; }
 	const QString& Message() const { return message; }
+	const Command* Parent() const { return parent; }
+	const std::vector<Command*>& Children() const { return children; }
 protected:
 	QString name;
 	QString description;
@@ -42,6 +47,8 @@ protected:
 	bool protect;
 	QString path;
 	QString message;
+	Command *parent;
+	std::vector<Command*> children;
 };
 
 namespace Music

@@ -9,6 +9,11 @@
 
 Q_DECLARE_METATYPE(std::chrono::milliseconds)
 
+Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), path(parent->path), message(parent->message), protect(parent->protect), parent(parent)
+{
+	parent->children.push_back(this);
+}
+
 namespace Music
 {
 	Player::Player(QObject *parent) : player(new QMediaPlayer(this)),

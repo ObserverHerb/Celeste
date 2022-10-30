@@ -34,8 +34,8 @@ public:
 	~Channel();
 	void Connect();
 	void Disconnect();
-	const QString Name() const { return settingChannel; }
-	bool Protected() const;
+	ApplicationSetting& Name();
+	ApplicationSetting& Protection();
 protected:
 	Security &security;
 	ApplicationSetting settingChannel;

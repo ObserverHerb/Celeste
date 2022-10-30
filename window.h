@@ -1,29 +1,36 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QtConcurrent>
+#include <QAction>
 #include <queue>
 #include <unordered_map>
 #include "globals.h"
 #include "panes.h"
 #include "settings.h"
+#include "widgets.h"
 
 class Window : public QMainWindow
 {
 	Q_OBJECT
 public:
 	Window();
+	ApplicationSetting& BackgroundColor();
+	ApplicationSetting& AccentColor();
+	ApplicationSetting& Dimensions();
 protected:
-	PersistentPane *livePersistentPane;
 	QWidget *background;
+	PersistentPane *livePersistentPane;
+	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
+	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingAccentColor;
-	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
-	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
+	QAction configureOptions;
+	QAction configureCommands;
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
+	void contextMenuEvent(QContextMenuEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
 signals:
 	void Print(const QString &message);
@@ -32,6 +39,8 @@ signals:
 	void RefreshChat();
 	void SuppressMusic();
 	void RestoreMusic();
+	void ConfigureOptions();
+	void ConfigureCommands();
 	void CloseRequested(QCloseEvent *event);
 public slots:
 	void ShowChat();
@@ -47,7 +56,7 @@ public slots:
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
-	void ShowCommandList(std::vector<std::pair<QString,QString>> descriptions);
+	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void ShowPanicText(const QString &text);
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
