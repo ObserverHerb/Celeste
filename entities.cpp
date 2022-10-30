@@ -484,7 +484,7 @@ namespace Viewer
 				return;
 			}
 			QJsonObject details=data.at(0).toObject();
-			emit Recognized(Local(details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),data.at(0).toObject().value("profile_image_url").toString(),details.value("description").toString()));
+			emit Recognized({details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),details.value("profile_image_url").toString(),details.value("description").toString()});
 		},{
 			{"login",username}
 		},{
