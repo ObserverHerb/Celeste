@@ -124,7 +124,7 @@ namespace UI
 			QStringList Aliases() const;
 			void Aliases(const QStringList &names);
 			QString Path() const;
-			enum class Type Type() const;
+			enum Type Type() const;
 			bool Random() const;
 			QString Message() const;
 			bool Protected() const;
@@ -148,7 +148,7 @@ namespace UI
 			void Browse();
 			void UpdateHeader();
 			void ToggleFold();
-			void ValidatePath(const QString &text,bool random,const enum class Type type);
+			void ValidatePath(const QString &text,bool random,const enum Type type);
 			bool eventFilter(QObject *object,QEvent *event) override;
 		signals:
 			void Help(const QString &text);

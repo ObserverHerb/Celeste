@@ -328,9 +328,9 @@ namespace UI
 			return path.text();
 		}
 
-		enum class Type Entry::Type() const
+		enum Type Entry::Type() const
 		{
-			return static_cast<enum class Type>(type.currentIndex());
+			return static_cast<enum Type>(type.currentIndex());
 		}
 
 		bool Entry::Random() const
@@ -386,7 +386,7 @@ namespace UI
 			ValidatePath(Path(),state == Qt::Checked ? true : false,Type());
 		}
 
-		void Entry::ValidatePath(const QString &text,bool random,const enum class Type type)
+		void Entry::ValidatePath(const QString &text,bool random,const enum Type type)
 		{
 			QFileInfo candidate(text);
 
@@ -432,7 +432,7 @@ namespace UI
 
 		void Entry::TypeChanged(int index)
 		{
-			enum class Type currentType=static_cast<enum class Type>(index);
+			enum Type currentType=static_cast<enum Type>(index);
 
 			if (currentType == Type::PULSAR)
 			{
