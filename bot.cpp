@@ -417,7 +417,7 @@ void Bot::DispatchArrival(const QString &login)
 
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
 		if (security.Administrator() != viewer.Name() && QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() > static_cast<qint64>(settingRaidInterruptDuration))
 		{
 			Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
@@ -632,7 +632,7 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 {
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command](Viewer::Local viewer) {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this,command](const Viewer::Local &viewer) {
 		switch (command.Type())
 		{
 		case CommandType::VIDEO:
@@ -740,7 +740,7 @@ void Bot::DispatchCommandList()
 	emit ShowCommandList(descriptions);
 }
 
-void Bot::DispatchFollowage(Viewer::Local viewer)
+void Bot::DispatchFollowage(const Viewer::Local &viewer)
 {
 	Network::Request({TWITCH_API_ENDPOING_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
 		QJsonParseError jsonError;
@@ -788,7 +788,7 @@ void Bot::DispatchPanic(const QString &name)
 void Bot::DispatchShoutout(Command command)
 {
 	Viewer::Remote *viewer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](Viewer::Local viewer) {
+	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
 			emit Shoutout(viewer.DisplayName(),viewer.Description(),profileImage);

@@ -252,7 +252,7 @@ namespace Viewer
 		void DownloadProfileImage(const QString &url);
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("viewer retrieval"));
-		void Recognized(Local viewer);
+		void Recognized(const Viewer::Local &viewer);
 	};
 
 	struct Attributes

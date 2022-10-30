@@ -101,7 +101,7 @@ protected:
 	void DispatchVideo(Command command);
 	void DispatchRandomVideo(Command command);
 	void DispatchCommandList();
-	void DispatchFollowage(Viewer::Local viewer);
+	void DispatchFollowage(const Viewer::Local &viewer);
 	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
 	void DispatchUptime(bool total);
