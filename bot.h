@@ -42,6 +42,8 @@ public:
 	void EmoteOnly(bool enable);
 	void SaveViewerAttributes(bool resetWelcomes);
 protected:
+	using BadgeIconURLsLookup=std::unordered_map<QString,std::unordered_map<QString,QString>>;
+	using CommandTypeLookup=std::unordered_map<QString,CommandType>;
 	std::unordered_map<QString,Command> commands;
 	std::unordered_map<QString,Command> redemptions;
 	std::unordered_map<QString,NativeCommandFlag> nativeCommandFlags;
@@ -83,8 +85,9 @@ protected:
 	ApplicationSetting settingCommandNameTotalTime;
 	ApplicationSetting settingCommandNameVibe;
 	ApplicationSetting settingCommandNameVibeVolume;
-	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
+	static BadgeIconURLsLookup badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
+	static const CommandTypeLookup COMMAND_TYPE_LOOKUP;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
 	bool LoadDynamicCommands();
 	void StageRedemptionCommand(const QJsonObject &jsonObject);
