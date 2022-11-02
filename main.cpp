@@ -85,10 +85,8 @@ int main(int argc,char *argv[])
 		QPushButton *okay=buttons->addButton(QDialogButtonBox::Ok);
 		okay->setDefault(true);
 		okay->connect(okay,&QPushButton::clicked,&scopeDialog,&QDialog::accept);
-		QPushButton *cancel=buttons->addButton(QDialogButtonBox::Cancel);
-		okay->connect(cancel,&QPushButton::clicked,&scopeDialog,&QDialog::reject);
 		scopeDialog.layout()->addWidget(buttons);
-		if (scopeDialog.exec() == QDialog::Accepted)
+		if (scopeDialog.exec())
 		{
 			QStringList scopes({"chat:read"});
 			for (QListWidgetItem *item : listBox->selectedItems()) scopes.append(item->text());
