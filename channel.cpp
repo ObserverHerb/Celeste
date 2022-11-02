@@ -345,6 +345,16 @@ void Channel::Pong(const QString &token)
 	SendMessage(QString(),"PONG",{},token);
 }
 
+ApplicationSetting& Channel::Name()
+{
+	return settingChannel;
+}
+
+ApplicationSetting& Channel::Protection()
+{
+	return settingProtect;
+}
+
 QByteArray IRCSocket::Read()
 {
 	return readAll();
@@ -359,14 +369,4 @@ std::optional<char> IRCSocket::Pop()
 		return std::nullopt;
 	}
 	return {character};
-}
-
-ApplicationSetting& Channel::Name()
-{
-	return settingChannel;
-}
-
-ApplicationSetting& Channel::Protection()
-{
-	return settingProtect;
 }
