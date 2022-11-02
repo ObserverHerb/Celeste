@@ -24,7 +24,8 @@ Window::Window() : QMainWindow(nullptr),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	configureOptions("Options",this),
-	configureCommands("Commands",this)
+	configureCommands("Commands",this),
+	metrics("Metrics",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -52,6 +53,7 @@ Window::Window() : QMainWindow(nullptr),
 
 	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
 	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
+	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
 
 	SwapPersistentPane(new StatusPane(this));
 }
@@ -377,6 +379,7 @@ void Window::contextMenuEvent(QContextMenuEvent *event)
 	QMenu menu(this);
 	menu.addAction(&configureOptions);
 	menu.addAction(&configureCommands);
+	menu.addAction(&metrics);
 	menu.exec(event->globalPos());
 	event->accept();
 }

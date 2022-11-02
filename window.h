@@ -27,6 +27,7 @@ protected:
 	ApplicationSetting settingAccentColor;
 	QAction configureOptions;
 	QAction configureCommands;
+	QAction metrics;
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
@@ -41,6 +42,7 @@ signals:
 	void RestoreMusic();
 	void ConfigureOptions();
 	void ConfigureCommands();
+	void ShowMetrics();
 	void CloseRequested(QCloseEvent *event);
 public slots:
 	void ShowChat();
