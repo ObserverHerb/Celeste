@@ -43,7 +43,7 @@ Window::Window() : QMainWindow(nullptr),
 		StringConvert::Integer(backgroundColor.blue()),
 		StringConvert::Integer(backgroundColor.alpha()))
 	);
-	setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4);").arg(
+	setStyleSheet(QString("QMainWindow { background-color: rgba(%1,%2,%3,%4); }").arg(
 		StringConvert::Integer(backgroundColor.red()),
 		StringConvert::Integer(backgroundColor.green()),
 		StringConvert::Integer(backgroundColor.blue()),
