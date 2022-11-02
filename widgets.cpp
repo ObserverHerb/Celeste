@@ -939,4 +939,55 @@ namespace UI
 			scrollLayout->addWidget(category);
 		}
 	}
+
+	namespace Metrics
+	{
+		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
+			layout(this),
+			rawUsers(this),
+			validUsers(this)
+		{
+			layout.addWidget(&validUsers);
+			layout.addWidget(&rawUsers);
+			setSizeGripEnabled(true);
+
+			connect(&acknowledgeDelay,&QTimer::timeout,this,QOverload<>::of(&Dialog::Acknowledged));
+		}
+
+		void Dialog::Joined(const QString &user)
+		{
+			rawUsers.addItem(user);
+			UpdateTitle();
+			acknowledgeDelay.start(1000);
+		}
+
+		void Dialog::Acknowledged(const QStringList &names)
+		{
+			validUsers.clear();
+			for (const QString &name : names) validUsers.addItem(name);
+			QList<QListWidgetItem*> items=rawUsers.findItems("*",Qt::MatchWildcard);
+			for (QListWidgetItem *item : items)
+			{
+				if (validUsers.findItems(item->text(),Qt::MatchExactly).isEmpty())
+					item->setForeground(palette().mid());
+				else
+					item->setForeground(palette().text());
+			}
+			UpdateTitle();
+		}
+
+		void Dialog::Parted(const QString &user)
+		{
+			QList<QListWidgetItem*> items=rawUsers.findItems(user,Qt::MatchExactly);
+			for (QListWidgetItem *item : items) delete rawUsers.takeItem(rawUsers.row(item));
+			items=validUsers.findItems(user,Qt::MatchExactly);
+			for (QListWidgetItem *item : items) delete validUsers.takeItem(validUsers.row(item));
+			UpdateTitle();
+		}
+
+		void Dialog::UpdateTitle()
+		{
+			setWindowTitle(QStringLiteral("Metrics (%1/%2)").arg(StringConvert::Integer(validUsers.count()),StringConvert::Integer(rawUsers.count())));
+		}
+	}
 }

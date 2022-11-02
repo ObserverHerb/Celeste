@@ -293,6 +293,28 @@ namespace UI
 			QWidget entriesFrame;
 			QVBoxLayout *scrollLayout;
 		};
+	}
 
+	namespace Metrics
+	{
+		class Dialog : public QDialog
+		{
+			Q_OBJECT
+		public:
+			Dialog(QWidget *parent);
+		protected:
+			QHBoxLayout layout;
+			QListWidget rawUsers;
+			QListWidget validUsers;
+			QTimer acknowledgeDelay;
+			static const QString TITLE;
+			void UpdateTitle();
+		signals:
+			void Acknowledged();
+		public slots:
+			void Joined(const QString &user);
+			void Acknowledged(const QStringList &names);
+			void Parted(const QString &user);
+		};
 	}
 }
