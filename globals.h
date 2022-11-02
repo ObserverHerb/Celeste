@@ -275,6 +275,24 @@ namespace JSON
 	}
 }
 
+namespace Container
+{
+	template<typename T> concept AssociativeContainer=requires(T m,typename T::key_type k)
+	{
+		typename T::key_type;
+		typename T::mapped_type;
+		typename T::const_iterator;
+		{ m.find(k) }->std::convertible_to<typename T::const_iterator>;
+	};
+
+	template <AssociativeContainer T>
+	typename T::mapped_type Resolve(T &container,const typename T::key_type &key,const typename T::mapped_type &value)
+	{
+		auto candidate=container.find(key);
+		return candidate == container.end() ? value : *candidate;
+	}
+}
+
 namespace Platform
 {
 	constexpr bool Windows()

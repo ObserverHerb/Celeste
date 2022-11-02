@@ -179,20 +179,14 @@ const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
 				continue;
 			}
 
-			bool random=false;
-			if (auto commandRandomPath=jsonObject.find(JSON_KEY_COMMAND_RANDOM_PATH); commandRandomPath != jsonObject.end()) random=commandRandomPath->toBool();
-			QString message;
-			if (auto commandMessage=jsonObject.find(JSON_KEY_COMMAND_MESSAGE); commandMessage != jsonObject.end()) message=commandMessage->toString();
-			bool protect=false; // seriously? I can't use the word "protected" outside of a class definition?
-			if (auto commandProtected=jsonObject.find(JSON_KEY_COMMAND_PROTECTED); commandProtected != jsonObject.end()) protect=commandProtected->toBool();
 			commands.insert({name,{
 				name,
 				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
 				type->second,
-				random,
+				Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
 				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-				message,
-				protect
+				Container::Resolve(jsonObject,JSON_KEY_COMMAND_MESSAGE,{}).toString(),
+				Container::Resolve(jsonObject,JSON_KEY_COMMAND_PROTECTED,false).toBool()
 			}});
 		}
 
@@ -347,16 +341,10 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 	for (QJsonObject::const_iterator viewer=entries.begin(); viewer != entries.end(); ++viewer)
 	{
 		const QJsonObject attributes=viewer->toObject();
-		bool commands=true;
-		if (QJsonObject::const_iterator attributeCommands=attributes.find(JSON_KEY_COMMANDS); attributeCommands != attributes.end()) commands=attributeCommands->toBool();
-		bool welcome=false;
-		if (QJsonObject::const_iterator attributeWelcome=attributes.find(JSON_KEY_WELCOME); attributeWelcome != attributes.end()) welcome=attributeWelcome->toBool();
-		bool bot=false;
-		if (QJsonObject::const_iterator attributeBot=attributes.find(JSON_KEY_BOT); attributeBot != attributes.end()) bot=attributeBot->toBool();
 		viewers[viewer.key()]={
-			commands,
-			welcome,
-			bot,
+			Container::Resolve(attributes,JSON_KEY_COMMANDS,true).toBool(),
+			Container::Resolve(attributes,JSON_KEY_WELCOME,false).toBool(),
+			Container::Resolve(attributes,JSON_KEY_BOT,false).toBool(),
 		};
 	}
 
