@@ -76,6 +76,7 @@ int main(int argc,char *argv[])
 		QDialog scopeDialog;
 		QGridLayout *layout=new QGridLayout(&scopeDialog);
 		scopeDialog.setLayout(layout);
+		scopeDialog.setSizeGripEnabled(true);
 		QListWidget *listBox=new QListWidget(&scopeDialog);
 		listBox->setSelectionMode(QAbstractItemView::ExtendedSelection);
 		listBox->addItems(Security::SCOPES);
