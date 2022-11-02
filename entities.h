@@ -28,8 +28,9 @@ public:
 	Command() : Command(QString(),QString(),CommandType::BLANK,false,QString(),QString()) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), protect(protect), path(path), message(message), parent(nullptr) { }
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message), parent(nullptr) { }
 	Command(const QString &name,Command* const parent);
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message), parent(nullptr) { }
+	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), protect(other.protect), path(other.path), message(other.message), parent(nullptr) { }
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }

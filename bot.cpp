@@ -728,8 +728,9 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 
 bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login)
 {
-	if (commands.find(name) == commands.end()) return false;
-	Command command=chatMessage.text.isEmpty() ? commands.at(name) : Command(commands.at(name),chatMessage.text);
+	auto candidate=commands.find(name);
+	if (candidate == commands.end()) return false;
+	const Command &command=candidate->second;
 
 	if (command.Protected() && !chatMessage.Privileged())
 	{
@@ -753,7 +754,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 		return true;
 	}
 
-	DispatchCommand(command,login);
+	DispatchCommand(chatMessage.text.isEmpty() ? command : Command{command,chatMessage.text},login);
 	return true;
 }
 
