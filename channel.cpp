@@ -13,9 +13,8 @@ const char *OPERATION_NOTICES="recognize notice";
 const char *TWITCH_HOST="irc.chat.twitch.tv";
 const unsigned int TWITCH_PORT=6667;
 
-const char *IRC_COMMAND_USER="NICK %1\n";
-const char *IRC_COMMAND_PASSWORD="PASS oauth:%1\n";
-const char *IRC_COMMAND_JOIN="JOIN #%1\n";
+const char *IRC_COMMAND_USER="NICK";
+const char *IRC_COMMAND_JOIN="JOIN";
 
 const char *SETTINGS_CATEGORY_CHANNEL="Channel";
 
@@ -33,6 +32,7 @@ enum class IRCCommand
 	ERR_UNKNOWNCOMMAND=421,
 	CAP=1000,
 	JOIN,
+	PART,
 	PRIVMSG,
 	NOTICE,
 	PING
@@ -40,7 +40,8 @@ enum class IRCCommand
 
 const std::unordered_map<QString,IRCCommand> nonNumericIRCCommands={
 	{"CAP",IRCCommand::CAP},
-	{"JOIN",IRCCommand::JOIN},
+	{IRC_COMMAND_JOIN,IRCCommand::JOIN},
+	{"PART",IRCCommand::PART},
 	{"PRIVMSG",IRCCommand::PRIVMSG},
 	{"NOTICE",IRCCommand::NOTICE},
 	{"PING",IRCCommand::PING}
@@ -160,8 +161,16 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 	case static_cast<int>(IRCCommand::RPL_MYINFO):
 		break;
 	case static_cast<int>(IRCCommand::RPL_NAMREPLY):
+	{
 		emit Print(QString("User list received:\n%1").arg(finalParameter.replace(' ','\n')));
+		QStringList rows=finalParameter.split(' ');
+		for (const QString &row : rows)
+		{
+			const QStringList users=row.split('\n'); // Twitch doesn't follow the spec here and returns mutliple names deliminted by \n between each space
+			for (const QString &user : users) emit Joined(user);
+		}
 		break;
+	}
 	case static_cast<int>(IRCCommand::RPL_ENDOFNAMES):
 		break;
 	case static_cast<int>(IRCCommand::RPL_ENDOFMOTD):
@@ -176,7 +185,10 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 		ParseCapabilities(parameters,finalParameter);
 		break;
 	case static_cast<int>(IRCCommand::JOIN):
-		emit Joined();
+		DispatchJoin(source);
+		break;
+	case static_cast<int>(IRCCommand::PART):
+		DispatchPart(source);
 		break;
 	case static_cast<int>(IRCCommand::PRIVMSG):
 		emit Dispatch(prefix,source,parameters,finalParameter);
@@ -275,19 +287,52 @@ void Channel::Authenticate()
 		return;
 	}
 
-	emit Print(QString("Sending credentials: %1").arg(QString(IRC_COMMAND_USER).arg(static_cast<QString>(security.Administrator()))),OPERATION_AUTHENTICATION);
+	emit Print(QString("Sending credentials: %1").arg(QString("%1 %2\n").arg(IRC_COMMAND_USER,static_cast<QString>(security.Administrator()))),OPERATION_AUTHENTICATION);
 	SendMessage(QString(),"PASS",{QString("oauth:%1").arg(static_cast<QString>(security.OAuthToken()))},QString());
 	SendMessage(QString(),"NICK",{security.Administrator()},QString());
 }
 
 void Channel::RequestCapabilities()
 {
-	SendMessage(QString(),"CAP",{"REQ"},"twitch.tv/tags :twitch.tv/commands");
+	SendMessage(QString(),"CAP",{"REQ"},"twitch.tv/membership twitch.tv/tags :twitch.tv/commands");
 }
 
 void Channel::RequestJoin()
 {
-	SendMessage(QString(),"JOIN",{QString("#%1").arg(settingChannel ? static_cast<QString>(settingChannel).toLower() : static_cast<QString>(security.Administrator()).toLower())},QString());
+	SendMessage(QString(),IRC_COMMAND_JOIN,{QString("#%1").arg(settingChannel ? static_cast<QString>(settingChannel).toLower() : static_cast<QString>(security.Administrator()).toLower())},QString());
+}
+
+void Channel::DispatchJoin(const QString &source)
+{
+	std::optional<Hostmask> hostmask=ParseSource(source);
+	if (hostmask)
+	{
+		if (hostmask->nick == static_cast<QString>(security.Administrator()))
+			emit Joined();
+		else
+			emit Joined(hostmask->nick);
+	}
+}
+
+void Channel::DispatchPart(const QString &source)
+{
+	std::optional<Hostmask> hostmask=ParseSource(source);
+	if (hostmask) emit Parted(hostmask->nick);
+}
+
+std::optional<Hostmask> Channel::ParseSource(const QString &source)
+{
+	QStringView window(source);
+	std::optional<QStringView> nick=StringView::Take(window,'!');
+	if (!nick) return std::nullopt;
+	std::optional<QStringView> user=StringView::Take(window,'@');
+	if (!user) return std::nullopt;
+	if (window.isEmpty()) return std::nullopt;
+	return Hostmask{
+		.nick=nick->toString(),
+		.user=user->toString(),
+		.host=window.toString()
+	};
 }
 
 void Channel::SocketError(QAbstractSocket::SocketError error)

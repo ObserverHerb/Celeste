@@ -17,6 +17,13 @@ signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("network socket"));
 };
 
+struct Hostmask
+{
+	QString nick;
+	QString user;
+	QString host;
+};
+
 class Channel : public QObject
 {
 	Q_OBJECT
@@ -50,6 +57,9 @@ protected:
 	void Authenticate();
 	void RequestCapabilities();
 	void RequestJoin();
+	void DispatchJoin(const QString &source);
+	void DispatchPart(const QString &source);
+	std::optional<Hostmask> ParseSource(const QString &source);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("channel"));
 	void Dispatch(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
@@ -57,6 +67,8 @@ signals:
 	void Disconnected();
 	void Denied();
 	void Joined();
+	void Joined(const QString &user);
+	void Parted(const QString &user);
 	void Ping(const QString &token);
 protected slots:
 	void DataAvailable();
