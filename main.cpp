@@ -19,7 +19,7 @@
 #include "security.h"
 #include "pulsar.h"
 
-const char *ORGANIZATION_NAME="Sky-Meyg";
+const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
 const char *SUBSYSTEM="initialization";
 
