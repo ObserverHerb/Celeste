@@ -1,7 +1,7 @@
 #define MyAppName "Celeste"
 #define MyAppVersion "1.0"
 #define MyAppPublisher "The Engineering Deck"
-#define MyAppURL "https://github.com/herbmillerjr/Celeste"
+#define MyAppURL "https://github.com/EngineeringDeck/Celeste"
 #define MyAppExeName "Celeste.exe"
 
 [Setup]
