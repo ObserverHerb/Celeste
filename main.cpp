@@ -119,6 +119,9 @@ int main(int argc,char *argv[])
 			.arrivalSound=celeste.ArrivalSound(),
 			.portraitVideo=celeste.PortraitVideo()
 		}));
+		UI::Metrics::Dialog metrics(&window);
+
+		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;
@@ -155,12 +158,15 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
 		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
 		celeste.connect(&celeste,&Bot::Pulse,&pulsar,&Pulsar::Pulse);
+		celeste.connect(&celeste,QOverload<const QStringList&>::of(&Bot::Chatters),&metrics,QOverload<const QStringList&>::of(&UI::Metrics::Dialog::Acknowledged));
 		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
-		channel->connect(channel,&Channel::Joined,&window,&Window::ShowChat);
-		channel->connect(channel,&Channel::Joined,[&echo,&log,&celeste,&window]() {
+		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
+		channel->connect(channel,QOverload<const QString&>::of(&Channel::Parted),&metrics,&UI::Metrics::Dialog::Parted);
+		channel->connect(channel,QOverload<>::of(&Channel::Joined),&window,&Window::ShowChat);
+		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&window]() {
 			log.disconnect(echo);
 			celeste.connect(&celeste,&Bot::Print,&window,&Window::Print);
 		});
@@ -218,9 +224,10 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
-		window.connect(&window,&Window::ConfigureOptions,[&configureOptions]() {
+		window.connect(&window,&Window::ConfigureOptions,&configureOptions,[&configureOptions]() {
 			configureOptions.exec();
 		});
+		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::exec);
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protection()) {
 				QMessageBox emoteOnlyDialog;
