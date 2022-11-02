@@ -26,6 +26,7 @@ const char *SUBSYSTEM="initialization";
 enum
 {
 	OK,
+	NOT_CONFIGURED,
 	FATAL_ERROR,
 	UNKNOWN_ERROR
 };
@@ -46,11 +47,31 @@ int main(int argc,char *argv[])
 #endif
 
 	Security security;
-	if (!security.Administrator()) security.Administrator().Set(QInputDialog::getText(nullptr,"Administrator","Please provide the account name of the Twitch user who will serve as the bot's administrator.").toLower());
-	if (!security.ClientID()) security.ClientID().Set(QInputDialog::getText(nullptr,"Client ID","A client ID has not yet been set. Please provide your bot's client ID.",QLineEdit::Password));
-	if (!security.ClientSecret()) security.ClientSecret().Set(QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret.",QLineEdit::Password));
-	if (!security.CallbackURL()) security.CallbackURL().Set(QInputDialog::getText(nullptr,"Callback URL","EventSub requires the URL at which your bot's server can reached. Please provide a callback URL."));
-	if (!security.Scope())
+	if (!security.Administrator() || static_cast<QString>(security.Administrator()).isEmpty())
+	{
+		QString administrator=QInputDialog::getText(nullptr,"Administrator","Please provide the account name of the Twitch user who will serve as the bot's administrator.").toLower();
+		if (administrator.isEmpty()) return NOT_CONFIGURED;
+		security.Administrator().Set(administrator);
+	}
+	if (!security.ClientID() || static_cast<QString>(security.ClientID()).isEmpty())
+	{
+		QString clientID=QInputDialog::getText(nullptr,"Client ID","A client ID has not yet been set. Please provide your bot's client ID from the Twitch developer console.",QLineEdit::Password);
+		if (clientID.isEmpty()) return NOT_CONFIGURED;
+		security.ClientID().Set(clientID);
+	}
+	if (!security.ClientSecret() || static_cast<QString>(security.ClientSecret()).isEmpty())
+	{
+		QString secret=QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret from the Twitch developer console.",QLineEdit::Password);
+		if (secret.isEmpty()) return NOT_CONFIGURED;
+		security.ClientSecret().Set(secret);
+	}
+	if (!security.CallbackURL() || static_cast<QString>(security.CallbackURL()).isEmpty())
+	{
+		QString callbackURL=QInputDialog::getText(nullptr,"Callback URL","OAuth and EventSub require the URL at which your bot's server can be reached. Please provide a callback URL.");
+		if (callbackURL.isEmpty()) return NOT_CONFIGURED;
+		security.CallbackURL().Set(callbackURL);
+	}
+	if (!security.Scope() || static_cast<QStringList>(security.Scope()).isEmpty())
 	{
 		QDialog scopeDialog;
 		QGridLayout *layout=new QGridLayout(&scopeDialog);
