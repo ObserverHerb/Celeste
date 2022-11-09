@@ -63,6 +63,13 @@ namespace UI
 	QString OpenVideo(QWidget *parent,QString initialPath=QString());
 	QString OpenAudio(QWidget *parent,QString initialPath=QString());
 
+	class Help : public QTextEdit
+	{
+		Q_OBJECT
+	public:
+		Help(QWidget *parent);
+	};
+
 	namespace Text
 	{
 		inline const char *BROWSE="Browse";
@@ -168,7 +175,7 @@ namespace UI
 			Dialog(const Command::Lookup &commands,QWidget *parent);
 		protected:
 			QWidget entriesFrame;
-			QTextEdit help;
+			Help help;
 			QLabel labelFilter;
 			QComboBox filter;
 			QDialogButtonBox buttons;
@@ -177,7 +184,6 @@ namespace UI
 			QPushButton newEntry;
 			std::unordered_map<QString,Entry*> entries;
 			void PopulateEntries(const Command::Lookup &commands,QLayout *layout);
-			void Help(const QString &text);
 			void Save();
 		signals:
 			void Save(const Command::Lookup &commands);
@@ -209,8 +215,11 @@ namespace UI
 				QGridLayout detailsLayout;
 				QLabel* Label(const QString &text);
 				void Rows(std::vector<Row> widgets);
+				virtual bool eventFilter(QObject *object,QEvent *event) override=0;
 			private:
 				QVBoxLayout layout;
+			signals:
+				void Help(const QString &text);
 			protected slots:
 				void ToggleDetails();
 				void PickColor(QLineEdit &control);
@@ -229,6 +238,7 @@ namespace UI
 			protected:
 				QLineEdit name;
 				QCheckBox protection;
+				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void ValidateName(const QString &text);
 			};
@@ -251,6 +261,7 @@ namespace UI
 				QPushButton selectAccentColor;
 				QSpinBox width;
 				QSpinBox height;
+				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Bot : public Category
@@ -271,6 +282,7 @@ namespace UI
 				QLineEdit portraitVideo;
 				QPushButton selectPortraitVideo;
 				QPushButton previewPortraitVideo;
+				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void PlayArrivalSound(const QString &name,QImage profileImage,const QString &audioPath);
 				void PlayPortraitVideo(const QString &path);
@@ -292,7 +304,12 @@ namespace UI
 			void AddCategory(Categories::Category *category);
 		protected:
 			QWidget entriesFrame;
+			Help help;
+			QDialogButtonBox buttons;
+			QPushButton discard;
+			QPushButton save;
 			QVBoxLayout *scrollLayout;
+
 		};
 	}
 

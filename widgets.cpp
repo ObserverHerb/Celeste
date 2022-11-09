@@ -130,6 +130,13 @@ namespace UI
 		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Text::DIRECTORY_HOME : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
 	}
 
+	Help::Help(QWidget *parent) : QTextEdit(parent)
+	{
+		setEnabled(false);
+		setSizePolicy(QSizePolicy(QSizePolicy::Preferred,QSizePolicy::MinimumExpanding));
+		setStyleSheet(QStringLiteral("border: none; color: palette(window-text);"));
+	}
+
 	namespace Commands
 	{
 		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
@@ -550,8 +557,6 @@ namespace UI
 			QWidget *rightPane=new QWidget(this);
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
 			rightPane->setLayout(rightLayout);
-			help.setEnabled(false);
-			help.setSizePolicy(QSizePolicy(QSizePolicy::Preferred,QSizePolicy::MinimumExpanding));
 			rightLayout->addWidget(&help,0,0,1,2);
 			labelFilter.setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
 			rightLayout->addWidget(&labelFilter,1,0);
@@ -591,16 +596,11 @@ namespace UI
 				}
 
 				Entry *entry=new Entry(command,this);
-				connect(entry,&Entry::Help,this,&Dialog::Help);
+				connect(entry,&Entry::Help,&help,&QTextEdit::setText);
 				entries[entry->Name()]=entry;
 				layout->addWidget(entry);
 			}
 			for (const std::pair<QString,QStringList> &pair : aliases) entries.at(pair.first)->Aliases(pair.second);
-		}
-
-		void Dialog::Help(const QString &text)
-		{
-			help.setText(text);
 		}
 
 		void Dialog::FilterChanged(int index)
@@ -763,7 +763,6 @@ namespace UI
 			Channel::Channel(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Channel")),
 				name(this),
 				protection(this)
-
 			{
 				connect(&name,&QLineEdit::textChanged,this,&Channel::ValidateName);
 
@@ -774,6 +773,20 @@ namespace UI
 					{Label(QStringLiteral("Name")),&name},
 					{Label(QStringLiteral("Protection")),&protection}
 				});
+
+				name.installEventFilter(this);
+				protection.installEventFilter(this);
+			}
+
+			bool Channel::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &name) emit Help(QStringLiteral("Name of the channel Celeste will join on launch"));
+					if (object == &protection) emit Help(QStringLiteral("When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."));
+				}
+
+				return false;
 			}
 
 			void Channel::ValidateName(const QString &text)
@@ -806,6 +819,24 @@ namespace UI
 					{Label(QStringLiteral("Width")),&width},
 					{Label(QStringLiteral("Height")),&height}
 				});
+
+				backgroundColor.installEventFilter(this);
+				accentColor.installEventFilter(this);
+				width.installEventFilter(this);
+				height.installEventFilter(this);
+			}
+
+			bool Window::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &backgroundColor) emit Help(QStringLiteral("This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."));
+					if (object == &accentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
+					if (object == &width) emit Help(QStringLiteral("The width (in pixels) of the application window's contents (the part seen by OBS)"));
+					if (object == &height) emit Help(QStringLiteral("The height (in pixels) of the application window's contents (the part seen by OBS)"));
+				}
+
+				return false;
 			}
 
 			Bot::Bot(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Bot Core")),
@@ -830,6 +861,20 @@ namespace UI
 					{Label(QStringLiteral("Arrival Announcement Audio")),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
 					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo}
 				});
+
+				arrivalSound.installEventFilter(this);
+				portraitVideo.installEventFilter(this);
+			}
+
+			bool Bot::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &arrivalSound) emit Help(QStringLiteral("This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."));
+					if (object == &portraitVideo) emit Help(QStringLiteral("Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."));
+				}
+
+				return false;
 			}
 
 			void Bot::OpenArrivalSound()
@@ -874,6 +919,10 @@ namespace UI
 
 		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			entriesFrame(this),
+			help(this),
+			buttons(this),
+			discard(Text::BUTTON_DISCARD,this),
+			save(Text::BUTTON_SAVE,this),
 			scrollLayout(nullptr)
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#options { background-color: palette(base); }");
@@ -902,6 +951,7 @@ namespace UI
 		void Dialog::AddCategory(Categories::Category *category)
 		{
 			scrollLayout->addWidget(category);
+			connect(category,&Categories::Category::Help,&help,&QTextEdit::setText);
 		}
 	}
 
