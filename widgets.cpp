@@ -930,20 +930,43 @@ namespace UI
 			setModal(true);
 			setWindowTitle("Options");
 
-			QGridLayout *layout=new QGridLayout(this);
-			setLayout(layout);
+			QVBoxLayout *mainLayout=new QVBoxLayout(this);
+			setLayout(mainLayout);
 
+			QWidget *upperContent=new QWidget(this);
+			QHBoxLayout *upperLayout=new QHBoxLayout(upperContent);
+			upperContent->setLayout(upperLayout);
+			mainLayout->addWidget(upperContent);
+			
 			QScrollArea *scroll=new QScrollArea(this);
 			scroll->setWidgetResizable(true);
 			entriesFrame.setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Fixed));
 			entriesFrame.setObjectName("options");
 			scroll->setWidget(&entriesFrame);
 			scroll->setSizePolicy(QSizePolicy(QSizePolicy::Expanding,QSizePolicy::MinimumExpanding));
-			layout->addWidget(scroll);
+			upperLayout->addWidget(scroll);
 
 			scrollLayout=new QVBoxLayout(&entriesFrame);
 			scrollLayout->setAlignment(Qt::AlignBottom);
 			entriesFrame.setLayout(scrollLayout);
+
+			QWidget *rightPane=new QWidget(this);
+			QGridLayout *rightLayout=new QGridLayout(rightPane);
+			rightPane->setLayout(rightLayout);
+			rightLayout->addWidget(&help,0,0,1,2);
+			upperLayout->addWidget(rightPane);
+
+			QWidget *lowerContent=new QWidget(this);
+			QHBoxLayout *lowerLayout=new QHBoxLayout(lowerContent);
+			lowerContent->setLayout(lowerLayout);
+			mainLayout->addWidget(lowerContent);
+
+			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
+			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
+			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
+			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
+			//connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
+			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);
 		}
