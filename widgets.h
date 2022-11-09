@@ -80,6 +80,8 @@ namespace UI
 		inline const char *FILE_TYPE_VIDEO="mp4";
 		inline const char *FILE_TYPE_AUDIO="mp3";
 		inline const char *DIRECTORY_HOME="/home";
+		inline const char *BUTTON_SAVE="&Save";
+		inline const char *BUTTON_DISCARD="&Discard";
 	}
 
 	namespace Commands

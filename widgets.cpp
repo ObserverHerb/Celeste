@@ -525,8 +525,8 @@ namespace UI
 			labelFilter("Filter:",this),
 			filter(this),
 			buttons(this),
-			discard("&Discard",this),
-			save("&Save",this),
+			discard(Text::BUTTON_DISCARD,this),
+			save(Text::BUTTON_SAVE,this),
 			newEntry("&New",this)
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#commands { background-color: palette(base); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
