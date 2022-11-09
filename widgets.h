@@ -62,8 +62,6 @@ namespace UI
 	void Require(QWidget *widget,bool empty);
 	QString OpenVideo(QWidget *parent,QString initialPath=QString());
 	QString OpenAudio(QWidget *parent,QString initialPath=QString());
-	void PlayVideo(QWidget *parent,const QString &filename);
-	void PlaySound(QWidget *parent,const QString &filename);
 
 	namespace Text
 	{
@@ -273,6 +271,9 @@ namespace UI
 				QLineEdit portraitVideo;
 				QPushButton selectPortraitVideo;
 				QPushButton previewPortraitVideo;
+			signals:
+				void PlayArrivalSound(const QString &name,QImage profileImage,const QString &audioPath);
+				void PlayPortraitVideo(const QString &path);
 			protected slots:
 				void OpenArrivalSound();
 				void PlayArrivalSound();

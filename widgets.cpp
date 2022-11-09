@@ -130,41 +130,6 @@ namespace UI
 		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Text::DIRECTORY_HOME : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
 	}
 
-	void PlayVideo(QWidget *parent,const QString &filename)
-	{
-		QDialog *dialog=new QDialog(parent);
-		dialog->setWindowTitle(filename);
-		dialog->resize(720,480);
-		QGridLayout *layout=new QGridLayout(dialog);
-		layout->setContentsMargins(0,0,0,0);
-		dialog->setLayout(layout);
-		QVideoWidget *output=new QVideoWidget(dialog);
-		layout->addWidget(output);
-		dialog->open();
-
-		QMediaPlayer *player=new QMediaPlayer(dialog);
-		player->setVideoOutput(output);
-		parent->connect(player,&QMediaPlayer::mediaStatusChanged,parent,[parent,player,dialog](QMediaPlayer::MediaStatus status) {
-			if (status == QMediaPlayer::LoadedMedia) player->play();
-			if (status == QMediaPlayer::UnknownMediaStatus || status == QMediaPlayer::InvalidMedia || status == QMediaPlayer::EndOfMedia) { dialog->close(); }
-		});
-		parent->connect(dialog,&QDialog::finished,parent,[dialog,player]() {
-			player->stop();
-			dialog->deleteLater();
-		});
-		player->setMedia(QUrl::fromLocalFile(filename));
-	}
-
-	void PlaySound(QWidget *parent,const QString &filename)
-	{
-		QMediaPlayer *player=new QMediaPlayer(parent);
-		player->connect(player,&QMediaPlayer::mediaStatusChanged,player,[parent,player](QMediaPlayer::MediaStatus status) {
-			if (status == QMediaPlayer::LoadedMedia) player->play();
-			if (status == QMediaPlayer::UnknownMediaStatus || status == QMediaPlayer::InvalidMedia || status == QMediaPlayer::EndOfMedia) player->deleteLater();
-		});
-		player->setMedia(QUrl::fromLocalFile(filename));
-	}
-
 	namespace Commands
 	{
 		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
@@ -853,10 +818,10 @@ namespace UI
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
 				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
-				connect(&previewArrivalSound,&QPushButton::clicked,this,&Bot::PlayArrivalSound);
+				connect(&previewArrivalSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayArrivalSound));
 				connect(&portraitVideo,&QLineEdit::textChanged,this,&Bot::ValidatePortraitVideo);
 				connect(&selectPortraitVideo,&QPushButton::clicked,this,&Bot::OpenPortraitVideo);
-				connect(&previewPortraitVideo,&QPushButton::clicked,this,&Bot::PlayPortraitVideo);
+				connect(&previewPortraitVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayPortraitVideo));
 
 				arrivalSound.setText(settings.arrivalSound);
 				portraitVideo.setText(settings.portraitVideo);
@@ -876,7 +841,7 @@ namespace UI
 			void Bot::PlayArrivalSound()
 			{
 				const QString filename=arrivalSound.text();
-				PlaySound(this,QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
+				emit PlayArrivalSound(QStringLiteral("Celeste"),QImage(),QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
 			}
 
 			void Bot::OpenPortraitVideo()
@@ -887,7 +852,7 @@ namespace UI
 
 			void Bot::PlayPortraitVideo()
 			{
-				PlayVideo(this,portraitVideo.text());
+				emit PlayPortraitVideo(portraitVideo.text());
 			}
 
 			void Bot::ValidateArrivalSound(const QString &path)

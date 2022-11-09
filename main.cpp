@@ -115,12 +115,15 @@ int main(int argc,char *argv[])
 			.accentColor=window.AccentColor(),
 			.dimensions=window.Dimensions()
 		}));
-		configureOptions.AddCategory(new UI::Options::Categories::Bot(&configureOptions,{
+		UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(&configureOptions,{
 			.arrivalSound=celeste.ArrivalSound(),
 			.portraitVideo=celeste.PortraitVideo()
-		}));
+		});
+		configureOptions.AddCategory(optionsCategoryBot);
 		UI::Metrics::Dialog metrics(&window);
 
+		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
+		configureOptions.connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
 		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
