@@ -740,8 +740,12 @@ namespace UI
 						// if we're on the last column, calculate how far it is from the number of columns in the longest row
 						// this determines our column span
 						int columnSpan=1;
-						if (columnIndex == widgets[rowIndex].size()-1) columnSpan=maxColumns-columnIndex;
-						detailsLayout.addWidget(widgets[rowIndex][columnIndex],rowIndex,columnIndex,1,columnSpan);
+						int lastColumn=widgets[rowIndex].size()-1;
+						QWidget *widget=widgets[rowIndex][columnIndex];
+						if (columnIndex == lastColumn) columnSpan=maxColumns-columnIndex;
+						detailsLayout.addWidget(widget,rowIndex,columnIndex,1,columnSpan);
+						// NOTE: this will not fire for labels because they do not fire an enterEvent for mouse hovers
+						widget->installEventFilter(this);
 					}
 				}
 			}
@@ -770,19 +774,26 @@ namespace UI
 					{Label(QStringLiteral("Name")),&name},
 					{Label(QStringLiteral("Protection")),&protection}
 				});
-
-				name.installEventFilter(this);
-				protection.installEventFilter(this);
 			}
 
 			bool Channel::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &name) emit Help(QStringLiteral("Name of the channel Celeste will join on launch"));
-					if (object == &protection) emit Help(QStringLiteral("When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."));
+					if (object == &name)
+					{
+						emit Help(QStringLiteral("Name of the channel Celeste will join on launch"));
+						return false;
+					}
+
+					if (object == &protection)
+					{
+						emit Help(QStringLiteral("When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."));
+						return false;
+					}
 				}
 
+				if (event->type() == QEvent::HoverLeave) emit Help("");
 				return false;
 			}
 
@@ -816,23 +827,38 @@ namespace UI
 					{Label(QStringLiteral("Width")),&width},
 					{Label(QStringLiteral("Height")),&height}
 				});
-
-				backgroundColor.installEventFilter(this);
-				accentColor.installEventFilter(this);
-				width.installEventFilter(this);
-				height.installEventFilter(this);
 			}
 
 			bool Window::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &backgroundColor) emit Help(QStringLiteral("This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."));
-					if (object == &accentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
-					if (object == &width) emit Help(QStringLiteral("The width (in pixels) of the application window's contents (the part seen by OBS)"));
-					if (object == &height) emit Help(QStringLiteral("The height (in pixels) of the application window's contents (the part seen by OBS)"));
+					if (object == &backgroundColor || object == &selectBackgroundColor)
+					{
+						emit Help(QStringLiteral("This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."));
+						return false;
+					}
+
+					if (object == &accentColor || object == &selectAccentColor)
+					{
+						emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
+						return false;
+					}
+
+					if (object == &width)
+					{
+						emit Help(QStringLiteral("The width (in pixels) of the application window's contents (the part seen by OBS)"));
+						return false;
+					}
+
+					if (object == &height)
+					{
+						emit Help(QStringLiteral("The height (in pixels) of the application window's contents (the part seen by OBS)"));
+						return false;
+					}
 				}
 
+				if (event->type() == QEvent::HoverLeave) emit Help("");
 				return false;
 			}
 
@@ -858,19 +884,17 @@ namespace UI
 					{Label(QStringLiteral("Arrival Announcement Audio")),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
 					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo}
 				});
-
-				arrivalSound.installEventFilter(this);
-				portraitVideo.installEventFilter(this);
 			}
 
 			bool Bot::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &arrivalSound) emit Help(QStringLiteral("This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."));
-					if (object == &portraitVideo) emit Help(QStringLiteral("Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."));
+					if (object == &arrivalSound || object == &selectArrivalSound || object == &previewArrivalSound) emit Help(QStringLiteral("This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."));
+					if (object == &portraitVideo || object == &selectPortraitVideo || object == &previewPortraitVideo) emit Help(QStringLiteral("Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."));
 				}
 
+				if (event->type() == QEvent::HoverLeave) emit Help("");
 				return false;
 			}
 
