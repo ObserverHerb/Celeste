@@ -722,29 +722,26 @@ namespace UI
 				return label;
 			}
 
-			void Category::Rows(std::vector<Row> widgets)
+			void Category::Rows(std::vector<std::vector<QWidget*>> widgets)
 			{
-				int row=0;
-				for (int row=0; row < widgets.size(); row++)
+				// find longest vector
+				static const int MINIMUM_COLUMNS=2;
+				int maxColumns=2;
+				for (const std::vector<QWidget*> &row : widgets)
 				{
-					Row &candidate=widgets[row];
-					detailsLayout.addWidget(candidate.first,row,0);
-					if (candidate.third)
+					if (row.size() < MINIMUM_COLUMNS) throw std::logic_error("A row requires at least one label and one input field");
+					if (row.size() > maxColumns) maxColumns=row.size();
+				}
+
+				for (int rowIndex=0; rowIndex < widgets.size(); rowIndex++)
+				{					
+					for (int columnIndex=0; columnIndex < widgets[rowIndex].size(); columnIndex++)
 					{
-						detailsLayout.addWidget(candidate.second,row,1);
-						if (candidate.fourth)
-						{
-							detailsLayout.addWidget(candidate.third,row,2);
-							detailsLayout.addWidget(candidate.fourth,row,3);
-						}
-						else
-						{
-							detailsLayout.addWidget(candidate.third,row,2,1,2);
-						}
-					}
-					else
-					{
-						detailsLayout.addWidget(candidate.second,row,1,1,3);
+						// if we're on the last column, calculate how far it is from the number of columns in the longest row
+						// this determines our column span
+						int columnSpan=1;
+						if (columnIndex == widgets[rowIndex].size()-1) columnSpan=maxColumns-columnIndex;
+						detailsLayout.addWidget(widgets[rowIndex][columnIndex],rowIndex,columnIndex,1,columnSpan);
 					}
 				}
 			}

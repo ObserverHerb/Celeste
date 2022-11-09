@@ -204,19 +204,11 @@ namespace UI
 			public:
 				Category(QWidget *parent,const QString &name);
 			protected:
-				struct Row
-				{
-					Row(QWidget *first,QWidget *second,QWidget *third=nullptr,QWidget *fourth=nullptr) : first(first), second(second), third(third), fourth(fourth) { }
-					QWidget *first;
-					QWidget *second;
-					QWidget *third;
-					QWidget *fourth;
-				};
 				QPushButton header;
 				QFrame details;
 				QGridLayout detailsLayout;
 				QLabel* Label(const QString &text);
-				void Rows(std::vector<Row> widgets);
+				void Rows(std::vector<std::vector<QWidget*>> widgets);
 				virtual bool eventFilter(QObject *object,QEvent *event) override=0;
 			private:
 				QVBoxLayout layout;
