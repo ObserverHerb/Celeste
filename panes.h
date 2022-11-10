@@ -34,6 +34,10 @@ class StatusPane : public PersistentPane
 	Q_OBJECT
 public:
 	StatusPane(QWidget *parent);
+	ApplicationSetting& Font();
+	ApplicationSetting& FontSize();
+	ApplicationSetting& ForegroundColor();
+	ApplicationSetting& BackgroundColor();
 protected:
 	QTextEdit *output;
 	ApplicationSetting settingFont;

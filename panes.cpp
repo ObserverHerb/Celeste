@@ -34,6 +34,26 @@ void StatusPane::Print(const QString &text)
 	output->ensureCursorVisible();
 }
 
+ApplicationSetting& StatusPane::Font()
+{
+	return settingFont;
+}
+
+ApplicationSetting& StatusPane::FontSize()
+{
+	return settingFontSize;
+}
+
+ApplicationSetting& StatusPane::ForegroundColor()
+{
+	return settingForegroundColor;
+}
+
+ApplicationSetting& StatusPane::BackgroundColor()
+{
+	return settingBackgroundColor;
+}
+
 const QString ChatPane::SETTINGS_CATEGORY="ChatPane";
 
 ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),

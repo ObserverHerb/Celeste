@@ -268,6 +268,39 @@ namespace UI
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
+			class Status : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting font;
+					ApplicationSetting fontSize;
+					ApplicationSetting foregroundColor;
+					ApplicationSetting backgroundColor;
+				};
+				Status(QWidget *parent,Settings settings);
+				void Save() override;
+			protected:
+				QLineEdit font;
+				QSpinBox fontSize;
+				QPushButton selectFont;
+				QLineEdit foregroundColor;
+				Color previewForegroundColor;
+				QPushButton selectForegroundColor;
+				QLineEdit backgroundColor;
+				Color previewBackgroundColor;
+				QPushButton selectBackgroundColor;
+				Settings settings;
+				void PickFont();
+				void PickForegroundColor();
+				void PickBackgroundColor();
+				void ValidateFont(const QString &family,const int pointSize);
+				void ValidateFont(const QString &family);
+				void ValidateFont(const int pointSize);
+				bool eventFilter(QObject *object,QEvent *event) override;
+			};
+
 			class Pane : public Category
 			{
 				Q_OBJECT

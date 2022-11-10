@@ -239,7 +239,6 @@ int main(int argc,char *argv[])
 		try
 		{
 			configureOptions=new UI::Options::Dialog(&window);
-			AnnouncePane announcePane(QString{},&window);
 			configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
 				.name=channel->Name(),
 				.protection=channel->Protection()
@@ -248,6 +247,14 @@ int main(int argc,char *argv[])
 				.backgroundColor=window.BackgroundColor(),
 				.dimensions=window.Dimensions()
 			}));
+			StatusPane statusPane(&window);
+			configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
+				.font=statusPane.Font(),
+				.fontSize=statusPane.FontSize(),
+				.foregroundColor=statusPane.ForegroundColor(),
+				.backgroundColor=statusPane.BackgroundColor()
+			}));
+			AnnouncePane announcePane(QString{},&window);
 			configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
 				.font=announcePane.Font(),
 				.fontSize=announcePane.FontSize(),

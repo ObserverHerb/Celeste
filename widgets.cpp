@@ -878,6 +878,96 @@ namespace UI
 			{
 			}
 
+			Status::Status(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Status")),
+				font(this),
+				fontSize(this),
+				selectFont(Text::CHOOSE,this),
+				foregroundColor(this),
+				previewForegroundColor(this,settings.foregroundColor),
+				selectForegroundColor(Text::CHOOSE,this),
+				backgroundColor(this),
+				previewBackgroundColor(this,settings.backgroundColor),
+				selectBackgroundColor(Text::CHOOSE,this),
+				settings(settings)
+			{
+				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Status::ValidateFont));
+				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Status::ValidateFont));
+				connect(&selectFont,&QPushButton::clicked,this,&Status::PickFont);
+				connect(&selectForegroundColor,&QPushButton::clicked,this,&Status::PickForegroundColor);
+				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Status::PickBackgroundColor);
+
+				font.setText(settings.font);
+				fontSize.setRange(1,std::numeric_limits<short>::max());
+				fontSize.setValue(settings.fontSize);
+				foregroundColor.setText(settings.foregroundColor);
+				backgroundColor.setText(settings.backgroundColor);
+
+				Rows({
+					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
+					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
+					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+				});
+			}
+
+			void Status::PickFont()
+			{
+				bool ok=false;
+				QFont candidate(font.text(),fontSize.value());
+				candidate=QFontDialog::getFont(&ok,candidate,this,Text::DIALOG_TITLE_FONT);
+				if (!ok) return;
+				font.setText(candidate.family());
+				fontSize.setValue(candidate.pointSize());
+			}
+
+			void Status::PickForegroundColor()
+			{
+				PickColor(foregroundColor);
+				previewForegroundColor.Set(foregroundColor.text());
+			}
+
+			void Status::PickBackgroundColor()
+			{
+				PickColor(backgroundColor);
+				previewBackgroundColor.Set(backgroundColor.text());
+			}
+
+			void Status::ValidateFont(const QString &family,const int pointSize)
+			{
+				QFont candidate(family,pointSize);
+				Valid(&font,candidate.exactMatch());
+			}
+
+			void Status::ValidateFont(const QString &family)
+			{
+				ValidateFont(family,fontSize.value());
+			}
+
+			void Status::ValidateFont(const int pointSize)
+			{
+				ValidateFont(font.text(),pointSize);
+			}
+
+			bool Status::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &font || object == &fontSize || object == &selectFont) emit Help(QStringLiteral("The font that will be used in the initialization screen when the bot is first launched and connecting to Twitch"));
+					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of text in the initialization screen that is shown when the bot is first launched and connecting to Twitch"));
+					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background in the initialization screen that is shown when the bot is first launched and connecting to Twitch"));
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			void Status::Save()
+			{
+				settings.font.Set(font.text());
+				settings.fontSize.Set(fontSize.value());
+				settings.foregroundColor.Set(foregroundColor.text());
+				settings.backgroundColor.Set(backgroundColor.text());
+			}
+
 			Pane::Pane(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Panes")),
 				font(this),
 				fontSize(this),
