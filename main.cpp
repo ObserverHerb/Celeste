@@ -120,6 +120,7 @@ int main(int argc,char *argv[])
 			.portraitVideo=celeste.PortraitVideo(),
 			.cheerVideo=celeste.CheerVideo(),
 			.subscriptionSound=celeste.SubscriptionSound(),
+			.raidSound=celeste.RaidSound(),
 			.inactivityCooldown=celeste.InactivityCooldown(),
 			.helpCooldown=celeste.HelpCooldown(),
 			.textWallThreshold=celeste.TextWallThreshold(),
@@ -133,6 +134,7 @@ int main(int argc,char *argv[])
 		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
 		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
 		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
+		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
 		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {

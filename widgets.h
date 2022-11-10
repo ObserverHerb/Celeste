@@ -269,6 +269,7 @@ namespace UI
 					ApplicationSetting &portraitVideo;
 					ApplicationSetting &cheerVideo;
 					ApplicationSetting &subscriptionSound;
+					ApplicationSetting &raidSound;
 					ApplicationSetting &inactivityCooldown;
 					ApplicationSetting &helpCooldown;
 					ApplicationSetting &textWallThreshold;
@@ -288,6 +289,9 @@ namespace UI
 				QLineEdit subscriptionSound;
 				QPushButton selectSubscriptionSound;
 				QPushButton previewSubscriptionSound;
+				QLineEdit raidSound;
+				QPushButton selectRaidSound;
+				QPushButton previewRaidSound;
 				QSpinBox inactivityCooldown;
 				QSpinBox helpCooldown;
 				QLineEdit textWallSound;
@@ -300,6 +304,7 @@ namespace UI
 				void PlayPortraitVideo(const QString &path);
 				void PlayCheerVideo(const QString &chatter,const unsigned int count,const QString &message,const QString &path);
 				void PlaySubscriptionSound(const QString &chatter,const QString &path);
+				void PlayRaidSound(const QString &chatter,const unsigned int raiders,const QString &path);
 				void PlayTextWallSound(const QString &message,const QString &path);
 			protected slots:
 				void OpenArrivalSound();
@@ -310,12 +315,15 @@ namespace UI
 				void PlayCheerVideo();
 				void OpenSubscriptionSound();
 				void PlaySubscriptionSound();
+				void OpenRaidSound();
+				void PlayRaidSound();
 				void OpenTextWallSound();
 				void PlayTextWallSound();
 				void ValidateArrivalSound(const QString &path);
 				void ValidatePortraitVideo(const QString &path);
 				void ValidateCheerVideo(const QString &path);
 				void ValidateSubscriptionSound(const QString &path);
+				void ValidateRaidSound(const QString &path);
 				void ValidateTextWallSound(const QString &path);
 			};
 		}

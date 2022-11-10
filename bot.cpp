@@ -1229,6 +1229,11 @@ ApplicationSetting& Bot::SubscriptionSound()
 	return settingSubscriptionSound;
 }
 
+ApplicationSetting& Bot::RaidSound()
+{
+	return settingRaidSound;
+}
+
 ApplicationSetting& Bot::InactivityCooldown()
 {
 	return settingInactivityCooldown;

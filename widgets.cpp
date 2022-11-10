@@ -882,6 +882,9 @@ namespace UI
 				subscriptionSound(this),
 				selectSubscriptionSound(Text::BROWSE,this),
 				previewSubscriptionSound(Text::PREVIEW,this),
+				raidSound(this),
+				selectRaidSound(Text::BROWSE,this),
+				previewRaidSound(Text::PREVIEW,this),
 				inactivityCooldown(this),
 				helpCooldown(this),
 				textWallThreshold(this),
@@ -900,7 +903,10 @@ namespace UI
 				connect(&previewCheerVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayCheerVideo));
 				connect(&subscriptionSound,&QLineEdit::textChanged,this,&Bot::ValidateSubscriptionSound);
 				connect(&selectSubscriptionSound,&QPushButton::clicked,this,&Bot::OpenSubscriptionSound);
-				connect(&previewSubscriptionSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlaySubscriptionSound));
+				connect(&previewSubscriptionSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayRaidSound));
+				connect(&raidSound,&QLineEdit::textChanged,this,&Bot::ValidateRaidSound);
+				connect(&selectRaidSound,&QPushButton::clicked,this,&Bot::OpenRaidSound);
+				connect(&previewRaidSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayRaidSound));
 				connect(&textWallSound,&QLineEdit::textChanged,this,&Bot::ValidateTextWallSound);
 				connect(&selectTextWallSound,&QPushButton::clicked,this,&Bot::OpenTextWallSound);
 				connect(&previewTextWallSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayTextWallSound));
@@ -909,6 +915,7 @@ namespace UI
 				portraitVideo.setText(settings.portraitVideo);
 				cheerVideo.setText(settings.cheerVideo);
 				subscriptionSound.setText(settings.subscriptionSound);
+				raidSound.setText(settings.raidSound);
 				inactivityCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
 				inactivityCooldown.setValue(settings.inactivityCooldown);
 				helpCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
@@ -922,6 +929,7 @@ namespace UI
 					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
 					{Label(QStringLiteral("Cheer (Bits) Video")),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
 					{Label(QStringLiteral("Subscription Announcement")),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
+					{Label(QStringLiteral("Raid Announcement")),&raidSound,&selectRaidSound,&previewRaidSound},
 					{Label(QStringLiteral("Inactivity Cooldown")),&inactivityCooldown},
 					{Label(QStringLiteral("Help Cooldown")),&helpCooldown},
 					{Label(QStringLiteral("Wall-of-Text Sound")),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(QStringLiteral("Threshold")),&textWallThreshold}
@@ -936,6 +944,7 @@ namespace UI
 					if (object == &portraitVideo || object == &selectPortraitVideo || object == &previewPortraitVideo) emit Help(QStringLiteral("Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."));
 					if (object == &cheerVideo || object == &selectCheerVideo || object == &previewCheerVideo) emit Help(QStringLiteral("A video (mp4) that plays when a chatter cheers bits."));
 					if (object == &subscriptionSound || object == &selectSubscriptionSound || object == &previewSubscriptionSound) emit Help(QStringLiteral("This is the sound that plays when a chatter subscribes to the channel."));
+					if (object == &raidSound || object == &selectRaidSound || object == &previewRaidSound) emit Help(QStringLiteral("This is the sound that plays when another streamer raids the channel."));
 					if (object == &inactivityCooldown) emit Help(QStringLiteral(R"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"));
 					if (object == &helpCooldown) emit Help(QStringLiteral(R"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"));
 					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(QStringLiteral("This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."));
@@ -990,6 +999,30 @@ namespace UI
 				emit PlaySubscriptionSound(qApp->applicationName(),subscriptionSound.text());
 			}
 
+			void Bot::OpenRaidSound()
+			{
+				QString candidate=OpenAudio(this,raidSound.text());
+				if (!candidate.isEmpty()) raidSound.setText(candidate);
+			}
+
+			void Bot::PlayRaidSound()
+			{
+				emit PlayRaidSound(qApp->applicationName(),100,raidSound.text());
+			}
+
+			void Bot::OpenTextWallSound()
+			{
+				QString candidate=OpenAudio(this,textWallSound.text());
+				if (!candidate.isEmpty()) textWallSound.setText(candidate);
+			}
+
+			void Bot::PlayTextWallSound()
+			{
+				QString message("Celeste ");
+				message=message.repeated(textWallThreshold.value()/message.size());
+				emit PlayTextWallSound(message,textWallSound.text());
+			}
+
 			void Bot::ValidateArrivalSound(const QString &path)
 			{
 				QFileInfo candidate(path);
@@ -1022,17 +1055,12 @@ namespace UI
 				previewSubscriptionSound.setEnabled(valid);
 			}
 
-			void Bot::OpenTextWallSound()
+			void Bot::ValidateRaidSound(const QString &path)
 			{
-				QString candidate=OpenAudio(this,textWallSound.text());
-				if (!candidate.isEmpty()) textWallSound.setText(candidate);
-			}
-
-			void Bot::PlayTextWallSound()
-			{
-				QString message("Celeste ");
-				message=message.repeated(textWallThreshold.value()/message.size());
-				emit PlayTextWallSound(message,textWallSound.text());
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_AUDIO;
+				Valid(&raidSound,valid);
+				previewRaidSound.setEnabled(valid);
 			}
 
 			void Bot::ValidateTextWallSound(const QString &path)

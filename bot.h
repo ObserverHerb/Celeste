@@ -52,6 +52,7 @@ public:
 	ApplicationSetting& PortraitVideo();
 	ApplicationSetting& CheerVideo();
 	ApplicationSetting& SubscriptionSound();
+	ApplicationSetting& RaidSound();
 	ApplicationSetting& InactivityCooldown();
 	ApplicationSetting& HelpCooldown();
 	ApplicationSetting& TextWallThreshold();
