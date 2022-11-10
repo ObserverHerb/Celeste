@@ -782,7 +782,8 @@ namespace UI
 
 			Channel::Channel(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Channel")),
 				name(this),
-				protection(this)
+				protection(this),
+				settings(settings)
 			{
 				connect(&name,&QLineEdit::textChanged,this,&Channel::ValidateName);
 
@@ -823,6 +824,8 @@ namespace UI
 
 			void Channel::Save()
 			{
+				settings.name.Set(name.text());
+				settings.protection.Set(protection.isChecked());
 			}
 
 			Window::Window(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Main Window")),

@@ -244,6 +244,7 @@ namespace UI
 			protected:
 				QLineEdit name;
 				QCheckBox protection;
+				Settings settings;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void ValidateName(const QString &text);
