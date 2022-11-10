@@ -1378,6 +1378,49 @@ namespace UI
 			void Bot::Save()
 			{
 			}
+
+			Log::Log(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Logging")),
+				directory(this),
+				selectDirectory(Text::BROWSE,this),
+				settings(settings)
+			{
+				connect(&directory,&QLineEdit::textChanged,this,&Log::ValidateDirectory);
+				connect(&selectDirectory,&QPushButton::clicked,this,&Log::OpenDirectory);
+
+				directory.setText(settings.directory);
+
+				Rows({
+					{Label(QStringLiteral("Folder")),&directory,&selectDirectory}
+				});
+			}
+
+			void Log::OpenDirectory()
+			{
+				const QString initialPath=directory.text();
+				QString candidate=QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this,Text::DIALOG_TITLE_DIRECTORY,initialPath.isEmpty() ? Filesystem::DataPath().absolutePath() : initialPath));
+				if (!candidate.isEmpty()) directory.setText(candidate);
+			}
+
+			void Log::ValidateDirectory(const QString &path)
+			{
+				Valid(&directory,QDir(path).exists());
+			}
+
+			bool Log::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &directory || object == &selectDirectory) emit Help(QStringLiteral("The folder where the bot will store log files, one log file per day. The bot logs to the file for the day the bot was launched."));
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			void Log::Save()
+			{
+				settings.directory.Set(directory.text());
+			}
 		}
 
 		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),

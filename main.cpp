@@ -283,6 +283,10 @@ int main(int argc,char *argv[])
 				.textWallSound=celeste.TextWallSound()
 			});
 			configureOptions->AddCategory(optionsCategoryBot);
+			configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
+				.directory=log.Directory()
+			}));
+
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);

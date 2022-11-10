@@ -327,13 +327,14 @@ namespace UI
 				QPushButton selectBackgroundColor;
 				QSpinBox statusInterval;
 				Settings settings;
+				bool eventFilter(QObject *object,QEvent *event) override;
+			protected slots:
 				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
 				void ValidateFont(const QString &family,const int pointSize);
 				void ValidateFont(const QString &family);
 				void ValidateFont(const int pointSize);
-				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Pane : public Category
@@ -366,6 +367,8 @@ namespace UI
 				QPushButton selectAccentColor;
 				QSpinBox duration;
 				Settings settings;
+				bool eventFilter(QObject *object,QEvent *event) override;
+			protected slots:
 				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
@@ -373,7 +376,6 @@ namespace UI
 				void ValidateFont(const QString &family,const int pointSize);
 				void ValidateFont(const QString &family);
 				void ValidateFont(const int pointSize);
-				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Bot : public Category
@@ -444,6 +446,26 @@ namespace UI
 				void ValidateSubscriptionSound(const QString &path);
 				void ValidateRaidSound(const QString &path);
 				void ValidateTextWallSound(const QString &path);
+			};
+
+			class Log : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting &directory;
+				};
+				Log(QWidget *parent,Settings settings);
+				void Save() override;
+			protected:
+				QLineEdit directory;
+				QPushButton selectDirectory;
+				Settings settings;
+				bool eventFilter(QObject *object,QEvent *event) override;
+			protected slots:
+				void OpenDirectory();
+				void ValidateDirectory(const QString &path);
 			};
 		}
 

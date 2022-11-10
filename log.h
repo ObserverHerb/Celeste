@@ -27,11 +27,11 @@ class Log : public QObject
 public:
 	Log(QObject *parent=nullptr);
 	~Log();
+	ApplicationSetting& Directory();
 protected:
 	ApplicationSetting settingLogDirectory;
 	QFile file;
 	bool CreateDirectory();
-	QDir Directory();
 signals:
 	void Print(const Entry &entry);
 public slots:

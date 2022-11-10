@@ -6,7 +6,7 @@ const char *SETTINGS_CATEGORY_LOGGING="Logging";
 Log::Log(QObject *parent) : QObject(parent),
 	settingLogDirectory(SETTINGS_CATEGORY_LOGGING,"Directory",Filesystem::DataPath().absoluteFilePath("logs"))
 {
-	file.setFileName(Directory().absoluteFilePath("current"));
+	file.setFileName(QDir(settingLogDirectory).absoluteFilePath("current"));
 }
 
 Log::~Log()
@@ -16,25 +16,21 @@ Log::~Log()
 
 bool Log::CreateDirectory()
 {
+	QDir directory(settingLogDirectory);
 	const char *operation="creating log directory";
-	emit Print({Directory().absolutePath(),operation});
-	if (!Directory().exists() && !Directory().mkpath(Directory().absolutePath()))
+	emit Print({directory.absolutePath(),operation});
+	if (!directory.exists() && !directory.mkpath(directory.absolutePath()))
 	{
-		emit Print({QString("Failed: %1").arg(Directory().absolutePath()),operation});
+		emit Print({QString("Failed: %1").arg(directory.absolutePath()),operation});
 		return false;
 	}
 	return true;
 }
 
-QDir Log::Directory()
-{
-	return QDir(settingLogDirectory);
-}
-
 bool Log::Open()
 {
 	const char *operation="create log file";
-	emit Print({Directory().absolutePath(),operation});
+	emit Print({QDir(settingLogDirectory).absolutePath(),operation});
 	if (!CreateDirectory()) return false;
 	if (!file.open(QIODevice::ReadWrite))
 	{
@@ -60,7 +56,7 @@ void Log::Archive()
 		return;
 	}
 
-	QFile datedFile(Directory().absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
+	QFile datedFile(QDir(settingLogDirectory).absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
 	if (datedFile.exists())
 	{
 		if (!datedFile.open(QIODevice::WriteOnly|QIODevice::Append))
@@ -86,4 +82,9 @@ void Log::Archive()
 		}
 	}
 	file.close();
+}
+
+ApplicationSetting& Log::Directory()
+{
+	return settingLogDirectory;
 }
