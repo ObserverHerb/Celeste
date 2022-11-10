@@ -70,6 +70,14 @@ namespace UI
 		Help(QWidget *parent);
 	};
 
+	class Color : public QLabel
+	{
+		Q_OBJECT
+	public:
+		Color(QWidget *parent,const QString &color);
+		void Set(const QString &color);
+	};
+
 	namespace Text
 	{
 		inline const char *BROWSE="Browse";
@@ -264,14 +272,26 @@ namespace UI
 			public:
 				struct Settings
 				{
+					ApplicationSetting foregroundColor;
+					ApplicationSetting backgroundColor;
 					ApplicationSetting accentColor;
 				};
 				Pane(QWidget *parent,Settings settings);
 				void Save() override;
 			protected:
+				QLineEdit foregroundColor;
+				Color previewForegroundColor;
+				QPushButton selectForegroundColor;
+				QLineEdit backgroundColor;
+				Color previewBackgroundColor;
+				QPushButton selectBackgroundColor;
 				QLineEdit accentColor;
+				Color previewAccentColor;
 				QPushButton selectAccentColor;
 				Settings settings;
+				void PickForegroundColor();
+				void PickBackgroundColor();
+				void PickAccentColor();
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 

@@ -137,6 +137,17 @@ namespace UI
 		setStyleSheet(QStringLiteral("border: none; color: palette(window-text);"));
 	}
 
+	Color::Color(QWidget *parent,const QString &color) : QLabel(parent)
+	{
+		Set(color);
+		setText(QStringLiteral("preview"));
+	}
+
+	void Color::Set(const QString &color)
+	{
+		setStyleSheet(QString("border: 1px solid black; color: %1; background-color: %1;").arg(color));
+	}
+
 	namespace Commands
 	{
 		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
@@ -867,23 +878,56 @@ namespace UI
 			}
 
 			Pane::Pane(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Panes")),
+				foregroundColor(this),
+				previewForegroundColor(this,settings.foregroundColor),
+				selectForegroundColor(Text::CHOOSE,this),
+				backgroundColor(this),
+				previewBackgroundColor(this,settings.backgroundColor),
+				selectBackgroundColor(Text::CHOOSE,this),
 				accentColor(this),
+				previewAccentColor(this,settings.accentColor),
 				selectAccentColor(Text::CHOOSE,this),
 				settings(settings)
 			{
-				connect(&selectAccentColor,&QPushButton::clicked,this,[this]() { PickColor(accentColor); });
+				connect(&selectForegroundColor,&QPushButton::clicked,this,&Pane::PickForegroundColor);
+				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Pane::PickBackgroundColor);
+				connect(&selectAccentColor,&QPushButton::clicked,this,&Pane::PickAccentColor);
 
+				foregroundColor.setText(settings.foregroundColor);
+				backgroundColor.setText(settings.backgroundColor);
 				accentColor.setText(settings.accentColor);
 
 				Rows({
-					{Label(QStringLiteral("Accent Color")),&accentColor,&selectAccentColor}
+					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
+					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+					{Label(QStringLiteral("Accent Color")),&accentColor,&previewAccentColor,&selectAccentColor}
 				});
+			}
+
+			void Pane::PickForegroundColor()
+			{
+				PickColor(foregroundColor);
+				previewForegroundColor.Set(foregroundColor.text());
+			}
+
+			void Pane::PickBackgroundColor()
+			{
+				PickColor(backgroundColor);
+				previewBackgroundColor.Set(backgroundColor.text());
+			}
+
+			void Pane::PickAccentColor()
+			{
+				PickColor(accentColor);
+				previewAccentColor.Set(accentColor.text());
 			}
 
 			bool Pane::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
+					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of text in event panes (such as raid and subscription announcements)"));
+					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background in event panes (such as raid and subscription announcements)"));
 					if (object == &accentColor || object == &selectAccentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
 				}
 
@@ -893,6 +937,8 @@ namespace UI
 
 			void Pane::Save()
 			{
+				settings.foregroundColor.Set(foregroundColor.text());
+				settings.backgroundColor.Set(backgroundColor.text());
 				settings.accentColor.Set(accentColor.text());
 			}
 
