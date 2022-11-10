@@ -85,6 +85,7 @@ namespace UI
 		inline const char *PREVIEW="Preview";
 		inline const char *DIALOG_TITLE_FILE="Choose File";
 		inline const char *DIALOG_TITLE_DIRECTORY="Choose Directory";
+		inline const char *DIALOG_TITLE_FONT="Choose Font";
 		inline const char *FILE_TYPE_VIDEO="mp4";
 		inline const char *FILE_TYPE_AUDIO="mp3";
 		inline const char *DIRECTORY_HOME="/home";
@@ -273,6 +274,8 @@ namespace UI
 			public:
 				struct Settings
 				{
+					ApplicationSetting font;
+					ApplicationSetting fontSize;
 					ApplicationSetting foregroundColor;
 					ApplicationSetting backgroundColor;
 					ApplicationSetting accentColor;
@@ -280,6 +283,9 @@ namespace UI
 				Pane(QWidget *parent,Settings settings);
 				void Save() override;
 			protected:
+				QLineEdit font;
+				QSpinBox fontSize;
+				QPushButton selectFont;
 				QLineEdit foregroundColor;
 				Color previewForegroundColor;
 				QPushButton selectForegroundColor;
@@ -290,9 +296,13 @@ namespace UI
 				Color previewAccentColor;
 				QPushButton selectAccentColor;
 				Settings settings;
+				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
 				void PickAccentColor();
+				void ValidateFont(const QString &family,const int pointSize);
+				void ValidateFont(const QString &family);
+				void ValidateFont(const int pointSize);
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 

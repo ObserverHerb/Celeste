@@ -265,6 +265,16 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);
 }
 
+ApplicationSetting& AnnouncePane::Font()
+{
+	return settingFont;
+}
+
+ApplicationSetting& AnnouncePane::FontSize()
+{
+	return settingFontSize;
+}
+
 ApplicationSetting& AnnouncePane::ForegroundColor()
 {
 	return settingForegroundColor;

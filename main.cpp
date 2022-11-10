@@ -249,6 +249,8 @@ int main(int argc,char *argv[])
 				.dimensions=window.Dimensions()
 			}));
 			configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
+				.font=announcePane.Font(),
+				.fontSize=announcePane.FontSize(),
 				.foregroundColor=announcePane.ForegroundColor(),
 				.backgroundColor=announcePane.BackgroundColor(),
 				.accentColor=announcePane.AccentColor()

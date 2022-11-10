@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFileDialog>
+#include <QFontDialog>
 #include <QVideoWidget>
 #include <QScreen>
 #include <QMessageBox>
@@ -878,6 +879,9 @@ namespace UI
 			}
 
 			Pane::Pane(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Panes")),
+				font(this),
+				fontSize(this),
+				selectFont(Text::CHOOSE,this),
 				foregroundColor(this),
 				previewForegroundColor(this,settings.foregroundColor),
 				selectForegroundColor(Text::CHOOSE,this),
@@ -889,19 +893,36 @@ namespace UI
 				selectAccentColor(Text::CHOOSE,this),
 				settings(settings)
 			{
+				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Pane::ValidateFont));
+				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Pane::ValidateFont));
+				connect(&selectFont,&QPushButton::clicked,this,&Pane::PickFont);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Pane::PickForegroundColor);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Pane::PickBackgroundColor);
 				connect(&selectAccentColor,&QPushButton::clicked,this,&Pane::PickAccentColor);
 
+				font.setText(settings.font);
+				fontSize.setRange(1,std::numeric_limits<short>::max());
+				fontSize.setValue(settings.fontSize);
 				foregroundColor.setText(settings.foregroundColor);
 				backgroundColor.setText(settings.backgroundColor);
 				accentColor.setText(settings.accentColor);
 
 				Rows({
+					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
 					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
 					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
 					{Label(QStringLiteral("Accent Color")),&accentColor,&previewAccentColor,&selectAccentColor}
 				});
+			}
+
+			void Pane::PickFont()
+			{
+				bool ok=false;
+				QFont candidate(font.text(),fontSize.value());
+				candidate=QFontDialog::getFont(&ok,candidate,this,Text::DIALOG_TITLE_FONT);
+				if (!ok) return;
+				font.setText(candidate.family());
+				fontSize.setValue(candidate.pointSize());
 			}
 
 			void Pane::PickForegroundColor()
@@ -922,10 +943,27 @@ namespace UI
 				previewAccentColor.Set(accentColor.text());
 			}
 
+			void Pane::ValidateFont(const QString &family,const int pointSize)
+			{
+				QFont candidate(family,pointSize);
+				Valid(&font,candidate.exactMatch());
+			}
+
+			void Pane::ValidateFont(const QString &family)
+			{
+				ValidateFont(family,fontSize.value());
+			}
+
+			void Pane::ValidateFont(const int pointSize)
+			{
+				ValidateFont(font.text(),pointSize);
+			}
+
 			bool Pane::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
+					if (object == &font || object == &fontSize || object == &selectFont) emit Help(QStringLiteral("The font that will be used in event panes (such as raid and subscription announcements)"));
 					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of text in event panes (such as raid and subscription announcements)"));
 					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background in event panes (such as raid and subscription announcements)"));
 					if (object == &accentColor || object == &selectAccentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
@@ -937,6 +975,8 @@ namespace UI
 
 			void Pane::Save()
 			{
+				settings.font.Set(font.text());
+				settings.fontSize.Set(fontSize.value());
 				settings.foregroundColor.Set(foregroundColor.text());
 				settings.backgroundColor.Set(backgroundColor.text());
 				settings.accentColor.Set(accentColor.text());

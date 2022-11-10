@@ -110,6 +110,8 @@ public:
 	AnnouncePane(const Lines &lines,QWidget *parent);
 	void Duration(const int duration) { clock.setInterval(duration); }
 	const QString BuildParagraph(const Lines &lines);
+	ApplicationSetting& Font();
+	ApplicationSetting& FontSize();
 	ApplicationSetting& ForegroundColor();
 	ApplicationSetting& BackgroundColor();
 	ApplicationSetting& AccentColor();
