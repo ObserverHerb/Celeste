@@ -378,6 +378,22 @@ namespace UI
 				void ValidateFont(const int pointSize);
 			};
 
+			class Music : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting &suppressedVolume;
+				};
+				Music(QWidget *parent,Settings settings);
+				void Save() override;
+			protected:
+				QSpinBox suppressedVolume;
+				Settings settings;
+				bool eventFilter(QObject *object,QEvent *event) override;
+			};
+
 			class Bot : public Category
 			{
 				Q_OBJECT

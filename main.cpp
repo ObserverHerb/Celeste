@@ -9,7 +9,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "window.h"
-#include "panes.h"
 #include "widgets.h"
 #include "channel.h"
 #include "bot.h"
@@ -270,6 +269,9 @@ int main(int argc,char *argv[])
 				.backgroundColor=announcePane.BackgroundColor(),
 				.accentColor=announcePane.AccentColor(),
 				.duration=announcePane.Duration()
+			}));
+			configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
+				.suppressedVolume=Music::Player(&window).SuppressedVolume()
 			}));
 			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
 				.arrivalSound=celeste.ArrivalSound(),

@@ -1173,6 +1173,35 @@ namespace UI
 				settings.duration.Set(duration.value());
 			}
 
+			Music::Music(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Music")),
+				suppressedVolume(this),
+				settings(settings)
+			{
+				suppressedVolume.setRange(0,100);
+				suppressedVolume.setSuffix("%");
+				suppressedVolume.setValue(settings.suppressedVolume);
+
+				Rows({
+					{Label(QStringLiteral("Suppressed Volume")),&suppressedVolume}
+				});
+			}
+
+			bool Music::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &suppressedVolume) emit Help(QStringLiteral("The volume the music should duck to when another pane is playing audio."));
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			void Music::Save()
+			{
+				settings.suppressedVolume.Set(suppressedVolume.value());
+			}
+
 			Bot::Bot(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Bot Core")),
 				arrivalSound(this),
 				selectArrivalSound(Text::BROWSE,this),

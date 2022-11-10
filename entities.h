@@ -74,6 +74,7 @@ namespace Music
 		QString AlbumArtist() const;
 		QImage AlbumCoverArt() const;
 		QString Filename() const;
+		ApplicationSetting& SuppressedVolume();
 	protected:
 		QMediaPlayer *player;
 		QMediaPlaylist sources;

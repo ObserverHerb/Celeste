@@ -157,6 +157,11 @@ namespace Music
 		emit Print("Playlist loaded!");
 	}
 
+	ApplicationSetting& Player::SuppressedVolume()
+	{
+		return settingSuppressedVolume;
+	}
+
 	namespace ID3
 	{
 		quint32 SyncSafe(const char *value)
