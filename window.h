@@ -15,7 +15,6 @@ class Window : public QMainWindow
 public:
 	Window();
 	ApplicationSetting& BackgroundColor();
-	ApplicationSetting& AccentColor();
 	ApplicationSetting& Dimensions();
 protected:
 	QWidget *background;
@@ -24,7 +23,6 @@ protected:
 	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
-	ApplicationSetting settingAccentColor;
 	QAction configureOptions;
 	QAction configureCommands;
 	QAction metrics;

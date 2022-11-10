@@ -15,7 +15,7 @@ public:
 	{
 		std::optional<QString> filePath=Filesystem::CreateHiddenFile(source->fileName());
 		if (!filePath) throw std::runtime_error("Could not create file for private settings");
-		source=std::make_unique<QSettings>(*filePath,source->format());
+		source=std::make_shared<QSettings>(*filePath,source->format());
 	}
 };
 

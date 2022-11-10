@@ -108,11 +108,10 @@ class AnnouncePane : public EphemeralPane
 public:
 	AnnouncePane(const QString &text,QWidget *parent);
 	AnnouncePane(const Lines &lines,QWidget *parent);
-	void AccentColor(const QColor &color) { accentColor=color; }
 	void Duration(const int duration) { clock.setInterval(duration); }
 	const QString BuildParagraph(const Lines &lines);
+	ApplicationSetting& AccentColor();
 protected:
-	QColor accentColor;
 	QLabel *output;
 	QTimer clock;
 	ApplicationSetting settingDuration;
@@ -120,6 +119,7 @@ protected:
 	ApplicationSetting settingFontSize;
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
+	ApplicationSetting settingAccentColor;
 	static const QString SETTINGS_CATEGORY;
 	virtual void Polish();
 	bool event(QEvent *event) override;

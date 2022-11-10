@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "window.h"
+#include "panes.h"
 #include "widgets.h"
 #include "channel.h"
 #include "bot.h"
@@ -104,39 +105,9 @@ int main(int argc,char *argv[])
 		Bot celeste(security);
 		Pulsar pulsar;
 		ApplicationWindow window;
-
-		UI::Options::Dialog configureOptions(&window);
-		configureOptions.AddCategory(new UI::Options::Categories::Channel(&configureOptions,{
-			.name=channel->Name(),
-			.protection=channel->Protection()
-		}));
-		configureOptions.AddCategory(new UI::Options::Categories::Window(&configureOptions,{
-			.backgroundColor=window.BackgroundColor(),
-			.accentColor=window.AccentColor(),
-			.dimensions=window.Dimensions()
-		}));
-		UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(&configureOptions,{
-			.arrivalSound=celeste.ArrivalSound(),
-			.portraitVideo=celeste.PortraitVideo(),
-			.cheerVideo=celeste.CheerVideo(),
-			.subscriptionSound=celeste.SubscriptionSound(),
-			.raidSound=celeste.RaidSound(),
-			.inactivityCooldown=celeste.InactivityCooldown(),
-			.helpCooldown=celeste.HelpCooldown(),
-			.textWallThreshold=celeste.TextWallThreshold(),
-			.textWallSound=celeste.TextWallSound()
-		});
-		configureOptions.AddCategory(optionsCategoryBot);
 		UI::Metrics::Dialog metrics(&window);
 
-		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
-		configureOptions.connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
-		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
-		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
-		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
-		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
 		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
-
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;
 			failureDialog.setWindowTitle("Re-Authentication Failed");
@@ -145,7 +116,6 @@ int main(int argc,char *argv[])
 			failureDialog.setDefaultButton(QMessageBox::Ok);
 			failureDialog.exec();
 		});
-
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
@@ -238,9 +208,6 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
-		window.connect(&window,&Window::ConfigureOptions,&configureOptions,[&configureOptions]() {
-			configureOptions.exec();
-		});
 		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::exec);
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protection()) {
@@ -268,8 +235,44 @@ int main(int argc,char *argv[])
 		window.show();
 
 		UI::Commands::Dialog *configureCommands=nullptr;
+		UI::Options::Dialog *configureOptions=nullptr;
 		try
 		{
+			configureOptions=new UI::Options::Dialog(&window);
+			AnnouncePane announcePane(QString{},&window);
+			configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
+				.name=channel->Name(),
+				.protection=channel->Protection()
+			}));
+			configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
+				.backgroundColor=window.BackgroundColor(),
+				.dimensions=window.Dimensions()
+			}));
+			configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
+				.accentColor=announcePane.AccentColor()
+			}));
+			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
+				.arrivalSound=celeste.ArrivalSound(),
+				.portraitVideo=celeste.PortraitVideo(),
+				.cheerVideo=celeste.CheerVideo(),
+				.subscriptionSound=celeste.SubscriptionSound(),
+				.raidSound=celeste.RaidSound(),
+				.inactivityCooldown=celeste.InactivityCooldown(),
+				.helpCooldown=celeste.HelpCooldown(),
+				.textWallThreshold=celeste.TextWallThreshold(),
+				.textWallSound=celeste.TextWallSound()
+			});
+			configureOptions->AddCategory(optionsCategoryBot);
+			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
+			configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
+			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
+			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
+			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
+			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
+			window.connect(&window,&Window::ConfigureOptions,configureOptions,[configureOptions]() {
+				configureOptions->open();
+			});
+
 			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
 			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
 				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to disk.";

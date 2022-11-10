@@ -22,7 +22,6 @@ Window::Window() : QMainWindow(nullptr),
 	livePersistentPane(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
-	settingAccentColor(SETTINGS_CATEGORY_WINDOW,"AccentColor","#ff000000"),
 	configureOptions("Options",this),
 	configureCommands("Commands",this),
 	metrics("Metrics",this)
@@ -217,7 +216,6 @@ void Window::Shoutout(const QString &name,const QString &description,const QImag
 		{QString("%1").arg(name),1.5},
 		{description,0.5}
 	},profileImage,this);
-	pane->AccentColor(settingAccentColor);
 	pane->Duration(10000); // TODO: change from hardcoded to configurable duration
 	StageEphemeralPane(pane);
 }
@@ -348,7 +346,6 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 		{"from the ablum",0.5},
 		{QString("%3").arg(album),0.75}
 	},coverArt,this);
-	pane->AccentColor(settingAccentColor);
 	StageEphemeralPane(pane);
 }
 
@@ -362,11 +359,6 @@ const QSize Window::ScreenThird()
 ApplicationSetting& Window::BackgroundColor()
 {
 	return settingBackgroundColor;
-}
-
-ApplicationSetting& Window::AccentColor()
-{
-	return settingAccentColor;
 }
 
 ApplicationSetting& Window::Dimensions()

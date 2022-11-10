@@ -203,6 +203,7 @@ namespace UI
 				Q_OBJECT
 			public:
 				Category(QWidget *parent,const QString &name);
+				virtual void Save()=0;
 			protected:
 				QPushButton header;
 				QFrame details;
@@ -229,6 +230,7 @@ namespace UI
 					ApplicationSetting &protection;
 				};
 				Channel(QWidget *parent,Settings settings);
+				void Save();
 			protected:
 				QLineEdit name;
 				QCheckBox protection;
@@ -244,17 +246,32 @@ namespace UI
 				struct Settings
 				{
 					ApplicationSetting &backgroundColor;
-					ApplicationSetting &accentColor;
 					ApplicationSetting &dimensions;
 				};
 				Window(QWidget *parent,Settings settings);
+				void Save() override;
 			protected:
 				QLineEdit backgroundColor;
 				QPushButton selectBackgroundColor;
-				QLineEdit accentColor;
-				QPushButton selectAccentColor;
 				QSpinBox width;
 				QSpinBox height;
+				bool eventFilter(QObject *object,QEvent *event) override;
+			};
+
+			class Pane : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting accentColor;
+				};
+				Pane(QWidget *parent,Settings settings);
+				void Save() override;
+			protected:
+				QLineEdit accentColor;
+				QPushButton selectAccentColor;
+				Settings settings;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
@@ -276,6 +293,7 @@ namespace UI
 					ApplicationSetting &textWallSound;
 				};
 				Bot(QWidget *parent,Settings settings);
+				void Save() override;
 			protected:
 				QLineEdit arrivalSound;
 				QPushButton selectArrivalSound;
@@ -341,7 +359,9 @@ namespace UI
 			QPushButton discard;
 			QPushButton save;
 			QVBoxLayout *scrollLayout;
-
+			std::vector<Categories::Category*> categories;
+		protected slots:
+			void Save();
 		};
 	}
 

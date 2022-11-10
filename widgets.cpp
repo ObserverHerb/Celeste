@@ -809,19 +809,19 @@ namespace UI
 				Require(&name,text.isEmpty());
 			}
 
+			void Channel::Save()
+			{
+			}
+
 			Window::Window(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Main Window")),
 				backgroundColor(this),
 				selectBackgroundColor(Text::CHOOSE,this),
-				accentColor(this),
-				selectAccentColor(Text::CHOOSE,this),
 				width(this),
 				height(this)
 			{
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,[this]() { PickColor(backgroundColor); });
-				connect(&selectAccentColor,&QPushButton::clicked,this,[this]() { PickColor(accentColor); });
 
 				backgroundColor.setText(settings.backgroundColor);
-				accentColor.setText(settings.accentColor);
 				QRect desktop=QGuiApplication::primaryScreen()->availableVirtualGeometry();
 				width.setRange(1,desktop.width());
 				width.setValue(static_cast<QSize>(settings.dimensions).width());
@@ -830,7 +830,6 @@ namespace UI
 
 				Rows({
 					{Label(QStringLiteral("Background Color")),&backgroundColor,&selectBackgroundColor},
-					{Label(QStringLiteral("Accent Color")),&accentColor,&selectAccentColor},
 					{Label(QStringLiteral("Width")),&width},
 					{Label(QStringLiteral("Height")),&height}
 				});
@@ -843,12 +842,6 @@ namespace UI
 					if (object == &backgroundColor || object == &selectBackgroundColor)
 					{
 						emit Help(QStringLiteral("This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."));
-						return false;
-					}
-
-					if (object == &accentColor || object == &selectAccentColor)
-					{
-						emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
 						return false;
 					}
 
@@ -867,6 +860,40 @@ namespace UI
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
 				return false;
+			}
+
+			void Window::Save()
+			{
+			}
+
+			Pane::Pane(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Panes")),
+				accentColor(this),
+				selectAccentColor(Text::CHOOSE,this),
+				settings(settings)
+			{
+				connect(&selectAccentColor,&QPushButton::clicked,this,[this]() { PickColor(accentColor); });
+
+				accentColor.setText(settings.accentColor);
+
+				Rows({
+					{Label(QStringLiteral("Accent Color")),&accentColor,&selectAccentColor}
+				});
+			}
+
+			bool Pane::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &accentColor || object == &selectAccentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			void Pane::Save()
+			{
+				settings.accentColor.Set(accentColor.text());
 			}
 
 			Bot::Bot(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Bot Core")),
@@ -1070,6 +1097,10 @@ namespace UI
 				Valid(&textWallSound,valid);
 				textWallSound.setEnabled(valid);
 			}
+
+			void Bot::Save()
+			{
+			}
 		}
 
 		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
@@ -1120,7 +1151,7 @@ namespace UI
 			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
 			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
 			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
-			//connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
+			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
 			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);
@@ -1130,6 +1161,12 @@ namespace UI
 		{
 			scrollLayout->addWidget(category);
 			connect(category,&Categories::Category::Help,&help,&QTextEdit::setText);
+			categories.push_back(category);
+		}
+
+		void Dialog::Save()
+		{
+			for (Categories::Category *category : categories) category->Save();
 		}
 	}
 

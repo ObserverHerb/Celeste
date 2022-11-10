@@ -204,7 +204,8 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 	settingFont(SETTINGS_CATEGORY,"Font","Copperplate Gothic Bold"),
 	settingFontSize(SETTINGS_CATEGORY,"FontSize",20),
 	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
-	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
+	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000"),
+	settingAccentColor(SETTINGS_CATEGORY,"AccentColor","#ff000000")
 {
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
@@ -262,6 +263,11 @@ const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,d
 		paragraph.append("<br>");
 	}
 	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);
+}
+
+ApplicationSetting& AnnouncePane::AccentColor()
+{
+	return settingAccentColor;
 }
 
 ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(text,parent), commands(new ScrollingTextEdit(this))
@@ -362,7 +368,7 @@ void ImageAnnouncePane::resizeEvent(QResizeEvent *event)
 
 void ImageAnnouncePane::Polish()
 {
-	shadow->setColor(accentColor);
+	shadow->setColor(settingAccentColor);
 	stack->addWidget(output);
 	stack->addWidget(view);
 	layout()->addWidget(stack);
