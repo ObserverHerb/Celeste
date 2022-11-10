@@ -954,7 +954,7 @@ namespace UI
 			void Bot::PlayArrivalSound()
 			{
 				const QString filename=arrivalSound.text();
-				emit PlayArrivalSound(QStringLiteral("Celeste"),QImage(),QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
+				emit PlayArrivalSound(qApp->applicationName(),QImage{Resources::CELESTE},QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
 			}
 
 			void Bot::OpenPortraitVideo()

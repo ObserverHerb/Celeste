@@ -44,6 +44,7 @@ add_executable(Celeste
 	bot.h
 	bot.cpp
 	main.cpp
+	resources/resources.qrc
 )
 
 if (WIN32)
@@ -58,7 +59,7 @@ else()
 		set_property(TARGET Celeste PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
-	target_sources(Celeste PRIVATE unix.cpp resources/resources.qrc)
+	target_sources(Celeste PRIVATE unix.cpp)
 	target_link_libraries(Celeste PRIVATE Qt5::Widgets Qt5::Network Qt5::Multimedia Qt5::MultimediaWidgets Qt5::Concurrent Qt5::TextToSpeech)
 endif()
 

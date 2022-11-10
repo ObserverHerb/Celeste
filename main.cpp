@@ -40,7 +40,7 @@ int main(int argc,char *argv[])
 	QApplication application(argc,argv);
 	application.setOrganizationName(ORGANIZATION_NAME);
 	application.setApplicationName(APPLICATION_NAME);
-	if constexpr (Platform::Windows()) application.setWindowIcon(QIcon(":/celeste.png"));
+	if constexpr (!Platform::Windows()) application.setWindowIcon(QIcon(Resources::CELESTE));
 
 #ifdef DEVELOPER_MODE
 	if (QMessageBox(QMessageBox::Warning,"DEVELOPER MODE","**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?",QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::No) return OK;

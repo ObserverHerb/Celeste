@@ -15,6 +15,11 @@
 #include <concepts>
 #include <stdexcept>
 
+namespace Resources
+{
+	inline const char *CELESTE=":/celeste.png";
+}
+
 namespace NumberConvert
 {
 	template <std::integral T>
