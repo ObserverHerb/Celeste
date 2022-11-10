@@ -1155,6 +1155,7 @@ namespace UI
 			buttons(this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
+			apply(Text::BUTTON_APPLY,this),
 			scrollLayout(nullptr)
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#options { background-color: palette(base); }");
@@ -1194,10 +1195,12 @@ namespace UI
 			mainLayout->addWidget(lowerContent);
 
 			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
+			buttons.addButton(&apply,QDialogButtonBox::ApplyRole);
 			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
 			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
 			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
 			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
+			connect(&apply,&QPushButton::clicked,this,QOverload<>::of(&Dialog::Save));
 			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);

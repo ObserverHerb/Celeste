@@ -90,6 +90,7 @@ namespace UI
 		inline const char *DIRECTORY_HOME="/home";
 		inline const char *BUTTON_SAVE="&Save";
 		inline const char *BUTTON_DISCARD="&Discard";
+		inline const char *BUTTON_APPLY="&Apply";
 	}
 
 	namespace Commands
@@ -378,6 +379,7 @@ namespace UI
 			QDialogButtonBox buttons;
 			QPushButton discard;
 			QPushButton save;
+			QPushButton apply;
 			QVBoxLayout *scrollLayout;
 			std::vector<Categories::Category*> categories;
 		protected slots:
