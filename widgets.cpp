@@ -832,7 +832,8 @@ namespace UI
 				backgroundColor(this),
 				selectBackgroundColor(Text::CHOOSE,this),
 				width(this),
-				height(this)
+				height(this),
+				settings(settings)
 			{
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,[this]() { PickColor(backgroundColor); });
 
@@ -879,6 +880,8 @@ namespace UI
 
 			void Window::Save()
 			{
+				settings.backgroundColor.Set(backgroundColor.text());
+				settings.dimensions.Set(QSize{width.value(),height.value()});
 			}
 
 			Status::Status(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Status")),

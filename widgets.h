@@ -266,6 +266,7 @@ namespace UI
 				QPushButton selectBackgroundColor;
 				QSpinBox width;
 				QSpinBox height;
+				Settings settings;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
