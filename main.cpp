@@ -254,6 +254,14 @@ int main(int argc,char *argv[])
 				.foregroundColor=statusPane.ForegroundColor(),
 				.backgroundColor=statusPane.BackgroundColor()
 			}));
+			ChatPane chatPane(&window);
+			configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
+				.font=chatPane.Font(),
+				.fontSize=chatPane.FontSize(),
+				.foregroundColor=chatPane.ForegroundColor(),
+				.backgroundColor=chatPane.BackgroundColor(),
+				.statusInterval=chatPane.StatusInterval()
+			}));
 			AnnouncePane announcePane(QString{},&window);
 			configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
 				.font=announcePane.Font(),
@@ -281,6 +289,7 @@ int main(int argc,char *argv[])
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
+			configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
 			window.connect(&window,&Window::ConfigureOptions,configureOptions,[configureOptions]() {
 				configureOptions->open();
 			});

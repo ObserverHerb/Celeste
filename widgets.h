@@ -301,6 +301,41 @@ namespace UI
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
+			class Chat : public Category
+			{
+				Q_OBJECT
+			public:
+				struct Settings
+				{
+					ApplicationSetting font;
+					ApplicationSetting fontSize;
+					ApplicationSetting foregroundColor;
+					ApplicationSetting backgroundColor;
+					ApplicationSetting statusInterval;
+				};
+				Chat(QWidget *parent,Settings settings);
+				void Save() override;
+			protected:
+				QLineEdit font;
+				QSpinBox fontSize;
+				QPushButton selectFont;
+				QLineEdit foregroundColor;
+				Color previewForegroundColor;
+				QPushButton selectForegroundColor;
+				QLineEdit backgroundColor;
+				Color previewBackgroundColor;
+				QPushButton selectBackgroundColor;
+				QSpinBox statusInterval;
+				Settings settings;
+				void PickFont();
+				void PickForegroundColor();
+				void PickBackgroundColor();
+				void ValidateFont(const QString &family,const int pointSize);
+				void ValidateFont(const QString &family);
+				void ValidateFont(const int pointSize);
+				bool eventFilter(QObject *object,QEvent *event) override;
+			};
+
 			class Pane : public Category
 			{
 				Q_OBJECT
@@ -427,6 +462,8 @@ namespace UI
 			QPushButton apply;
 			QVBoxLayout *scrollLayout;
 			std::vector<Categories::Category*> categories;
+		signals:
+			void Refresh();
 		protected slots:
 			void Save();
 		};

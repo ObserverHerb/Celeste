@@ -80,11 +80,6 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	layout()->addWidget(agenda);
 
 	chat=new PinnedTextEdit(this);
-	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
-	chat->setFontFamily(settingFont);
-	chat->setFontPointSize(settingFontSize);
-	chat->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message, span.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize))));
-	chat->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
 	chat->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	chat->setFrameStyle(QFrame::NoFrame);
@@ -93,8 +88,6 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	connect(chat,&PinnedTextEdit::ContextMenu,this,&ChatPane::ContextMenu);
 
 	status=new QLabel(this);
-	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
-	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.833)); // QLabel doesn't have setFontFamily()
 	status->setMargin(16);
 	status->setAlignment(Qt::AlignCenter);
 	status->setWordWrap(true);
@@ -104,6 +97,8 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 
 	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
 	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissStatus);
+
+	Format();
 }
 
 void ChatPane::SetAgenda(const QString &text)
@@ -120,8 +115,20 @@ void ChatPane::SetAgenda(const QString &text)
 	}
 }
 
+void ChatPane::Format()
+{
+	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	chat->setFontFamily(settingFont);
+	chat->setFontPointSize(settingFontSize);
+	chat->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message, span.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize))));
+	chat->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
+	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.833)); // QLabel doesn't have setFontFamily()
+}
+
 void ChatPane::Refresh()
 {
+	Format();
 	chat->viewport()->update();
 }
 
@@ -165,6 +172,31 @@ void ChatPane::DismissStatus()
 	status->clear();
 	status->hide();
 	statusClock.stop();
+}
+
+ApplicationSetting& ChatPane::Font()
+{
+	return settingFont;
+}
+
+ApplicationSetting& ChatPane::FontSize()
+{
+	return settingFontSize;
+}
+
+ApplicationSetting& ChatPane::ForegroundColor()
+{
+	return settingForegroundColor;
+}
+
+ApplicationSetting& ChatPane::BackgroundColor()
+{
+	return settingBackgroundColor;
+}
+
+ApplicationSetting& ChatPane::StatusInterval()
+{
+	return settingStatusInterval;
 }
 
 EphemeralPane::EphemeralPane(QWidget *parent,bool highPriority) : QWidget(parent), expired(false), highPriority(highPriority)

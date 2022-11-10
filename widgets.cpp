@@ -968,6 +968,101 @@ namespace UI
 				settings.backgroundColor.Set(backgroundColor.text());
 			}
 
+			Chat::Chat(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Chat")),
+				font(this),
+				fontSize(this),
+				selectFont(Text::CHOOSE,this),
+				foregroundColor(this),
+				previewForegroundColor(this,settings.foregroundColor),
+				selectForegroundColor(Text::CHOOSE,this),
+				backgroundColor(this),
+				previewBackgroundColor(this,settings.backgroundColor),
+				selectBackgroundColor(Text::CHOOSE,this),
+				statusInterval(this),
+				settings(settings)
+			{
+				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Chat::ValidateFont));
+				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Chat::ValidateFont));
+				connect(&selectFont,&QPushButton::clicked,this,&Chat::PickFont);
+				connect(&selectForegroundColor,&QPushButton::clicked,this,&Chat::PickForegroundColor);
+				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Chat::PickBackgroundColor);
+
+				font.setText(settings.font);
+				fontSize.setRange(1,std::numeric_limits<short>::max());
+				fontSize.setValue(settings.fontSize);
+				foregroundColor.setText(settings.foregroundColor);
+				backgroundColor.setText(settings.backgroundColor);
+				statusInterval.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+
+				Rows({
+					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
+					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
+					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+					{Label(QStringLiteral("Status Duration")),&statusInterval}
+				});
+			}
+
+			void Chat::PickFont()
+			{
+				bool ok=false;
+				QFont candidate(font.text(),fontSize.value());
+				candidate=QFontDialog::getFont(&ok,candidate,this,Text::DIALOG_TITLE_FONT);
+				if (!ok) return;
+				font.setText(candidate.family());
+				fontSize.setValue(candidate.pointSize());
+			}
+
+			void Chat::PickForegroundColor()
+			{
+				PickColor(foregroundColor);
+				previewForegroundColor.Set(foregroundColor.text());
+			}
+
+			void Chat::PickBackgroundColor()
+			{
+				PickColor(backgroundColor);
+				previewBackgroundColor.Set(backgroundColor.text());
+			}
+
+			void Chat::ValidateFont(const QString &family,const int pointSize)
+			{
+				QFont candidate(family,pointSize);
+				Valid(&font,candidate.exactMatch());
+			}
+
+			void Chat::ValidateFont(const QString &family)
+			{
+				ValidateFont(family,fontSize.value());
+			}
+
+			void Chat::ValidateFont(const int pointSize)
+			{
+				ValidateFont(font.text(),pointSize);
+			}
+
+			bool Chat::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &font || object == &fontSize || object == &selectFont) emit Help(QStringLiteral("The font that will be used to display chat messages"));
+					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of chat message text"));
+					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background behind chat messages"));
+					if (object == &statusInterval) emit Help(QStringLiteral("How long (in milliseconds) updates and error messages should display at the bottom of the chat pane"));
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			void Chat::Save()
+			{
+				settings.font.Set(font.text());
+				settings.fontSize.Set(fontSize.value());
+				settings.foregroundColor.Set(foregroundColor.text());
+				settings.backgroundColor.Set(backgroundColor.text());
+				settings.statusInterval.Set(statusInterval.value());
+			}
+
 			Pane::Pane(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Panes")),
 				font(this),
 				fontSize(this),
@@ -1352,6 +1447,7 @@ namespace UI
 		void Dialog::Save()
 		{
 			for (Categories::Category *category : categories) category->Save();
+			emit Refresh();
 		}
 	}
 

@@ -55,6 +55,11 @@ class ChatPane : public PersistentPane
 public:
 	ChatPane(QWidget *parent);
 	void SetAgenda(const QString &text);
+	ApplicationSetting& Font();
+	ApplicationSetting& FontSize();
+	ApplicationSetting& ForegroundColor();
+	ApplicationSetting& BackgroundColor();
+	ApplicationSetting& StatusInterval();
 protected:
 	QLabel *agenda;
 	PinnedTextEdit *chat;
@@ -67,6 +72,7 @@ protected:
 	ApplicationSetting settingBackgroundColor;
 	ApplicationSetting settingStatusInterval;
 	static const QString SETTINGS_CATEGORY;
+	void Format();
 signals:
 	void ContextMenu(QContextMenuEvent *event);
 public slots:
