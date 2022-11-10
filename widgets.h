@@ -267,6 +267,12 @@ namespace UI
 					//ApplicationSetting &vibePlaylist; // TODO: implement this when the decision as to how I will be changing playlists for Qt 6 is made
 					ApplicationSetting &arrivalSound;
 					ApplicationSetting &portraitVideo;
+					ApplicationSetting &cheerVideo;
+					ApplicationSetting &subscriptionSound;
+					ApplicationSetting &inactivityCooldown;
+					ApplicationSetting &helpCooldown;
+					ApplicationSetting &textWallThreshold;
+					ApplicationSetting &textWallSound;
 				};
 				Bot(QWidget *parent,Settings settings);
 			protected:
@@ -276,17 +282,41 @@ namespace UI
 				QLineEdit portraitVideo;
 				QPushButton selectPortraitVideo;
 				QPushButton previewPortraitVideo;
+				QLineEdit cheerVideo;
+				QPushButton selectCheerVideo;
+				QPushButton previewCheerVideo;
+				QLineEdit subscriptionSound;
+				QPushButton selectSubscriptionSound;
+				QPushButton previewSubscriptionSound;
+				QSpinBox inactivityCooldown;
+				QSpinBox helpCooldown;
+				QLineEdit textWallSound;
+				QPushButton selectTextWallSound;
+				QPushButton previewTextWallSound;
+				QSpinBox textWallThreshold;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void PlayArrivalSound(const QString &name,QImage profileImage,const QString &audioPath);
 				void PlayPortraitVideo(const QString &path);
+				void PlayCheerVideo(const QString &chatter,const unsigned int count,const QString &message,const QString &path);
+				void PlaySubscriptionSound(const QString &chatter,const QString &path);
+				void PlayTextWallSound(const QString &message,const QString &path);
 			protected slots:
 				void OpenArrivalSound();
 				void PlayArrivalSound();
 				void OpenPortraitVideo();
 				void PlayPortraitVideo();
+				void OpenCheerVideo();
+				void PlayCheerVideo();
+				void OpenSubscriptionSound();
+				void PlaySubscriptionSound();
+				void OpenTextWallSound();
+				void PlayTextWallSound();
 				void ValidateArrivalSound(const QString &path);
 				void ValidatePortraitVideo(const QString &path);
+				void ValidateCheerVideo(const QString &path);
+				void ValidateSubscriptionSound(const QString &path);
+				void ValidateTextWallSound(const QString &path);
 			};
 		}
 

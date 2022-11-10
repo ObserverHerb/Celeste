@@ -1218,3 +1218,33 @@ ApplicationSetting& Bot::PortraitVideo()
 {
 	return settingPortraitVideo;
 }
+
+ApplicationSetting& Bot::CheerVideo()
+{
+	return settingCheerVideo;
+}
+
+ApplicationSetting& Bot::SubscriptionSound()
+{
+	return settingSubscriptionSound;
+}
+
+ApplicationSetting& Bot::InactivityCooldown()
+{
+	return settingInactivityCooldown;
+}
+
+ApplicationSetting& Bot::HelpCooldown()
+{
+	return settingHelpCooldown;
+}
+
+ApplicationSetting& Bot::TextWallThreshold()
+{
+	return settingTextWallThreshold;
+}
+
+ApplicationSetting& Bot::TextWallSound()
+{
+	return settingTextWallSound;
+}

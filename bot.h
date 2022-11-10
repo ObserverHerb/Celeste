@@ -50,6 +50,12 @@ public:
 	QJsonDocument LoadDynamicCommands();
 	ApplicationSetting& ArrivalSound();
 	ApplicationSetting& PortraitVideo();
+	ApplicationSetting& CheerVideo();
+	ApplicationSetting& SubscriptionSound();
+	ApplicationSetting& InactivityCooldown();
+	ApplicationSetting& HelpCooldown();
+	ApplicationSetting& TextWallThreshold();
+	ApplicationSetting& TextWallSound();
 protected:
 	using BadgeIconURLsLookup=std::unordered_map<QString,std::unordered_map<QString,QString>>;
 	using CommandTypeLookup=std::unordered_map<QString,CommandType>;

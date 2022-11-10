@@ -725,27 +725,34 @@ namespace UI
 			void Category::Rows(std::vector<std::vector<QWidget*>> widgets)
 			{
 				// find longest vector
-				static const int MINIMUM_COLUMNS=2;
 				int maxColumns=2;
 				for (const std::vector<QWidget*> &row : widgets)
 				{
-					if (row.size() < MINIMUM_COLUMNS) throw std::logic_error("A row requires at least one label and one input field");
 					if (row.size() > maxColumns) maxColumns=row.size();
 				}
 
 				for (int rowIndex=0; rowIndex < widgets.size(); rowIndex++)
-				{					
-					for (int columnIndex=0; columnIndex < widgets[rowIndex].size(); columnIndex++)
+				{
+					int columns=widgets[rowIndex].size();
+					if (columns < 2) continue;
+
+					QWidget *widget=widgets[rowIndex][0];
+					detailsLayout.addWidget(widget,rowIndex,0,1,1);
+					widget->installEventFilter(this); // NOTE: this will not fire for labels because they do not fire an enterEvent for mouse hovers
+
+					widget=widgets[rowIndex][1];
+					int columnSpan=maxColumns-columns+1; // +1 because spans are not zero-indexed
+					detailsLayout.addWidget(widget,rowIndex,1,1,columnSpan);
+					widget->installEventFilter(this);
+
+					if (columns > 2)
 					{
-						// if we're on the last column, calculate how far it is from the number of columns in the longest row
-						// this determines our column span
-						int columnSpan=1;
-						int lastColumn=widgets[rowIndex].size()-1;
-						QWidget *widget=widgets[rowIndex][columnIndex];
-						if (columnIndex == lastColumn) columnSpan=maxColumns-columnIndex;
-						detailsLayout.addWidget(widget,rowIndex,columnIndex,1,columnSpan);
-						// NOTE: this will not fire for labels because they do not fire an enterEvent for mouse hovers
-						widget->installEventFilter(this);
+						for (int columnIndex=2; columnIndex < columns; columnIndex++)
+						{
+							widget=widgets[rowIndex][columnIndex];
+							detailsLayout.addWidget(widget,rowIndex,columnIndex+(columnSpan-1),1,1); // -1 on columnSpan to move back to zero-indexed
+							widget->installEventFilter(this);
+						}
 					}
 				}
 			}
@@ -868,7 +875,19 @@ namespace UI
 				previewArrivalSound(Text::PREVIEW,this),
 				portraitVideo(this),
 				selectPortraitVideo(Text::BROWSE,this),
-				previewPortraitVideo(Text::PREVIEW,this)
+				previewPortraitVideo(Text::PREVIEW,this),
+				cheerVideo(this),
+				selectCheerVideo(Text::BROWSE,this),
+				previewCheerVideo(Text::PREVIEW,this),
+				subscriptionSound(this),
+				selectSubscriptionSound(Text::BROWSE,this),
+				previewSubscriptionSound(Text::PREVIEW,this),
+				inactivityCooldown(this),
+				helpCooldown(this),
+				textWallThreshold(this),
+				textWallSound(this),
+				selectTextWallSound(Text::BROWSE,this),
+				previewTextWallSound(Text::PREVIEW,this)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
 				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
@@ -876,13 +895,36 @@ namespace UI
 				connect(&portraitVideo,&QLineEdit::textChanged,this,&Bot::ValidatePortraitVideo);
 				connect(&selectPortraitVideo,&QPushButton::clicked,this,&Bot::OpenPortraitVideo);
 				connect(&previewPortraitVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayPortraitVideo));
+				connect(&cheerVideo,&QLineEdit::textChanged,this,&Bot::ValidateCheerVideo);
+				connect(&selectCheerVideo,&QPushButton::clicked,this,&Bot::OpenCheerVideo);
+				connect(&previewCheerVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayCheerVideo));
+				connect(&subscriptionSound,&QLineEdit::textChanged,this,&Bot::ValidateSubscriptionSound);
+				connect(&selectSubscriptionSound,&QPushButton::clicked,this,&Bot::OpenSubscriptionSound);
+				connect(&previewSubscriptionSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlaySubscriptionSound));
+				connect(&textWallSound,&QLineEdit::textChanged,this,&Bot::ValidateTextWallSound);
+				connect(&selectTextWallSound,&QPushButton::clicked,this,&Bot::OpenTextWallSound);
+				connect(&previewTextWallSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayTextWallSound));
 
 				arrivalSound.setText(settings.arrivalSound);
 				portraitVideo.setText(settings.portraitVideo);
+				cheerVideo.setText(settings.cheerVideo);
+				subscriptionSound.setText(settings.subscriptionSound);
+				inactivityCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				inactivityCooldown.setValue(settings.inactivityCooldown);
+				helpCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				helpCooldown.setValue(settings.helpCooldown);
+				textWallThreshold.setRange(1,std::numeric_limits<int>::max());
+				textWallThreshold.setValue(settings.textWallThreshold);
+				textWallSound.setText(settings.textWallSound);
 
 				Rows({
 					{Label(QStringLiteral("Arrival Announcement Audio")),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
-					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo}
+					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
+					{Label(QStringLiteral("Cheer (Bits) Video")),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
+					{Label(QStringLiteral("Subscription Announcement")),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
+					{Label(QStringLiteral("Inactivity Cooldown")),&inactivityCooldown},
+					{Label(QStringLiteral("Help Cooldown")),&helpCooldown},
+					{Label(QStringLiteral("Wall-of-Text Sound")),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(QStringLiteral("Threshold")),&textWallThreshold}
 				});
 			}
 
@@ -892,6 +934,11 @@ namespace UI
 				{
 					if (object == &arrivalSound || object == &selectArrivalSound || object == &previewArrivalSound) emit Help(QStringLiteral("This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."));
 					if (object == &portraitVideo || object == &selectPortraitVideo || object == &previewPortraitVideo) emit Help(QStringLiteral("Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."));
+					if (object == &cheerVideo || object == &selectCheerVideo || object == &previewCheerVideo) emit Help(QStringLiteral("A video (mp4) that plays when a chatter cheers bits."));
+					if (object == &subscriptionSound || object == &selectSubscriptionSound || object == &previewSubscriptionSound) emit Help(QStringLiteral("This is the sound that plays when a chatter subscribes to the channel."));
+					if (object == &inactivityCooldown) emit Help(QStringLiteral(R"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"));
+					if (object == &helpCooldown) emit Help(QStringLiteral(R"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"));
+					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(QStringLiteral("This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."));
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -921,6 +968,28 @@ namespace UI
 				emit PlayPortraitVideo(portraitVideo.text());
 			}
 
+			void Bot::OpenCheerVideo()
+			{
+				QString candidate=OpenVideo(this,cheerVideo.text());
+				if (!candidate.isEmpty()) cheerVideo.setText(candidate);
+			}
+
+			void Bot::PlayCheerVideo()
+			{
+				emit PlayCheerVideo(qApp->applicationName(),100,"Hype!",cheerVideo.text());
+			}
+
+			void Bot::OpenSubscriptionSound()
+			{
+				QString candidate=OpenAudio(this,subscriptionSound.text());
+				if (!candidate.isEmpty()) subscriptionSound.setText(candidate);
+			}
+
+			void Bot::PlaySubscriptionSound()
+			{
+				emit PlaySubscriptionSound(qApp->applicationName(),subscriptionSound.text());
+			}
+
 			void Bot::ValidateArrivalSound(const QString &path)
 			{
 				QFileInfo candidate(path);
@@ -935,6 +1004,43 @@ namespace UI
 				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
 				Valid(&portraitVideo,valid);
 				previewPortraitVideo.setEnabled(valid);
+			}
+
+			void Bot::ValidateCheerVideo(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
+				Valid(&cheerVideo,valid);
+				previewCheerVideo.setEnabled(valid);
+			}
+
+			void Bot::ValidateSubscriptionSound(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_AUDIO;
+				Valid(&subscriptionSound,valid);
+				previewSubscriptionSound.setEnabled(valid);
+			}
+
+			void Bot::OpenTextWallSound()
+			{
+				QString candidate=OpenAudio(this,textWallSound.text());
+				if (!candidate.isEmpty()) textWallSound.setText(candidate);
+			}
+
+			void Bot::PlayTextWallSound()
+			{
+				QString message("Celeste ");
+				message=message.repeated(textWallThreshold.value()/message.size());
+				emit PlayTextWallSound(message,textWallSound.text());
+			}
+
+			void Bot::ValidateTextWallSound(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() &&candidate.suffix() == Text::FILE_TYPE_AUDIO;
+				Valid(&textWallSound,valid);
+				textWallSound.setEnabled(valid);
 			}
 		}
 

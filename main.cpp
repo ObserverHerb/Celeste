@@ -117,13 +117,22 @@ int main(int argc,char *argv[])
 		}));
 		UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(&configureOptions,{
 			.arrivalSound=celeste.ArrivalSound(),
-			.portraitVideo=celeste.PortraitVideo()
+			.portraitVideo=celeste.PortraitVideo(),
+			.cheerVideo=celeste.CheerVideo(),
+			.subscriptionSound=celeste.SubscriptionSound(),
+			.inactivityCooldown=celeste.InactivityCooldown(),
+			.helpCooldown=celeste.HelpCooldown(),
+			.textWallThreshold=celeste.TextWallThreshold(),
+			.textWallSound=celeste.TextWallSound()
 		});
 		configureOptions.AddCategory(optionsCategoryBot);
 		UI::Metrics::Dialog metrics(&window);
 
 		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 		configureOptions.connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
+		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
+		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
+		configureOptions.connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
 		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
 
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
