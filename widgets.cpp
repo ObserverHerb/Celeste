@@ -891,6 +891,7 @@ namespace UI
 				accentColor(this),
 				previewAccentColor(this,settings.accentColor),
 				selectAccentColor(Text::CHOOSE,this),
+				duration(this),
 				settings(settings)
 			{
 				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Pane::ValidateFont));
@@ -906,12 +907,15 @@ namespace UI
 				foregroundColor.setText(settings.foregroundColor);
 				backgroundColor.setText(settings.backgroundColor);
 				accentColor.setText(settings.accentColor);
+				duration.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				duration.setValue(settings.duration);
 
 				Rows({
 					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
 					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
 					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
-					{Label(QStringLiteral("Accent Color")),&accentColor,&previewAccentColor,&selectAccentColor}
+					{Label(QStringLiteral("Accent Color")),&accentColor,&previewAccentColor,&selectAccentColor},
+					{Label(QStringLiteral("Duration")),&duration}
 				});
 			}
 
@@ -967,6 +971,7 @@ namespace UI
 					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of text in event panes (such as raid and subscription announcements)"));
 					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background in event panes (such as raid and subscription announcements)"));
 					if (object == &accentColor || object == &selectAccentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
+					if (object == &duration) emit Help(QStringLiteral("The amount of time (in milliseconds) that an announcement will display. This only affects announcements that don't have an associated audio or video file, otherwise the duration will be the duration of the associated audio or video."));
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -980,6 +985,7 @@ namespace UI
 				settings.foregroundColor.Set(foregroundColor.text());
 				settings.backgroundColor.Set(backgroundColor.text());
 				settings.accentColor.Set(accentColor.text());
+				settings.duration.Set(duration.value());
 			}
 
 			Bot::Bot(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Bot Core")),

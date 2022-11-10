@@ -115,6 +115,7 @@ public:
 	ApplicationSetting& ForegroundColor();
 	ApplicationSetting& BackgroundColor();
 	ApplicationSetting& AccentColor();
+	ApplicationSetting& Duration();
 protected:
 	QLabel *output;
 	QTimer clock;

@@ -253,7 +253,8 @@ int main(int argc,char *argv[])
 				.fontSize=announcePane.FontSize(),
 				.foregroundColor=announcePane.ForegroundColor(),
 				.backgroundColor=announcePane.BackgroundColor(),
-				.accentColor=announcePane.AccentColor()
+				.accentColor=announcePane.AccentColor(),
+				.duration=announcePane.Duration()
 			}));
 			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
 				.arrivalSound=celeste.ArrivalSound(),

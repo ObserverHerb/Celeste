@@ -279,6 +279,7 @@ namespace UI
 					ApplicationSetting foregroundColor;
 					ApplicationSetting backgroundColor;
 					ApplicationSetting accentColor;
+					ApplicationSetting duration;
 				};
 				Pane(QWidget *parent,Settings settings);
 				void Save() override;
@@ -295,6 +296,7 @@ namespace UI
 				QLineEdit accentColor;
 				Color previewAccentColor;
 				QPushButton selectAccentColor;
+				QSpinBox duration;
 				Settings settings;
 				void PickFont();
 				void PickForegroundColor();

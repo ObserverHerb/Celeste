@@ -219,7 +219,6 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 	output->setTextFormat(Qt::RichText);
 
 	clock.setSingleShot(true);
-	clock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingDuration)));
 	connect(&clock,&QTimer::timeout,this,&AnnouncePane::Finished);
 }
 
@@ -236,6 +235,7 @@ bool AnnouncePane::event(QEvent *event)
 
 void AnnouncePane::showEvent(QShowEvent *event)
 {
+	clock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingDuration)));
 	clock.start();
 	QWidget::showEvent(event);
 }
@@ -288,6 +288,11 @@ ApplicationSetting& AnnouncePane::BackgroundColor()
 ApplicationSetting& AnnouncePane::AccentColor()
 {
 	return settingAccentColor;
+}
+
+ApplicationSetting& AnnouncePane::Duration()
+{
+	return settingDuration;
 }
 
 ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(text,parent), commands(new ScrollingTextEdit(this))
