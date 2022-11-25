@@ -135,17 +135,17 @@ void ChatPane::Refresh()
 void ChatPane::Message(const Chat::Message &message) const
 {
 	QString badges;
-	for (const QString &icon : message.badges) badges.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
+	for (const QString &icon : message.badges) badges.append(QString{"<img style='vertical-align: middle;' src='%1' /> "}.arg(icon));
 
 	QString emotedMessage;
 	unsigned int position=0;
 	for (const Chat::Emote &emote : message.emotes)
 	{
-		if (position < emote.start) emotedMessage+=message.text.midRef(position,emote.start-position);
+		if (position < emote.start) emotedMessage+=QStringView{message.text}.mid(position,emote.start-position);
 		emotedMessage+=QString(R"(<img style="vertical-align: middle;" src="%1" />)").arg(emote.path);
 		position=emote.end+1;
 	}
-	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=message.text.midRef(position,message.text.size()-position);
+	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=QStringView{message.text}.mid(position,message.text.size()-position);
 
 	if (message.action)
 		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
