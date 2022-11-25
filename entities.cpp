@@ -451,6 +451,11 @@ namespace Viewer
 					emit Retrieved(QImage::fromData(reply->readAll()));
 			});
 		}
+
+		Remote::operator QImage() const
+		{
+			return image;
+		}
 	}
 
 	const QString& Local::Name() const
