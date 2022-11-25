@@ -1,12 +1,11 @@
 #include <QFileInfo>
 #include <QDir>
-#include <QtWin>
 #include <windows.h>
 #include "window.h"
 
 Win32Window::Win32Window() : Window()
 {
-	QtWin::enableBlurBehindWindow(this);
+	// QtWin::enableBlurBehindWindow(this); // FIXME: How is transparency going to work in Qt6?
 }
 
 namespace Filesystem
