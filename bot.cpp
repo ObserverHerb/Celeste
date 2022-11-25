@@ -43,11 +43,13 @@ const char *TWITCH_API_ENDPOINT_CHATTERS="https://api.twitch.tv/helix/chat/chatt
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
+const char *TWITCH_API_OPERATION_STREAM_TITLE="stream title";
 const char *TWITCH_API_OPERATION_STREAM_CATEGORY="stream category";
 const char *TWITCH_API_OPERATION_LOAD_BADGES="badges";
 const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 was incomplete";
 const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
 const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
+const char *TWITCH_API_ERROR_AUTH="Auth token or client ID missing or invalid";
 const char16_t *TWITCH_SYSTEM_ACCOUNT_NAME=u"jtv";
 const char16_t *CHAT_BADGE_BROADCASTER=u"broadcaster";
 const char16_t *CHAT_BADGE_MODERATOR=u"moderator";
@@ -986,6 +988,22 @@ void Bot::DispatchShoutout(Command command)
 void Bot::DispatchUptime(bool total)
 {
 	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this,total](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(QStringLiteral("Invalid or missing type query parameter"),TWITCH_API_OPERATION_STREAM_INFORMATION);
+			return;
+		case 401:
+			emit Print(TWITCH_API_ERROR_AUTH,TWITCH_API_OPERATION_STREAM_INFORMATION);
+			return;
+		}
+
+		if (reply->error())
+		{
+			emit Print(QStringLiteral("Failed to obtain stream information"),TWITCH_API_OPERATION_STREAM_INFORMATION);
+			return;
+		}
+
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -1066,6 +1084,22 @@ void Bot::AdjustVibeVolume(Command command)
 void Bot::ToggleEmoteOnly()
 {
 	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(QStringLiteral("Missing broadcaster_id query parameter"),TWITCH_API_OPERATION_EMOTE_ONLY);
+			return;
+		case 401:
+			emit Print(TWITCH_API_ERROR_AUTH,TWITCH_API_OPERATION_EMOTE_ONLY);
+			return;
+		}
+
+		if (reply->error())
+		{
+			emit Print(QStringLiteral("Failed to toggle emote-only chat"),TWITCH_API_OPERATION_EMOTE_ONLY);
+			return;
+		}
+
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -1131,12 +1165,26 @@ void Bot::EmoteOnly(bool enable)
 void Bot::StreamTitle(const QString &title)
 {
 	Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
-		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
-			emit Print("Failed to change stream title");
+		case 400:
+			emit Print(QStringLiteral("A query parameter is invalid"),TWITCH_API_OPERATION_STREAM_TITLE);
+			return;
+		case 401:
+			emit Print("Missing or invalid OAuth token, client ID, or broadcaster ID; or bot does not have required scope (channel:manage:broadcast)",TWITCH_API_OPERATION_STREAM_TITLE);
+			return;
+		case 500:
+			emit Print("Something when wrong on Twitch's end",TWITCH_API_OPERATION_STREAM_TITLE);
 			return;
 		}
-		emit Print(QString(R"(Stream title changed to "%1")").arg(title));
+
+		if (reply->error() || reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+		{
+			emit Print(QStringLiteral("Failed to change stream title"),TWITCH_API_OPERATION_STREAM_TITLE);
+			return;
+		}
+
+		emit Print(QString(R"(Stream title changed to "%1")").arg(title),TWITCH_API_OPERATION_STREAM_TITLE);
 	},{
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()}
 	},{
