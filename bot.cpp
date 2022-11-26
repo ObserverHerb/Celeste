@@ -39,7 +39,6 @@ const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix
 const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
 const char *TWITCH_API_ENDPOINT_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
-const char *TWITCH_API_ENDPOINT_CHATTERS="https://api.twitch.tv/helix/chat/chatters";
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
@@ -516,53 +515,6 @@ void Bot::RestoreMusic()
 	vibeKeeper->DuckVolume(false);
 }
 
-void Bot::Chatters()
-{
-	Network::Request({TWITCH_API_ENDPOINT_CHATTERS},Network::Method::GET,[this](QNetworkReply *reply) {
-		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
-		{
-		case 400:
-			emit Print(QStringLiteral("Invalid broadcaster ID"));
-			return;
-		case 401:
-			emit Print(QStringLiteral("Not authorized to obtain list of chatters (moderator:read:chatters)"));
-			return;
-		case 403:
-			emit Print(QStringLiteral("User requesting list of chatters is not a moderator"));
-			return;
-		}
-
-		if (reply->error())
-		{
-			emit Print(QStringLiteral("Failed to obtain list of chatters"));
-			return;
-		}
-
-		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
-		if (!parsedJSON)
-		{
-			emit Print(QStringLiteral("Invalid response obtaining list of chatters"));
-			return;
-		}
-
-		const QJsonObject object=parsedJSON().object();
-		auto jsonFieldData=object.find(JSON_KEY_DATA);
-		if (jsonFieldData == object.end()) return;
-
-		const QJsonArray array=jsonFieldData->toArray();
-		QStringList names;
-		for (const QJsonValue &value : array) names.append(value.toObject().value("user_login").toString());
-		emit Chatters(names);
-	},{
-		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
-		{QUERY_PARAMETER_MODERATOR_ID,security.AdministratorID()},
-		{"first","1000"}
-	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
-		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
-	});
-}
-
 void Bot::DispatchArrival(const QString &login)
 {
 	if (auto viewer=viewers.find(login); viewer != viewers.end())
@@ -585,6 +537,7 @@ void Bot::DispatchArrival(const QString &login)
 			emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
 			viewers.at(viewer.Name()).welcomed=true;
 			SaveViewerAttributes(false);
+			emit Welcomed(viewer.Name());
 		});
 		connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 	});

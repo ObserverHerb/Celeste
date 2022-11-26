@@ -153,7 +153,7 @@ signals:
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
 	void AnnounceDeniedCommand(const QString &videoPath);
-	void Chatters(const QStringList &names);
+	void Welcomed(const QString &user);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void Ping();
@@ -165,5 +165,4 @@ public slots:
 	void RestoreMusic();
 	QJsonDocument SerializeCommands(const Command::Lookup &entries);
 	bool SaveDynamicCommands(const QJsonDocument &json);
-	void Chatters();
 };

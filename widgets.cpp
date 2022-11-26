@@ -1533,50 +1533,38 @@ namespace UI
 	{
 		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			layout(this),
-			rawUsers(this),
-			validUsers(this)
+			users(this)
 		{
-			layout.addWidget(&validUsers);
-			layout.addWidget(&rawUsers);
+			layout.addWidget(&users);
 			setSizeGripEnabled(true);
-
-			connect(&acknowledgeDelay,&QTimer::timeout,this,QOverload<>::of(&Dialog::Acknowledged));
 		}
 
 		void Dialog::Joined(const QString &user)
 		{
-			rawUsers.addItem(user);
+			QListWidgetItem *item=new QListWidgetItem(user);
+			users.addItem(item);
+			item->setForeground(palette().mid());
 			UpdateTitle();
-			acknowledgeDelay.start(1000);
 		}
 
-		void Dialog::Acknowledged(const QStringList &names)
+		void Dialog::Acknowledged(const QString &name)
 		{
-			validUsers.clear();
-			for (const QString &name : names) validUsers.addItem(name);
-			QList<QListWidgetItem*> items=rawUsers.findItems("*",Qt::MatchWildcard);
-			for (QListWidgetItem *item : items)
-			{
-				if (validUsers.findItems(item->text(),Qt::MatchExactly).isEmpty())
-					item->setForeground(palette().mid());
-				else
-					item->setForeground(palette().text());
-			}
-			UpdateTitle();
+			QList<QListWidgetItem*> items=users.findItems(name,Qt::MatchExactly);
+			if (items.isEmpty()) return;
+			QListWidgetItem *item=items.at(0);
+			item->setForeground(palette().text());
 		}
 
 		void Dialog::Parted(const QString &user)
 		{
-			QList<QListWidgetItem*> items=rawUsers.findItems(user,Qt::MatchExactly);
-			for (QListWidgetItem *item : items) delete rawUsers.takeItem(rawUsers.row(item));
-			items=validUsers.findItems(user,Qt::MatchExactly);
-			for (QListWidgetItem *item : items) delete validUsers.takeItem(validUsers.row(item));
+			QList<QListWidgetItem*> items=users.findItems(user,Qt::MatchExactly);
+			for (QListWidgetItem *item : items) delete users.takeItem(users.row(item));
 			UpdateTitle();
 		}
 
 		void Dialog::UpdateTitle()
 		{
-			setWindowTitle(QStringLiteral("Metrics (%1/%2)").arg(StringConvert::Integer(validUsers.count()),StringConvert::Integer(rawUsers.count())));
+			setWindowTitle(QStringLiteral("Metrics (%1)").arg(StringConvert::Integer(users.count())));
 		}
 	}
 }

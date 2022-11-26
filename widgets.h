@@ -518,16 +518,12 @@ namespace UI
 			Dialog(QWidget *parent);
 		protected:
 			QHBoxLayout layout;
-			QListWidget rawUsers;
-			QListWidget validUsers;
-			QTimer acknowledgeDelay;
+			QListWidget users;
 			static const QString TITLE;
 			void UpdateTitle();
-		signals:
-			void Acknowledged();
 		public slots:
 			void Joined(const QString &user);
-			void Acknowledged(const QStringList &names);
+			void Acknowledged(const QString &name);
 			void Parted(const QString &user);
 		};
 	}

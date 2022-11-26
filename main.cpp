@@ -106,7 +106,6 @@ int main(int argc,char *argv[])
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
 
-		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
 		security.connect(&security,&Security::TokenRequestFailed,[]() {
 			QMessageBox failureDialog;
 			failureDialog.setWindowTitle("Re-Authentication Failed");
@@ -141,7 +140,7 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
 		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
 		celeste.connect(&celeste,&Bot::Pulse,&pulsar,&Pulsar::Pulse);
-		celeste.connect(&celeste,QOverload<const QStringList&>::of(&Bot::Chatters),&metrics,QOverload<const QStringList&>::of(&UI::Metrics::Dialog::Acknowledged));
+		celeste.connect(&celeste,&Bot::Welcomed,&metrics,&UI::Metrics::Dialog::Acknowledged);
 		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
