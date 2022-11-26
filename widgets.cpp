@@ -1536,6 +1536,7 @@ namespace UI
 			users(this)
 		{
 			layout.addWidget(&users);
+			setModal(false);
 			setSizeGripEnabled(true);
 		}
 

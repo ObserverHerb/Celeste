@@ -206,7 +206,7 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
-		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::exec);
+		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::show);
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protection()) {
 				QMessageBox emoteOnlyDialog;
