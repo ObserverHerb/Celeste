@@ -5,6 +5,7 @@
 #include <QPropertyAnimation>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QTableWidget>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QPushButton>
@@ -18,6 +19,7 @@
 #include <QDialogButtonBox>
 #include <QSizeGrip>
 #include <QDialog>
+#include <QDir>
 #include "entities.h"
 
 namespace StyleSheet
@@ -88,10 +90,11 @@ namespace UI
 		inline const char *DIALOG_TITLE_FONT="Choose Font";
 		inline const char *FILE_TYPE_VIDEO="mp4";
 		inline const char *FILE_TYPE_AUDIO="mp3";
-		inline const char *DIRECTORY_HOME="/home";
 		inline const char *BUTTON_SAVE="&Save";
 		inline const char *BUTTON_DISCARD="&Discard";
 		inline const char *BUTTON_APPLY="&Apply";
+		inline const char *BUTTON_ADD="&Add";
+		inline const char *BUTTON_REMOVE="&Remove";
 	}
 
 	namespace Commands
@@ -529,6 +532,37 @@ namespace UI
 			void Joined(const QString &user);
 			void Acknowledged(const QStringList &names);
 			void Parted(const QString &user);
+		};
+	}
+
+	namespace VibePlaylist
+	{
+		class Dialog: public QDialog
+		{
+			Q_OBJECT
+		public:
+			Dialog(const File::List &files,QWidget *parent);
+		protected:
+			QVBoxLayout layout;
+			QTableWidget list;
+			QDialogButtonBox buttons;
+			QPushButton add;
+			QPushButton remove;
+			QPushButton discard;
+			QPushButton save;
+			QMediaPlayer reader;
+			const File::List &files;
+			QDir initialAddFilesPath;
+			void Save();
+			void Add(const QString &path);
+			void Add(const QStringList &paths,bool failurePrompt);
+			QTableWidgetItem* ReadOnlyItem(const QString &text);
+			static const int COLUMN_COUNT;
+		signals:
+			void Save(const File::List &files);
+		protected slots:
+			void Add();
+			void Remove();
 		};
 	}
 }

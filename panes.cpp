@@ -226,8 +226,8 @@ void EphemeralPane::Expire()
 VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(new QMediaPlayer(this)), viewport(new QVideoWidget(this))
 {
 	videoPlayer->setVideoOutput(viewport);
-	videoPlayer->setMedia(QUrl::fromLocalFile(path));
-	connect(videoPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+	videoPlayer->setSource(QUrl::fromLocalFile(path));
+	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 
@@ -382,15 +382,15 @@ void ScrollingAnnouncePane::showEvent(QShowEvent *event)
 
 AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer(this))
 {
-	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
-	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this]() {
-		emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
+	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
+		emit Print(QString("Failed to load audio: %1").arg(errorString));
 		emit Finished();
 	});
-	audioPlayer->setMedia(QUrl::fromLocalFile(path));
+	audioPlayer->setSource(QUrl::fromLocalFile(path));
 	output->setText(text);
 }
 

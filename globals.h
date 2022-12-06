@@ -152,6 +152,11 @@ namespace Filesystem
 		return QStandardPaths::writableLocation(QStandardPaths::TempLocation);
 	}
 
+	inline const QDir HomePath()
+	{
+		return QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+	}
+
 	const std::optional<QString> CreateHiddenFile(const QString &filePath);
 
 	inline bool Touch(QFile &file)
@@ -169,22 +174,31 @@ namespace Filesystem
 
 namespace Random
 {
+	template<typename T> concept Container=requires(T m)
+	{
+		requires std::forward_iterator<typename T::iterator>;
+		{ m.empty() }->std::same_as<bool>;
+		{ m.size() }->std::same_as<typename T::size_type>;
+	};
+
 	inline std::random_device generator;
+
 	inline int Bounded(int lower,int upper)
 	{
 		std::uniform_int_distribution<int> distribution(lower,upper);
 		return distribution(generator);
 	}
-	template<typename T> requires requires(T m) {
-		requires std::forward_iterator<typename T::iterator>;
-		{ m.empty() }->std::same_as<bool>;
-		{ m.size() }->std::same_as<typename T::size_type>;
-	}
-	inline int Bounded(const T &container)
+
+	template<Container T> inline int Bounded(const T &container)
 	{
 		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
 		if (container.size() > std::numeric_limits<int>::max()) throw std::range_error("Container contains too many elements");
 		return Bounded(0,static_cast<int>(container.size())-1);
+	}
+
+	template<Container T> inline void Shuffle(T &container)
+	{
+		std::shuffle(container.begin(),container.end(),generator);
 	}
 }
 

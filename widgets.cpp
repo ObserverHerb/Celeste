@@ -123,12 +123,12 @@ namespace UI
 
 	QString OpenVideo(QWidget *parent,QString initialPath)
 	{
-		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Text::DIRECTORY_HOME : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO)));
+		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO)));
 	}
 
 	QString OpenAudio(QWidget *parent,QString initialPath)
 	{
-		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Text::DIRECTORY_HOME : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
+		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
 	}
 
 	Help::Help(QWidget *parent) : QTextEdit(parent)
@@ -155,8 +155,8 @@ namespace UI
 			layout(this),
 			list(this),
 			name(this),
-			add("Add",this),
-			remove("Remove",this)
+			add(Text::BUTTON_ADD,this),
+			remove(Text::BUTTON_REMOVE,this)
 		{
 			setModal(true);
 			setWindowTitle("Command Aliases");
@@ -505,7 +505,7 @@ namespace UI
 			QString candidate;
 			if (Random())
 			{
-				candidate=QFileDialog::getExistingDirectory(this, Text::DIALOG_TITLE_DIRECTORY,Text::DIRECTORY_HOME,QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
+				candidate=QFileDialog::getExistingDirectory(this, Text::DIALOG_TITLE_DIRECTORY,Filesystem::HomePath().absolutePath(),QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
 			}
 			else
 			{
@@ -1577,6 +1577,122 @@ namespace UI
 		void Dialog::UpdateTitle()
 		{
 			setWindowTitle(QStringLiteral("Metrics (%1/%2)").arg(StringConvert::Integer(validUsers.count()),StringConvert::Integer(rawUsers.count())));
+		}
+	}
+
+	namespace VibePlaylist
+	{
+		const int Dialog::COLUMN_COUNT=4;
+
+		Dialog::Dialog(const File::List &files,QWidget *parent) : QDialog(parent),
+			layout(this),
+			list(0,COLUMN_COUNT,this),
+			buttons(this),
+			add(Text::BUTTON_ADD,this),
+			remove(Text::BUTTON_REMOVE,this),
+			discard(Text::BUTTON_DISCARD,this),
+			save(Text::BUTTON_SAVE,this),
+			reader(this),
+			files(files)
+		{
+			setLayout(&layout);
+
+			list.setHorizontalHeaderLabels({"Artist","Album","Title","Path"});
+			list.setSelectionBehavior(QAbstractItemView::SelectRows);
+			list.setSelectionMode(QAbstractItemView::ExtendedSelection);
+			const QStringList paths=files();
+			if (!paths.empty())
+			{
+				initialAddFilesPath={paths.first()};
+				Add(paths,false);
+			}
+			else
+			{
+				initialAddFilesPath={Filesystem::HomePath().absolutePath()};
+			}
+			list.setSortingEnabled(true);
+			layout.addWidget(&list);
+
+			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
+			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
+			buttons.addButton(&add,QDialogButtonBox::ActionRole);
+			buttons.addButton(&remove,QDialogButtonBox::ActionRole);
+			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
+			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
+			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
+			connect(&add,&QPushButton::clicked,this,QOverload<>::of(&Dialog::Add));
+			connect(&remove,&QPushButton::clicked,this,&Dialog::Remove);
+			layout.addWidget(&buttons);
+
+			setSizeGripEnabled(true);
+		}
+
+		void Dialog::Save()
+		{
+			QStringList paths;
+			for (int row=0; row < list.rowCount(); row++) paths.append(list.item(row,COLUMN_COUNT-1)->text());
+			emit Save({paths});
+		}
+
+		void Dialog::Add()
+		{
+			const QStringList paths=QFileDialog::getOpenFileNames(this,Text::DIALOG_TITLE_FILE,initialAddFilesPath.absolutePath(),QString("Songs (*.%1)").arg(Text::FILE_TYPE_AUDIO));
+			if (paths.isEmpty()) return;
+			initialAddFilesPath={paths.front()};
+			Add(paths,true);
+		}
+
+		void Dialog::Add(const QString &path)
+		{
+			Music::ID3::Tag tag=Music::ID3::Tag{path};			
+			QString artist=tag.Artist();
+			QString album=tag.AlbumTitle();
+			QString title=tag.Title();
+			list.insertRow(list.rowCount());
+			int row=list.rowCount()-1;
+			list.setItem(row,0,ReadOnlyItem(artist));
+			list.setItem(row,1,ReadOnlyItem(album));
+			list.setItem(row,2,ReadOnlyItem(title));
+			list.setItem(row,3,ReadOnlyItem(path));
+		}
+
+		void Dialog::Add(const QStringList &paths,bool failurePrompt)
+		{
+			list.setSortingEnabled(false);
+			QStringList failed;
+			for (const QString &file : paths)
+			{
+				try
+				{
+					Add(file);
+				}
+				catch (const std::runtime_error &exception)
+				{
+					failed.append(QString{"%1: %2"}.arg(file,exception.what()));
+				}
+			}
+			if (failurePrompt && !failed.isEmpty())
+			{
+				QString message=failed.join('\n');
+				QMessageBox{QMessageBox::Warning,"Failed to add files",failed.join('\n'),QMessageBox::Ok}.exec();
+			}
+			list.setSortingEnabled(true);
+		}
+
+		void Dialog::Remove()
+		{
+			QList<QTableWidgetItem*> items=list.selectedItems();
+			for (QList<QTableWidgetItem*>::iterator candidate=items.begin(); candidate != items.end(); candidate+=COLUMN_COUNT)
+			{
+				list.removeRow(list.row(*candidate));
+			}
+		}
+
+		QTableWidgetItem* Dialog::ReadOnlyItem(const QString &text)
+		{
+			QTableWidgetItem *item=new QTableWidgetItem(text);
+			item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+			return item;
 		}
 	}
 }

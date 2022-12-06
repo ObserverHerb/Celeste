@@ -12,6 +12,7 @@ const char *COMMAND_TYPE_AUDIO="announce";
 const char *COMMAND_TYPE_VIDEO="video";
 const char *COMMAND_TYPE_PULSAR="pulsar";
 const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
+const char *VIBE_PLAYLIST_FILENAME="songs.json";
 const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
 const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
 const char *QUERY_PARAMETER_BROADCASTER_ID="broadcaster_id";
@@ -29,6 +30,7 @@ const char *JSON_KEY_DATA="data";
 const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
 const char *JSON_KEY_BOT="bot";
+const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
@@ -57,9 +59,12 @@ const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
 const char16_t *CHAT_TAG_BADGES=u"badges";
 const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
-const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_CREATE="Failed to create command list file: %1";
-const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN="Failed to open command list file: %1";
-const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_PARSE="Failed to parse command list file: %1";
+const char *FILE_OPERATION_CREATE="create";
+const char *FILE_OPERATION_OPEN="open";
+const char *FILE_OPERATION_PARSE="parse";
+const char *FILE_OPERATION_WRITE="write";
+const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST="Failed to %1 command list file: %2";
+const char *FILE_ERROR_TEMPLATE_VIBE_PLAYLIST="Failed to %1 vibe playlist list file: %2";
 
 const std::unordered_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
@@ -72,12 +77,11 @@ Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
-	vibeKeeper(new Music::Player(this)),
-	roaster(new QMediaPlayer(this)),
+	vibeKeeper(this,true),
+	roaster(this,false),
 	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
 	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),
-	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
 	settingTextWallThreshold(SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400),
 	settingTextWallSound(SETTINGS_CATEGORY_EVENTS,"TextWallSound"),
 	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
@@ -129,8 +133,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
 
-	connect(vibeKeeper,&Music::Player::Print,this,&Bot::Print);
-	if (settingVibePlaylist) vibeKeeper->Load(settingVibePlaylist);
+	connect(&vibeKeeper,&Music::Player::Print,this,&Bot::Print);
 }
 
 void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
@@ -144,17 +147,16 @@ QJsonDocument Bot::LoadDynamicCommands()
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.exists())
 	{
-		if (!Filesystem::Touch(commandListFile)) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_CREATE).arg(commandListFile.fileName()).toStdString());
+		if (!Filesystem::Touch(commandListFile)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_CREATE,commandListFile.fileName()).toStdString());
 	}
-	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN).arg(commandListFile.fileName()).toStdString());
+	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()).toStdString());
 
 	QJsonParseError jsonError;
 	QByteArray data=commandListFile.readAll();
-	if (data.isEmpty()) data="[]";
-	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
-	if (json.isNull()) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_PARSE).arg(jsonError.errorString()).toStdString());
-
-	return json;
+	if (data.isEmpty()) data=JSON_ARRAY_EMPTY;
+	const JSON::ParseResult parsedJSON=JSON::Parse(data);
+	if (!parsedJSON) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_PARSE,parsedJSON.error).toStdString());
+	return parsedJSON();
 }
 
 const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
@@ -292,13 +294,18 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 bool Bot::SaveDynamicCommands(const QJsonDocument &json)
 {
+	const char *OPERATION="save dynamic commands";
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::WriteOnly))
 	{
-		emit Print(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN).arg(commandListFile.fileName()),QStringLiteral("load dynamic commands"));
+		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()),OPERATION);
 		return false;
 	}
-	commandListFile.write(json.toJson(QJsonDocument::Indented));
+	if (commandListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_WRITE,commandListFile.fileName()),OPERATION);
+		return false;
+	}
 	return true;
 }
 
@@ -355,8 +362,8 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 
 void Bot::SaveViewerAttributes(bool resetWelcomes)
 {
-	QFile commandListFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
-	if (!commandListFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
+	QFile viewerAttributesFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
+	if (!viewerAttributesFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
 
 	QJsonObject entries;
 	for (const std::pair<QString,Viewer::Attributes> &viewer : viewers)
@@ -369,7 +376,64 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 		entries.insert(viewer.first,attributes);
 	}
 
-	commandListFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
+	viewerAttributesFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
+}
+
+const File::List& Bot::DeserializeVibePlaylist(const QJsonDocument &json)
+{
+	vibeKeeper.Sources(File::List(json.toVariant().toStringList()));
+	return vibeKeeper.Sources();
+}
+
+QJsonDocument Bot::LoadVibePlaylist()
+{
+	static const char *OPERATION="load vibe playlist";
+	QFile songListFile(Filesystem::DataPath().filePath(VIBE_PLAYLIST_FILENAME));
+
+	if (!songListFile.exists())
+	{
+		if (!Filesystem::Touch(songListFile)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_CREATE,songListFile.fileName()).toStdString());
+	}
+
+	if (!songListFile.open(QIODevice::ReadOnly))
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_OPEN,songListFile.errorString()),OPERATION);
+		return {};
+	}
+
+	QByteArray data=songListFile.readAll();
+	if (data.isEmpty()) data=JSON_ARRAY_EMPTY;
+	const JSON::ParseResult parsedJSON=JSON::Parse(data);
+	if (!parsedJSON)
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_PARSE,parsedJSON.error),OPERATION);
+		return {};
+	}
+
+	emit Print("Playlist loaded!",OPERATION);
+	return parsedJSON();
+}
+
+QJsonDocument Bot::SerializeVibePlaylist(const File::List &songs)
+{
+	return QJsonDocument::fromVariant(songs());
+}
+
+bool Bot::SaveVibePlaylist(const QJsonDocument &json)
+{
+	static const char *OPERATION="save vibe playlist";
+	QFile songListFile(Filesystem::DataPath().filePath(VIBE_PLAYLIST_FILENAME));
+	if (!songListFile.open(QIODevice::WriteOnly))
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_OPEN,songListFile.fileName()),OPERATION);
+		return false;
+	}
+	if (songListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_WRITE,songListFile.fileName()),OPERATION);
+		return false;
+	}
+	return true;
 }
 
 void Bot::LoadRoasts()
@@ -468,7 +532,7 @@ void Bot::Redemption(const QString &login,const QString &name,const QString &rew
 	if (rewardTitle == "Crash Celeste")
 	{
 		DispatchPanic(name);
-		vibeKeeper->Stop();
+		vibeKeeper.Stop();
 		return;
 	}
 
@@ -510,12 +574,12 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 
 void Bot::SuppressMusic()
 {
-	vibeKeeper->DuckVolume(true);
+	vibeKeeper.DuckVolume(true);
 }
 
 void Bot::RestoreMusic()
 {
-	vibeKeeper->DuckVolume(false);
+	vibeKeeper.DuckVolume(false);
 }
 
 void Bot::Chatters()
@@ -837,7 +901,7 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 				DispatchShoutout(command);
 				break;
 			case NativeCommandFlag::SONG:
-				emit ShowCurrentSong(vibeKeeper->SongTitle(),vibeKeeper->AlbumTitle(),vibeKeeper->AlbumArtist(),vibeKeeper->AlbumCoverArt());
+				emit ShowCurrentSong(vibeKeeper.SongTitle(),vibeKeeper.AlbumTitle(),vibeKeeper.AlbumArtist(),vibeKeeper.AlbumCoverArt());
 				break;
 			case NativeCommandFlag::TIMEZONE:
 				emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
@@ -1055,13 +1119,13 @@ void Bot::DispatchUptime(bool total)
 
 void Bot::ToggleVibeKeeper()
 {
-	if (vibeKeeper->Playing())
+	if (vibeKeeper.Playing())
 	{
 		emit Print("Pausing the vibes...");
-		vibeKeeper->Stop();
+		vibeKeeper.Stop();
 		return;
 	}
-	vibeKeeper->Start();
+	vibeKeeper.Start();
 }
 
 void Bot::AdjustVibeVolume(Command command)
@@ -1072,7 +1136,7 @@ void Bot::AdjustVibeVolume(Command command)
 		std::optional<QStringView> targetVolume=StringView::Take(window,' ');
 		if (!targetVolume) throw std::runtime_error("Target volume is missing");
 		if (window.size() < 1) throw std::runtime_error("Duration for volume change is missing");
-		vibeKeeper->Volume(StringConvert::PositiveInteger(targetVolume->toString()),std::chrono::seconds(StringConvert::PositiveInteger(window.toString())));
+		vibeKeeper.Volume(StringConvert::PositiveInteger(targetVolume->toString()),std::chrono::seconds(StringConvert::PositiveInteger(window.toString())));
 	}
 
 	catch (const std::runtime_error &exception)

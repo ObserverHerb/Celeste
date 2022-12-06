@@ -6,7 +6,6 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMediaPlayer>
-#include <QMediaPlaylist>
 #include <QDateTime>
 #include <QTimer>
 #include <unordered_map>
@@ -48,6 +47,8 @@ public:
 	const Command::Lookup& Commands() const;
 	const Command::Lookup& DeserializeCommands(const QJsonDocument &json);
 	QJsonDocument LoadDynamicCommands();
+	const File::List& DeserializeVibePlaylist(const QJsonDocument &json);
+	QJsonDocument LoadVibePlaylist();
 	ApplicationSetting& ArrivalSound();
 	ApplicationSetting& PortraitVideo();
 	ApplicationSetting& CheerVideo();
@@ -64,16 +65,14 @@ protected:
 	Command::Lookup redemptions;
 	NativeCommandFlagLookup nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
-	Music::Player *vibeKeeper;
-	QMediaPlayer *roaster;
-	QMediaPlaylist roastSources;
+	Music::Player vibeKeeper;
+	Music::Player roaster;
 	QTimer inactivityClock;
 	QTimer helpClock;
 	QDateTime lastRaid;
 	Security &security;
 	ApplicationSetting settingInactivityCooldown;
 	ApplicationSetting settingHelpCooldown;
-	ApplicationSetting settingVibePlaylist;
 	ApplicationSetting settingTextWallThreshold;
 	ApplicationSetting settingTextWallSound;
 	ApplicationSetting settingRoasts;
@@ -165,5 +164,7 @@ public slots:
 	void RestoreMusic();
 	QJsonDocument SerializeCommands(const Command::Lookup &entries);
 	bool SaveDynamicCommands(const QJsonDocument &json);
+	QJsonDocument SerializeVibePlaylist(const File::List &songs);
+	bool SaveVibePlaylist(const QJsonDocument &json);
 	void Chatters();
 };

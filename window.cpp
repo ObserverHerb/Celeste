@@ -24,7 +24,8 @@ Window::Window() : QMainWindow(nullptr),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	configureOptions("Options",this),
 	configureCommands("Commands",this),
-	metrics("Metrics",this)
+	metrics("Metrics",this),
+	vibePlaylist("Vibe Playlist",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -53,6 +54,7 @@ Window::Window() : QMainWindow(nullptr),
 	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
 	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
 	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
+	connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
 
 	SwapPersistentPane(new StatusPane(this));
 }
@@ -372,6 +374,7 @@ void Window::contextMenuEvent(QContextMenuEvent *event)
 	menu.addAction(&configureOptions);
 	menu.addAction(&configureCommands);
 	menu.addAction(&metrics);
+	menu.addAction(&vibePlaylist);
 	menu.exec(event->globalPos());
 	event->accept();
 }
