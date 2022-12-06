@@ -97,7 +97,7 @@ namespace Music
 		volumeAdjustment(&output,"volume")
 	{
 		player.setAudioOutput(&output);
-		player.audioOutput()->setVolume(1);
+		player.audioOutput()->setVolume(0);
 
 		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::DispatchError);
 		connect(&player,&QMediaPlayer::playbackStateChanged,this,&Player::StateChanged);
