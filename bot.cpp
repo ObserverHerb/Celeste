@@ -381,7 +381,7 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 
 const File::List& Bot::DeserializeVibePlaylist(const QJsonDocument &json)
 {
-	vibeKeeper.Sources(File::List(json.toVariant().toStringList()));
+	vibeKeeper.Sources(File::List{json.toVariant().toStringList()});
 	return vibeKeeper.Sources();
 }
 

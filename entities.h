@@ -64,10 +64,14 @@ namespace File
 		const QString File(const int index) const;
 		const QString First();
 		const QString Random();
+		const QString Unique();
 		int RandomIndex();
 		const QStringList& operator()() const;
 	protected:
 		QStringList files;
+		QStringList::iterator file;
+		void Shuffle();
+		void Reshuffle();
 	};
 }
 

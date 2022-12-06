@@ -30,11 +30,13 @@ namespace File
 		{
 			files.push_back(pathInfo.absoluteFilePath());
 		}
+		Shuffle();
 	}
 
 	List::List(const QStringList &list)
 	{
 		files=list;
+		Shuffle();
 	}
 
 	const QString List::File(const int index) const
@@ -53,6 +55,12 @@ namespace File
 		return File(RandomIndex());
 	}
 
+	const QString List::Unique()
+	{
+		return *file;
+		if (file+1 == files.end()) Reshuffle();
+	}
+
 	int List::RandomIndex()
 	{
 		return Random::Bounded(files);
@@ -61,6 +69,19 @@ namespace File
 	const QStringList& List::operator()() const
 	{
 		return files;
+	}
+
+	void List::Shuffle()
+	{
+		Random::Shuffle(files);
+		file=files.begin();
+	}
+
+	void List::Reshuffle()
+	{
+		QString last=files.takeLast();
+		Shuffle();
+		files.append(last);
 	}
 }
 
@@ -215,7 +236,7 @@ namespace Music
 	{
 		try
 		{
-			player.setSource(QUrl::fromLocalFile(sources.Random()));
+			player.setSource(QUrl::fromLocalFile(sources.Unique()));
 		}
 
 		catch (const std::runtime_error &exception)
