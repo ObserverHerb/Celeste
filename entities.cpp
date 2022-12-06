@@ -576,15 +576,29 @@ namespace Viewer
 	{
 		Network::Request({TWITCH_API_ENDPOINT_USERS},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
-			this->deleteLater();
-			QJsonParseError jsonError;
-			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-			if (json.isNull())
+			switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 			{
-				emit Print(QString("Failed: %1").arg(jsonError.errorString()),OPERATION);
+			case 400:
+				emit Print(QStringLiteral("Invalid or missing ID or login parameter"),OPERATION);
+				return;
+			case 401:
+				emit Print("Authentication failed",OPERATION);
 				return;
 			}
-			QJsonArray data=json.object().value("data").toArray();
+
+			if (reply->error())
+			{
+				emit Print(QStringLiteral("Unknown error obtaining viewer information"),OPERATION);
+				return;
+			}		
+
+			const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+			if (!parsedJSON)
+			{
+				emit Print(QString("Failed: %1").arg(parsedJSON.error),OPERATION);
+				return;
+			}
+			QJsonArray data=parsedJSON().object().value("data").toArray();
 			if (data.size() < 1)
 			{
 				emit Print("Invalid user",OPERATION);
@@ -592,6 +606,7 @@ namespace Viewer
 			}
 			QJsonObject details=data.at(0).toObject();
 			emit Recognized({details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),details.value("profile_image_url").toString(),details.value("description").toString()});
+			this->deleteLater();
 		},{
 			{"login",username}
 		},{
