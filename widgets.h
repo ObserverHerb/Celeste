@@ -248,7 +248,7 @@ namespace UI
 					ApplicationSetting &protection;
 				};
 				Channel(QWidget *parent,Settings settings);
-				void Save();
+				void Save() override;
 			protected:
 				QLineEdit name;
 				QCheckBox protection;
