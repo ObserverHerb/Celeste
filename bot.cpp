@@ -450,27 +450,8 @@ bool Bot::SaveVibePlaylist(const QJsonDocument &json)
 
 void Bot::LoadRoasts()
 {
-	connect(&roastSources,&QMediaPlaylist::loadFailed,this,[this]() {
-		emit Print(QString("Failed to load roasts: %1").arg(roastSources.errorString()));
-	});
-	connect(&roastSources,&QMediaPlaylist::loaded,this,[this]() {
-		roastSources.shuffle();
-		roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
-		roaster->setPlaylist(&roastSources);
-		connect(&inactivityClock,&QTimer::timeout,roaster,&QMediaPlayer::play);
-		emit Print("Roasts loaded!");
-	});
-	roastSources.load(QUrl::fromLocalFile(settingRoasts));
-	connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this](QMediaPlayer::Error error) {
-		emit Print(QString("Roaster failed to start: %1").arg(roaster->errorString()));
-	});
-	connect(roaster,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
-		if (status == QMediaPlayer::EndOfMedia)
-		{
-			roaster->stop();
-			roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
-		}
-	});
+	connect(&roaster,&Music::Player::Print,this,&Bot::Print);
+	roaster.Sources(File::List{static_cast<QString>(settingRoasts),Command::FileListFilters(CommandType::AUDIO)});
 }
 
 void Bot::LoadBadgeIconURLs()
@@ -515,12 +496,7 @@ void Bot::LoadBadgeIconURLs()
 void Bot::StartClocks()
 {
 	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
-	if (settingPortraitVideo)
-	{
-		connect(&inactivityClock,&QTimer::timeout,this,[this]() {
-			emit PlayVideo(settingPortraitVideo);
-		});
-	}
+	if (settingRoasts) connect(&inactivityClock,&QTimer::timeout,&roaster,&Music::Player::Start);
 	inactivityClock.start();
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));

@@ -92,7 +92,6 @@ namespace Music
 		void DuckVolume(bool duck);
 		void Volume(unsigned int volume);
 		void Volume(unsigned int targetVolume,std::chrono::seconds duration);
-		void Start();
 		void Stop();
 		bool Playing() const;
 		QString SongTitle() const;
@@ -116,6 +115,8 @@ namespace Music
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player")) const;
 		void PlaylistLoaded();
+	public slots:
+		void Start();
 	protected slots:
 		void StateChanged(QMediaPlayer::PlaybackState state);
 		void MediaStatusChanged(QMediaPlayer::MediaStatus status);
