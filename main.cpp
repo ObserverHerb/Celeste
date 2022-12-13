@@ -282,7 +282,7 @@ int main(int argc,char *argv[])
 				.duration=announcePane.Duration()
 			}));
 			configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
-				.suppressedVolume=Music::Player(&window,false).SuppressedVolume()
+				.suppressedVolume=Music::Player(&window,false,0).SuppressedVolume()
 			}));
 			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
 				.arrivalSound=celeste.ArrivalSound(),

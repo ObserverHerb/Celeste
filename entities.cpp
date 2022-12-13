@@ -3,6 +3,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <algorithm>
 #include <cstring>
 #include "entities.h"
 #include "globals.h"
@@ -110,14 +111,14 @@ namespace Music
 	const char *Player::ERROR_LOADING="Failed to load vibe playlist";
 	const char *Player::OPERATION_LOADING="load vibe playlist";
 
-	Player::Player(QObject *parent,bool loop) : player(this),
+	Player::Player(QObject *parent,bool loop,int initialVolume) : player(this),
 		output(this),
 		loop(loop),
 		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10),
 		volumeAdjustment(&output,"volume")
 	{
 		player.setAudioOutput(&output);
-		player.audioOutput()->setVolume(0);
+		player.audioOutput()->setVolume(TranslateVolume(initialVolume));
 
 		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::DispatchError);
 		connect(&player,&QMediaPlayer::playbackStateChanged,this,&Player::StateChanged);
@@ -141,33 +142,33 @@ namespace Music
 
 	void Player::DuckVolume(bool duck)
 	{
-		if (player.audioOutput()->volume() < static_cast<int>(settingSuppressedVolume)) return;
+		if (TranslateVolume(player.audioOutput()->volume()) < static_cast<int>(settingSuppressedVolume)) return;
 
 		if (duck)
 		{
 			if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.pause();
 			volumeAdjustment.setStartValue(player.audioOutput()->volume());
-			player.audioOutput()->setVolume(static_cast<qreal>(settingSuppressedVolume));
+			player.audioOutput()->setVolume(TranslateVolume(static_cast<int>(settingSuppressedVolume)));
 		}
 		else
 		{
-			int originalVolume=volumeAdjustment.startValue().toInt();
+			qreal originalVolume=volumeAdjustment.startValue().toFloat();
 			if (player.audioOutput()->volume() < originalVolume) player.audioOutput()->setVolume(originalVolume);
 			if (volumeAdjustment.state() == QAbstractAnimation::Paused) volumeAdjustment.resume();
 		}
 	}
 
-	void Player::Volume(unsigned int volume)
+	void Player::Volume(int volume)
 	{
-		player.audioOutput()->setVolume(volume);
+		player.audioOutput()->setVolume(TranslateVolume(volume));
 	}
 
-	void Player::Volume(unsigned int targetVolume,std::chrono::seconds duration)
+	void Player::Volume(int targetVolume,std::chrono::seconds duration)
 	{
 		if (volumeAdjustment.state() == QAbstractAnimation::Paused) return;
 
 		emit Print(QString("Adjusting volume from %1% to %2% over %3 seconds").arg(
-			StringConvert::Integer(player.audioOutput()->volume()*100),
+			StringConvert::Integer(TranslateVolume(player.audioOutput()->volume())),
 			StringConvert::Integer(targetVolume),
 			StringConvert::Integer(duration.count())
 		),"volume fade");
@@ -175,7 +176,7 @@ namespace Music
 		if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.stop();
 		volumeAdjustment.setDuration(TimeConvert::Milliseconds(duration).count());
 		volumeAdjustment.setStartValue(player.audioOutput()->volume());
-		volumeAdjustment.setEndValue(static_cast<qreal>(targetVolume)/100);
+		volumeAdjustment.setEndValue(TranslateVolume(targetVolume));
 		volumeAdjustment.start();
 	}
 
@@ -267,6 +268,16 @@ namespace Music
 		}
 
 		return true;
+	}
+
+	int Player::TranslateVolume(qreal volume)
+	{
+		return static_cast<int>(std::clamp(volume,0.0,100.0));
+	}
+
+	qreal Player::TranslateVolume(int volume)
+	{
+		return static_cast<qreal>(std::clamp(volume,0,100));
 	}
 
 	ApplicationSetting& Player::SuppressedVolume()

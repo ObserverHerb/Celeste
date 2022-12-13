@@ -78,8 +78,8 @@ Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
-	vibeKeeper(this,true),
-	roaster(this,false),
+	vibeKeeper(this,true,0),
+	roaster(this,false,100),
 	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
 	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),

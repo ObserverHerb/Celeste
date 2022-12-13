@@ -88,10 +88,10 @@ namespace Music
 	{
 		Q_OBJECT
 	public:
-		Player(QObject *parent,bool loop);
+		Player(QObject *parent,bool loop,int initialVolume);
 		void DuckVolume(bool duck);
-		void Volume(unsigned int volume);
-		void Volume(unsigned int targetVolume,std::chrono::seconds duration);
+		void Volume(int volume);
+		void Volume(int targetVolume,std::chrono::seconds duration);
 		void Stop();
 		bool Playing() const;
 		QString SongTitle() const;
@@ -112,6 +112,8 @@ namespace Music
 		static const char *ERROR_LOADING;
 		static const char *OPERATION_LOADING;
 		bool Next();
+		int TranslateVolume(qreal volume);
+		qreal TranslateVolume(int volume);
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player")) const;
 		void PlaylistLoaded();
