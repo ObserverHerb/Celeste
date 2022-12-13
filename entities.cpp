@@ -36,7 +36,7 @@ const QString Command::File()
 
 namespace File
 {
-	List::List(const QString &path,const QStringList &filters)
+	List::List(const QString &path,const QStringList &filters) : currentIndex(0)
 	{
 		const QFileInfo pathInfo(path);
 		if (pathInfo.isDir())
@@ -53,7 +53,7 @@ namespace File
 		Shuffle();
 	}
 
-	List::List(const QStringList &list)
+	List::List(const QStringList &list) : currentIndex(0)
 	{
 		files=list;
 		Shuffle();
@@ -76,8 +76,8 @@ namespace File
 
 	const QString List::Unique()
 	{
-		const QString candidate=*file;
-		if (++file == files.end()) Reshuffle();
+		const QString candidate=files.at(currentIndex);
+		if (++currentIndex == files.size()) Reshuffle();
 		return candidate;
 	}
 
@@ -94,7 +94,7 @@ namespace File
 	void List::Shuffle()
 	{
 		Random::Shuffle(files);
-		file=files.begin();
+		currentIndex=0;
 	}
 
 	void List::Reshuffle()

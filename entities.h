@@ -37,7 +37,7 @@ namespace File
 		const QStringList& operator()() const;
 	protected:
 		QStringList files;
-		QStringList::iterator file;
+		int currentIndex;
 		void Shuffle();
 		void Reshuffle();
 	};
