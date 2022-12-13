@@ -9,6 +9,7 @@
 #include <QVideoWidget>
 #include <QScreen>
 #include <QMessageBox>
+#include <QInputDialog>
 #include "globals.h"
 #include "widgets.h"
 
@@ -229,6 +230,7 @@ namespace UI
 			browse(Text::BROWSE,this),
 			type(this),
 			random("Random",this),
+			duplicates("Duplicates",this),
 			protect("Protect",this),
 			message(this),
 			aliases(this)
@@ -263,8 +265,9 @@ namespace UI
 				"Pulsar"
 			});
 			type.setPlaceholderText("Native");
-			detailsLayout->addWidget(&type,3,0,1,2);
-			detailsLayout->addWidget(&random,3,2,1,1);
+			detailsLayout->addWidget(&type,3,0,1,1);
+			detailsLayout->addWidget(&random,3,1,1,1);
+			detailsLayout->addWidget(&duplicates,3,2,1,1);
 			detailsLayout->addWidget(&message,4,0,1,3);
 			frameLayout->addWidget(&details);
 
@@ -274,7 +277,7 @@ namespace UI
 			connect(&description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
 			connect(&openAliases,&QPushButton::clicked,&aliases,&QDialog::show);
 			connect(&path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
-			connect(&random,&QCheckBox::stateChanged,this,QOverload<const int>::of(&Entry::ValidatePath));
+			connect(&random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
 			connect(&message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 			connect(&type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 			connect(&browse,&QPushButton::clicked,this,&Entry::Browse);
@@ -295,6 +298,7 @@ namespace UI
 			protect.setChecked(command.Protected());
 			path.setText(command.Path());
 			random.setChecked(command.Random());
+			duplicates.setChecked(command.Duplicates());
 			message.setText(command.Message());
 
 			int defaultIndex=static_cast<int>(Type());
@@ -344,14 +348,36 @@ namespace UI
 			return path.text();
 		}
 
-		enum Type Entry::Type() const
+		QStringList Entry::Filters() const
 		{
-			return static_cast<enum Type>(type.currentIndex());
+			return Command::FileListFilters(Type());
+		}
+
+		CommandType Entry::Type() const
+		{
+			switch (static_cast<enum Type>(type.currentIndex()))
+			{
+			case Type::AUDIO:
+				return CommandType::AUDIO;
+			case Type::VIDEO:
+				return CommandType::VIDEO;
+			case Type::PULSAR:
+				return CommandType::PULSAR;
+			case Type::NATIVE:
+				return CommandType::NATIVE;
+			default:
+				throw std::logic_error("Unrecognized command type selected");
+			}
 		}
 
 		bool Entry::Random() const
 		{
 			return random.isChecked();
+		}
+
+		bool Entry::Duplicates() const
+		{
+			return duplicates.isChecked();
 		}
 
 		QString Entry::Message() const
@@ -394,12 +420,7 @@ namespace UI
 
 		void Entry::ValidatePath(const QString &text)
 		{
-			ValidatePath(text,Random(),Type());
-		}
-
-		void Entry::ValidatePath(const int state)
-		{
-			ValidatePath(Path(),state == Qt::Checked ? true : false,Type());
+			ValidatePath(text,Random(),static_cast<UI::Commands::Type>(type.currentIndex()));
 		}
 
 		void Entry::ValidatePath(const QString &text,bool random,const enum Type type)
@@ -443,7 +464,14 @@ namespace UI
 
 		void Entry::ValidateMessage()
 		{
-			if (Type() == Type::AUDIO) Require(&message,Message().isEmpty());
+			if (static_cast<UI::Commands::Type>(type.currentIndex()) == UI::Commands::Type::AUDIO) Require(&message,Message().isEmpty());
+		}
+
+		void Entry::RandomChanged(const int state)
+		{
+			bool checked=state == Qt::Checked;
+			duplicates.setEnabled(checked);
+			ValidatePath(Path(),checked,static_cast<UI::Commands::Type>(type.currentIndex()));
 		}
 
 		void Entry::TypeChanged(int index)
@@ -509,7 +537,7 @@ namespace UI
 			}
 			else
 			{
-				if (Type() == Type::VIDEO)
+				if (static_cast<UI::Commands::Type>(type.currentIndex()) == UI::Commands::Type::VIDEO)
 					candidate=OpenVideo(this);
 				else
 					candidate=OpenAudio(this);
@@ -533,6 +561,7 @@ namespace UI
 
 		Dialog::Dialog(const Command::Lookup &commands,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			entriesFrame(this),
+			scrollLayout(&entriesFrame),
 			help(this),
 			labelFilter("Filter:",this),
 			filter(this),
@@ -562,9 +591,8 @@ namespace UI
 			scroll->setSizePolicy(QSizePolicy(QSizePolicy::Expanding,QSizePolicy::MinimumExpanding));
 			upperLayout->addWidget(scroll);
 
-			QVBoxLayout *scrollLayout=new QVBoxLayout(&entriesFrame);
-			entriesFrame.setLayout(scrollLayout);
-			PopulateEntries(commands,scrollLayout);
+			entriesFrame.setLayout(&scrollLayout);
+			PopulateEntries(commands);
 
 			QWidget *rightPane=new QWidget(this);
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
@@ -589,12 +617,13 @@ namespace UI
 			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
 			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
 			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
+			connect(&newEntry,&QPushButton::clicked,this,&UI::Commands::Dialog::Add);
 			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);
 		}
 
-		void Dialog::PopulateEntries(const Command::Lookup &commands,QLayout *layout)
+		void Dialog::PopulateEntries(const Command::Lookup &commands)
 		{
 			std::unordered_map<QString,QStringList> aliases;
 			for (const Command::Entry &pair : commands)
@@ -610,9 +639,28 @@ namespace UI
 				Entry *entry=new Entry(command,this);
 				connect(entry,&Entry::Help,&help,&QTextEdit::setText);
 				entries[entry->Name()]=entry;
-				layout->addWidget(entry);
+				scrollLayout.addWidget(entry);
 			}
 			for (const std::pair<QString,QStringList> &pair : aliases) entries.at(pair.first)->Aliases(pair.second);
+		}
+
+		void Dialog::Add()
+		{
+			QString name=QInputDialog::getText(this,"New Command","Please provide a name for the new command.");
+			if (name.isEmpty()) return;
+			Entry *entry=new Entry({
+				name,
+				{},
+				CommandType::VIDEO,
+				false,
+				true,
+				{},
+				Command::FileListFilters(CommandType::VIDEO),
+				{},
+				false
+			},this);
+			entries[entry->Name()]=entry;
+			scrollLayout.addWidget(entry);
 		}
 
 		void Dialog::FilterChanged(int index)
@@ -626,8 +674,8 @@ namespace UI
 				for (std::pair<const QString,Entry*> &pair : entries)
 				{
 					Entry *entry=pair.second;
-					Type type=entry->Type();
-					if (type == Type::AUDIO || type == Type::VIDEO)
+					CommandType type=entry->Type();
+					if (type == CommandType::AUDIO || type == CommandType::VIDEO)
 						entry->show();
 					else
 						entry->hide();
@@ -637,7 +685,7 @@ namespace UI
 				for (std::pair<const QString,Entry*> &pair : entries)
 				{
 					Entry *entry=pair.second;
-					if (entry->Type() == Type::NATIVE)
+					if (entry->Type() == CommandType::NATIVE)
 						entry->show();
 					else
 						entry->hide();
@@ -647,7 +695,7 @@ namespace UI
 				for (std::pair<const QString,Entry*> &pair : entries)
 				{
 					Entry *entry=pair.second;
-					if (entry->Type() == Type::PULSAR)
+					if (entry->Type() == CommandType::PULSAR)
 						entry->show();
 					else
 						entry->hide();
@@ -663,29 +711,15 @@ namespace UI
 			for (const std::pair<QString,Entry*> &pair : entries)
 			{
 				Entry *entry=pair.second;
-				CommandType type;
-				switch (entry->Type())
-				{
-				case Type::AUDIO:
-					type=CommandType::AUDIO;
-					break;
-				case Type::VIDEO:
-					type=CommandType::VIDEO;
-					break;
-				case Type::PULSAR:
-					type=CommandType::PULSAR;
-					break;
-				case Type::NATIVE:
-					type=CommandType::NATIVE;
-					break;
-				}
 
 				Command command={
 					entry->Name(),
 					entry->Description(),
-					type,
+					entry->Type(),
 					entry->Random(),
+					entry->Duplicates(),
 					entry->Path(),
+					entry->Filters(),
 					entry->Message(),
 					entry->Protected()
 				};

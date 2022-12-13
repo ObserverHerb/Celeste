@@ -9,19 +9,39 @@
 
 Q_DECLARE_METATYPE(std::chrono::milliseconds)
 
-Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), path(parent->path), message(parent->message), protect(parent->protect), parent(parent)
+Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), duplicates(parent->duplicates), path(parent->path), files(parent->files), message(parent->message), protect(parent->protect), parent(parent)
 {
 	parent->children.push_back(this);
 }
 
+QStringList Command::FileListFilters(const CommandType type)
+{
+	QStringList filters={"*.*"};
+	if (type == CommandType::VIDEO) filters={"*.mp4"};
+	if (type == CommandType::AUDIO) filters={"*.mp3"};
+	return filters;
+}
+
+const QString Command::File()
+{
+	if (random)
+	{
+		if (duplicates)
+			return files->Random();
+		else
+			return files->Unique();
+	}
+	return files->First();
+}
+
 namespace File
 {
-	List::List(const QString &path)
+	List::List(const QString &path,const QStringList &filters)
 	{
 		const QFileInfo pathInfo(path);
 		if (pathInfo.isDir())
 		{
-			for (const QFileInfo &fileInfo : QDir(path).entryInfoList())
+			for (const QFileInfo &fileInfo : QDir(path).entryInfoList(filters))
 			{
 				if (fileInfo.isFile()) files.push_back(fileInfo.absoluteFilePath());
 			}
@@ -49,7 +69,6 @@ namespace File
 		return files.front();
 	}
 
-
 	const QString List::Random()
 	{
 		return File(RandomIndex());
@@ -57,8 +76,9 @@ namespace File
 
 	const QString List::Unique()
 	{
-		return *file;
-		if (file+1 == files.end()) Reshuffle();
+		const QString candidate=*file;
+		if (++file == files.end()) Reshuffle();
+		return candidate;
 	}
 
 	int List::RandomIndex()

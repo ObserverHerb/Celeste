@@ -104,11 +104,12 @@ protected:
 	static std::chrono::milliseconds launchTimestamp;
 	static const CommandTypeLookup COMMAND_TYPE_LOOKUP;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
-	void StageRedemptionCommand(const QJsonObject &jsonObject);
+	void StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject);
 	bool LoadViewerAttributes();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
 	void StartClocks();
+	std::optional<CommandType> ValidCommandType(const QString &type);
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
 	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
@@ -116,7 +117,6 @@ protected:
 	void DispatchArrival(const QString &login);
 	bool DispatchChatNotification(const QStringView &message);
 	void DispatchVideo(Command command);
-	void DispatchRandomVideo(Command command);
 	void DispatchCommandList();
 	void DispatchFollowage(const Viewer::Local &viewer);
 	void DispatchPanic(const QString &name);

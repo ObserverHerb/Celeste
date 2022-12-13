@@ -22,6 +22,7 @@ const char *JSON_KEY_COMMAND_ALIASES="aliases";
 const char *JSON_KEY_COMMAND_DESCRIPTION="description";
 const char *JSON_KEY_COMMAND_TYPE="type";
 const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
+const char *JSON_KEY_COMMAND_DUPLICATES="duplicates";
 const char *JSON_KEY_COMMAND_PROTECTED="protected";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
@@ -167,28 +168,27 @@ const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
 		QJsonObject jsonObject=jsonValue.toObject();
 
 		// check if this is triggered by a redemption
-		if (jsonObject.contains(JSON_KEY_COMMAND_REDEMPTION))
+		auto redemptionName=jsonObject.find(JSON_KEY_COMMAND_REDEMPTION);
+		if (redemptionName != jsonObject.end())
 		{
-			StageRedemptionCommand(jsonObject);
+			StageRedemptionCommand(redemptionName->toString(),jsonObject);
 			continue;
 		}
 
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
-			auto type=COMMAND_TYPE_LOOKUP.find(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
-			if (type == COMMAND_TYPE_LOOKUP.end())
-			{
-				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type->first,name));
-				continue;
-			}
+			std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
+			if (!type) continue;
 
 			commands.insert({name,{
 				name,
 				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-				type->second,
+				*type,
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
+				Container::Resolve(jsonObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
 				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
+				Command::FileListFilters(*type),
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_MESSAGE,{}).toString(),
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_PROTECTED,false).toBool()
 			}});
@@ -237,7 +237,11 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
 			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
 			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
-			if (command.Random()) object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+			if (command.Random())
+			{
+				object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
+			}
 			if (!command.Message().isEmpty()) object.insert(JSON_KEY_COMMAND_MESSAGE,command.Message());
 			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
 			break;
@@ -245,7 +249,11 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
 			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
 			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
-			if (command.Random()) object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+			if (command.Random())
+			{
+				object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
+			}
 			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
 			break;
 		case CommandType::PULSAR:
@@ -309,16 +317,21 @@ bool Bot::SaveDynamicCommands(const QJsonDocument &json)
 	return true;
 }
 
-void Bot::StageRedemptionCommand(const QJsonObject &jsonObject)
+void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject)
 {
-	const QString name=jsonObject.value(JSON_KEY_COMMAND_REDEMPTION).toString();
+	std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
+	if (!type) return;
+
 	redemptions[name]={
 		name,
 		jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-		COMMAND_TYPE_LOOKUP.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
-		jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
+		*type,
+		Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
+		Container::Resolve(jsonObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
 		jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
+		Command::FileListFilters(*type),
+		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
+		false
 	};
 }
 
@@ -943,23 +956,8 @@ bool Bot::DispatchChatNotification(const QStringView &message)
 
 void Bot::DispatchVideo(Command command)
 {
-	if (command.Random())
-		DispatchRandomVideo(command);
-	else
-		emit PlayVideo(command.Path());
-}
-
-void Bot::DispatchRandomVideo(Command command)
-{
-	// TODO: Modify File::List to accept a filter and use it
-	QDir directory(command.Path());
-	QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
-	if (videos.size() < 1)
-	{
-		emit Print("No videos found");
-		return;
-	}
-	emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(videos))));
+	// FIXME: What if there are no videos in the directory?
+	emit PlayVideo(command.File());
 }
 
 void Bot::DispatchCommandList()
@@ -1319,6 +1317,17 @@ void Bot::StreamCategory(const QString &category)
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
+}
+
+std::optional<CommandType> Bot::ValidCommandType(const QString &type)
+{
+	auto candidate=COMMAND_TYPE_LOOKUP.find(type);
+	if (candidate == COMMAND_TYPE_LOOKUP.end())
+	{
+		emit Print(QString("Command type '%1' doesn't exist").arg(candidate->first));
+		return std::nullopt;
+	}
+	return candidate->second;
 }
 
 ApplicationSetting& Bot::ArrivalSound()

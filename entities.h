@@ -21,45 +21,13 @@ enum class CommandType
 	PULSAR
 };
 
-class Command
-{
-public:
-	using Lookup=std::unordered_map<QString,Command>;
-	using Entry=std::pair<const QString,Command>;
-	Command() : Command(QString(),QString(),CommandType::BLANK,false,QString(),QString()) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), protect(protect), path(path), message(message), parent(nullptr) { }
-	Command(const QString &name,Command* const parent);
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message), parent(nullptr) { }
-	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), protect(other.protect), path(other.path), message(other.message), parent(nullptr) { }
-	const QString& Name() const { return name; }
-	const QString& Description() const { return description; }
-	CommandType Type() const { return type; }
-	bool Random() const { return random; }
-	bool Protected() const { return protect; }
-	const QString& Path() const { return path; }
-	const QString& Message() const { return message; }
-	const Command* Parent() const { return parent; }
-	const std::vector<Command*>& Children() const { return children; }
-protected:
-	QString name;
-	QString description;
-	CommandType type;
-	bool random;
-	bool protect;
-	QString path;
-	QString message;
-	Command *parent;
-	std::vector<Command*> children;
-};
-
 namespace File
 {
 	class List
 	{
 	public:
 		List() { }
-		List(const QString &path);
+		List(const QString &path,const QStringList &filter={});
 		List(const QStringList &files);
 		const QString File(const int index) const;
 		const QString First();
@@ -74,6 +42,43 @@ namespace File
 		void Reshuffle();
 	};
 }
+
+class Command
+{
+public:
+	using Lookup=std::unordered_map<QString,Command>;
+	using Entry=std::pair<const QString,Command>;
+	Command() : Command({},{},CommandType::BLANK,false,true,{},{},{}) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},protect) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(path,filters), message(message), parent(nullptr) { }
+	Command(const QString &name,Command* const parent);
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), duplicates(command.duplicates), protect(command.protect), path(command.path), files(command.files), message(message), parent(nullptr) { }
+	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), duplicates(other.duplicates), protect(other.protect), path(other.path), files(other.files), message(other.message), parent(nullptr) { }
+	const QString& Name() const { return name; }
+	const QString& Description() const { return description; }
+	CommandType Type() const { return type; }
+	bool Random() const { return random; }
+	bool Duplicates() const { return duplicates; }
+	bool Protected() const { return protect; }
+	const QString& Path() const { return path; }
+	const QString File();
+	const QString& Message() const { return message; }
+	const Command* Parent() const { return parent; }
+	const std::vector<Command*>& Children() const { return children; }
+	static QStringList FileListFilters(const CommandType type);
+protected:
+	QString name;
+	QString description;
+	CommandType type;
+	bool random;
+	bool duplicates;
+	bool protect;
+	QString path;
+	std::shared_ptr<File::List> files;
+	QString message;
+	Command *parent;
+	std::vector<Command*> children;
+};
 
 namespace Music
 {

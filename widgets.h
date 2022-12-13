@@ -146,8 +146,10 @@ namespace UI
 			QStringList Aliases() const;
 			void Aliases(const QStringList &names);
 			QString Path() const;
-			enum Type Type() const;
+			QStringList Filters() const;
+			CommandType Type() const;
 			bool Random() const;
+			bool Duplicates() const;
 			QString Message() const;
 			bool Protected() const;
 		protected:
@@ -161,10 +163,10 @@ namespace UI
 			QPushButton browse;
 			QComboBox type;
 			QCheckBox random;
+			QCheckBox duplicates;
 			QCheckBox protect;
 			QTextEdit message;
 			UI::Commands::Aliases aliases;
-			void TypeChanged(int index);
 			void Native();
 			void Pulsar();
 			void Browse();
@@ -179,8 +181,9 @@ namespace UI
 			void ValidateName(const QString &text);
 			void ValidateDescription(const QString &text);
 			void ValidatePath(const QString &text);
-			void ValidatePath(const int state);
 			void ValidateMessage();
+			void RandomChanged(const int state);
+			void TypeChanged(int index);
 		};
 
 		class Dialog : public QDialog		
@@ -190,6 +193,7 @@ namespace UI
 			Dialog(const Command::Lookup &commands,QWidget *parent);
 		protected:
 			QWidget entriesFrame;
+			QVBoxLayout scrollLayout;
 			Help help;
 			QLabel labelFilter;
 			QComboBox filter;
@@ -198,7 +202,8 @@ namespace UI
 			QPushButton save;
 			QPushButton newEntry;
 			std::unordered_map<QString,Entry*> entries;
-			void PopulateEntries(const Command::Lookup &commands,QLayout *layout);
+			void PopulateEntries(const Command::Lookup &commands);
+			void Add();
 			void Save();
 		signals:
 			void Save(const Command::Lookup &commands);
