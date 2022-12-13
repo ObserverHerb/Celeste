@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if (WIN32)
 	find_package(Qt6 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent REQUIRED)
 else()
-	find_package(Qt6 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent TextToSpeech REQUIRED)
+	find_package(Qt6 COMPONENTS Widgets Network Multimedia MultimediaWidgets Concurrent REQUIRED)
 endif()
 
 add_executable(Celeste
@@ -61,7 +61,7 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_sources(Celeste PRIVATE unix.cpp)
-	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Multimedia Qt::MultimediaWidgets Qt::Concurrent Qt::TextToSpeech)
+	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Multimedia Qt::MultimediaWidgets Qt::Concurrent)
 endif()
 
 if (WITH_PULSAR)
