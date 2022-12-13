@@ -227,7 +227,6 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 		QJsonObject object;
 		object.insert(JSON_KEY_COMMAND_NAME,command.Name());
 
-		QString type;
 		switch (command.Type())
 		{
 		case CommandType::NATIVE:
