@@ -131,14 +131,14 @@ void Security::RefreshToken()
 	Network::Request({TWITCH_API_ENDPOINT_TOKEN},Network::Method::POST,[this](QNetworkReply *reply) {
 		if (reply->error())
 		{
-			emit TokenRequestFailed();
+			emit TokenRefreshFailed();
 			return;
 		}
 
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
-			emit TokenRequestFailed();
+			emit TokenRefreshFailed();
 			return;
 		}
 		const QJsonObject object=parsedJSON().object();
@@ -146,7 +146,7 @@ void Security::RefreshToken()
 		auto jsonFieldRefreshToken=object.find(JSON_KEY_REFRESH_TOKEN);
 		if (jsonFieldAccessToken == object.end() || jsonFieldRefreshToken == object.end())
 		{
-			emit TokenRequestFailed();
+			emit TokenRefreshFailed();
 			return;
 		}
 		settingOAuthToken.Set(jsonFieldAccessToken->toString());

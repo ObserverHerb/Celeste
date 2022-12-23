@@ -12,7 +12,6 @@ class Server : public QTcpServer
 	Q_OBJECT
 public:
 	Server(QObject *parent=nullptr);
-	virtual ~Server();
 	bool Listen();
 protected:
 	std::unordered_map<qintptr,QTcpSocket*> sockets;

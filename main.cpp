@@ -38,6 +38,7 @@ enum
 {
 	OK,
 	NOT_CONFIGURED,
+	AUTHENTICATION_ERROR,
 	FATAL_ERROR,
 	UNKNOWN_ERROR
 };
@@ -118,13 +119,17 @@ int main(int argc,char *argv[])
 		UI::Metrics::Dialog metrics(&window);
 
 		metrics.connect(&metrics,QOverload<>::of(&UI::Metrics::Dialog::Acknowledged),&celeste,QOverload<>::of(&Bot::Chatters));
-		security.connect(&security,&Security::TokenRequestFailed,[]() {
+		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
 			QMessageBox failureDialog;
-			failureDialog.setWindowTitle("Re-Authentication Failed");
+			failureDialog.setWindowTitle("Authentication Failed");
 			failureDialog.setText("Attempt to obtain OAuth token failed.");
 			failureDialog.setStandardButtons(QMessageBox::Ok);
 			failureDialog.setDefaultButton(QMessageBox::Ok);
 			failureDialog.exec();
+			application.exit(AUTHENTICATION_ERROR);
+		});
+		security.connect(&security,&Security::TokenRefreshFailed,[&log]() {
+			log.Write("Attempt to refresh OAuth token failed","refresh auth token",SUBSYSTEM);
 		});
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
