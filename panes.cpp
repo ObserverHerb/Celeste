@@ -223,7 +223,7 @@ void EphemeralPane::Expire()
 	deleteLater();
 }
 
-VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(new QMediaPlayer(this)), viewport(new QVideoWidget(this))
+VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
 {
 	videoPlayer->setVideoOutput(viewport);
 	videoPlayer->setSource(QUrl::fromLocalFile(path));
@@ -380,17 +380,28 @@ void ScrollingAnnouncePane::showEvent(QShowEvent *event)
 	QWidget::showEvent(event);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer(this))
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(Multimedia::Player(this,1)), path(path)
 {
-	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
+	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
+	});
+	connect(audioPlayer,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
+		if (status == QMediaPlayer::LoadedMedia)
+		{
+			audioPlayer->play();
+			return;
+		}
+		if (status == QMediaPlayer::InvalidMedia)
+		{
+			emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
+			emit Finished();
+		}
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
-		emit Print(QString("Failed to load audio: %1").arg(errorString));
+		emit Print(QString("Failed to play audio: %1").arg(errorString));
 		emit Finished();
 	});
-	audioPlayer->setSource(QUrl::fromLocalFile(path));
 	output->setText(text);
 }
 
@@ -401,7 +412,7 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 
 void AudioAnnouncePane::showEvent(QShowEvent *event)
 {
-	audioPlayer->play();
+	audioPlayer->setSource(QUrl::fromLocalFile(path));
 	QWidget::showEvent(event);
 }
 

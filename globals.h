@@ -7,6 +7,8 @@
 #include <QNetworkReply>
 #include <QUrlQuery>
 #include <QJsonDocument>
+#include <QMediaPlayer>
+#include <QAudioOutput>
 #include <chrono>
 #include <optional>
 #include <random>
@@ -199,6 +201,17 @@ namespace Random
 	template<Container T> inline void Shuffle(T &container)
 	{
 		std::shuffle(container.begin(),container.end(),generator);
+	}
+}
+
+namespace Multimedia
+{
+	inline QMediaPlayer* Player(QObject *parent,qreal initialVolume)
+	{
+		QMediaPlayer *player=new QMediaPlayer(parent);
+		player->setAudioOutput(new QAudioOutput(parent));
+		player->audioOutput()->setVolume(initialVolume);
+		return player;
 	}
 }
 
