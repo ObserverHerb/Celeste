@@ -466,6 +466,8 @@ MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *pare
 {
 	audioPane=new AudioAnnouncePane("",path,this);
 	connect(audioPane,&AudioAnnouncePane::Finished,this,&MultimediaAnnouncePane::Finished);
+	connect(audioPane,&AudioAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
+	connect(imagePane,&ImageAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
 }
 
 MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
