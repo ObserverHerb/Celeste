@@ -135,17 +135,17 @@ void ChatPane::Refresh()
 void ChatPane::Message(const Chat::Message &message) const
 {
 	QString badges;
-	for (const QString &icon : message.badges) badges.append(QString("<img style='vertical-align: middle;' src='%1' /> ").arg(icon));
+	for (const QString &icon : message.badges) badges.append(QString{"<img style='vertical-align: middle;' src='%1' /> "}.arg(icon));
 
 	QString emotedMessage;
 	unsigned int position=0;
 	for (const Chat::Emote &emote : message.emotes)
 	{
-		if (position < emote.start) emotedMessage+=message.text.midRef(position,emote.start-position);
+		if (position < emote.start) emotedMessage+=QStringView{message.text}.mid(position,emote.start-position);
 		emotedMessage+=QString(R"(<img style="vertical-align: middle;" src="%1" />)").arg(emote.path);
 		position=emote.end+1;
 	}
-	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=message.text.midRef(position,message.text.size()-position);
+	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=QStringView{message.text}.mid(position,message.text.size()-position);
 
 	if (message.action)
 		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
@@ -223,11 +223,11 @@ void EphemeralPane::Expire()
 	deleteLater();
 }
 
-VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(new QMediaPlayer(this)), viewport(new QVideoWidget(this))
+VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
 {
 	videoPlayer->setVideoOutput(viewport);
-	videoPlayer->setMedia(QUrl::fromLocalFile(path));
-	connect(videoPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+	videoPlayer->setSource(QUrl::fromLocalFile(path));
+	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 
@@ -380,17 +380,28 @@ void ScrollingAnnouncePane::showEvent(QShowEvent *event)
 	QWidget::showEvent(event);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(new QMediaPlayer(this))
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(Multimedia::Player(this,1)), path(path)
 {
-	connect(audioPlayer,&QMediaPlayer::stateChanged,[this](QMediaPlayer::State state) {
+	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
+	connect(audioPlayer,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
+		if (status == QMediaPlayer::LoadedMedia)
+		{
+			audioPlayer->play();
+			return;
+		}
+		if (status == QMediaPlayer::InvalidMedia)
+		{
+			emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
+			emit Finished();
+		}
+	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
-	connect(audioPlayer,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this]() {
-		emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
+	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
+		emit Print(QString("Failed to play audio: %1").arg(errorString));
 		emit Finished();
 	});
-	audioPlayer->setMedia(QUrl::fromLocalFile(path));
 	output->setText(text);
 }
 
@@ -401,7 +412,7 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 
 void AudioAnnouncePane::showEvent(QShowEvent *event)
 {
-	audioPlayer->play();
+	audioPlayer->setSource(QUrl::fromLocalFile(path));
 	QWidget::showEvent(event);
 }
 
@@ -455,6 +466,8 @@ MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *pare
 {
 	audioPane=new AudioAnnouncePane("",path,this);
 	connect(audioPane,&AudioAnnouncePane::Finished,this,&MultimediaAnnouncePane::Finished);
+	connect(audioPane,&AudioAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
+	connect(imagePane,&ImageAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
 }
 
 MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)

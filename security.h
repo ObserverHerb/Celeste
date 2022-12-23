@@ -49,6 +49,7 @@ private:
 	static QTimer tokenTimer;
 signals:
 	void TokenRequestFailed();
+	void TokenRefreshFailed();
 	void AdministratorProfileObtained();
 public slots:
 	void StartClocks();

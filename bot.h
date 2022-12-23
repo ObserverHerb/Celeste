@@ -6,7 +6,6 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMediaPlayer>
-#include <QMediaPlaylist>
 #include <QDateTime>
 #include <QTimer>
 #include <unordered_map>
@@ -48,6 +47,8 @@ public:
 	const Command::Lookup& Commands() const;
 	const Command::Lookup& DeserializeCommands(const QJsonDocument &json);
 	QJsonDocument LoadDynamicCommands();
+	const File::List& DeserializeVibePlaylist(const QJsonDocument &json);
+	QJsonDocument LoadVibePlaylist();
 	ApplicationSetting& ArrivalSound();
 	ApplicationSetting& PortraitVideo();
 	ApplicationSetting& CheerVideo();
@@ -64,16 +65,14 @@ protected:
 	Command::Lookup redemptions;
 	NativeCommandFlagLookup nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
-	Music::Player *vibeKeeper;
-	QMediaPlayer *roaster;
-	QMediaPlaylist roastSources;
+	Music::Player vibeKeeper;
+	Music::Player roaster;
 	QTimer inactivityClock;
 	QTimer helpClock;
 	QDateTime lastRaid;
 	Security &security;
 	ApplicationSetting settingInactivityCooldown;
 	ApplicationSetting settingHelpCooldown;
-	ApplicationSetting settingVibePlaylist;
 	ApplicationSetting settingTextWallThreshold;
 	ApplicationSetting settingTextWallSound;
 	ApplicationSetting settingRoasts;
@@ -105,11 +104,12 @@ protected:
 	static std::chrono::milliseconds launchTimestamp;
 	static const CommandTypeLookup COMMAND_TYPE_LOOKUP;
 	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
-	void StageRedemptionCommand(const QJsonObject &jsonObject);
+	void StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject);
 	bool LoadViewerAttributes();
 	void LoadRoasts();
 	void LoadBadgeIconURLs();
 	void StartClocks();
+	std::optional<CommandType> ValidCommandType(const QString &type);
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
 	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
@@ -117,7 +117,6 @@ protected:
 	void DispatchArrival(const QString &login);
 	bool DispatchChatNotification(const QStringView &message);
 	void DispatchVideo(Command command);
-	void DispatchRandomVideo(Command command);
 	void DispatchCommandList();
 	void DispatchFollowage(const Viewer::Local &viewer);
 	void DispatchPanic(const QString &name);
@@ -165,4 +164,6 @@ public slots:
 	void RestoreMusic();
 	QJsonDocument SerializeCommands(const Command::Lookup &entries);
 	bool SaveDynamicCommands(const QJsonDocument &json);
+	QJsonDocument SerializeVibePlaylist(const File::List &songs);
+	bool SaveVibePlaylist(const QJsonDocument &json);
 };

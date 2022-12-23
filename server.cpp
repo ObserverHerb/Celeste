@@ -13,11 +13,6 @@ Server::Server(QObject *parent) : QTcpServer(parent),
 	connect(this,&Server::newConnection,this,&Server::ConnectionAvailable);
 }
 
-Server::~Server()
-{
-	while (!sockets.empty()) sockets.begin()->second->deleteLater();
-}
-
 bool Server::Listen()
 {
 	const char *OPERATION="listen";

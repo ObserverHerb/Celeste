@@ -24,7 +24,8 @@ Window::Window() : QMainWindow(nullptr),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	configureOptions("Options",this),
 	configureCommands("Commands",this),
-	metrics("Metrics",this)
+	metrics("Metrics",this),
+	vibePlaylist("Vibe Playlist",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	if (settingWindowSize)
@@ -53,6 +54,7 @@ Window::Window() : QMainWindow(nullptr),
 	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
 	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
 	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
+	connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
 
 	SwapPersistentPane(new StatusPane(this));
 }
@@ -67,21 +69,25 @@ void Window::SwapPersistentPane(PersistentPane *pane)
 
 void Window::AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath)
 {
-	StageEphemeralPane(new MultimediaAnnouncePane({
+	MultimediaAnnouncePane *pane=new MultimediaAnnouncePane({
 		{"Please welcome",1},
 		{QString("%1").arg(name),1.5},
 		{"to the chat",1}
-	},profileImage,audioPath,this));
+	},profileImage,audioPath,this);
+	connect(pane,&MultimediaAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,const QString& message)
 {
-	StageEphemeralPane(new AnnouncePane({
+	AnnouncePane *pane=new AnnouncePane({
 		{QString("%1").arg(name),1.5},
 		{"has redeemed",1},
 		{QString("%1").arg(rewardTitle),1.5},
 		{message,1}
-	},this));
+	},this);
+	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
@@ -129,10 +135,12 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 
 void Window::AnnounceHost(const QString &hostingChannel,const QString &audioPath)
 {
-	StageEphemeralPane(new AudioAnnouncePane({
+	AudioAnnouncePane *pane=new AudioAnnouncePane({
 		{hostingChannel,1.5},
 		{"is hosting the stream!",1}
-	},audioPath,this));
+	},audioPath,this);
+	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::AnnounceDeniedCommand(const QString &videoPath)
@@ -155,20 +163,25 @@ void Window::ShowChat()
 
 void Window::PlayVideo(const QString &path)
 {
-	StageEphemeralPane(new VideoPane(path,this));
+	VideoPane *pane=new VideoPane(path,this);
+	connect(pane,&VideoPane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::PlayAudio(const QString &viewer,const QString &message,const QString &path)
 {
-	StageEphemeralPane(new AudioAnnouncePane({
+	AudioAnnouncePane *pane=new AudioAnnouncePane({
 		{QString("%1").arg(viewer),1.5},
 		{message,1}
-	},path,this));
+	},path,this);
+	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::ShowPortraitVideo(const QString &path)
 {
 	VideoPane *pane=new VideoPane(path,this);
+	connect(pane,&VideoPane::Print,this,&Window::Print);
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -188,6 +201,7 @@ void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>
 		text.append(QString("<span class='description'>%1</span><br></div>").arg(std::get<2>(command)));
 	}
 	ScrollingAnnouncePane *pane=new ScrollingAnnouncePane(text,this);
+	connect(pane,&ScrollingAnnouncePane::Print,this,&Window::Print);
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -199,6 +213,7 @@ void Window::ShowCommand(const QString &name,const QString &description)
 		name,
 		description
 	),this);
+	connect(pane,&AnnouncePane::Print,this,&Window::Print);
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -216,6 +231,7 @@ void Window::Shoutout(const QString &name,const QString &description,const QImag
 		{QString("%1").arg(name),1.5},
 		{description,0.5}
 	},profileImage,this);
+	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
 	pane->Duration(10000); // TODO: change from hardcoded to configurable duration
 	StageEphemeralPane(pane);
 }
@@ -239,7 +255,9 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
 	}
 	if (!finalLine.isEmpty()) lines.push_back({finalLine,years.count() > 0 ? 1 : 1.5});
-	StageEphemeralPane(new AnnouncePane(lines,this));
+	AnnouncePane *pane=new AnnouncePane(lines,this);
+	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::ShowTimezone(const QString &timezone)
@@ -265,7 +283,23 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(seconds.count()),StringConvert::NumberAgreement("second","seconds",NumberConvert::Positive(seconds.count()))));
 	}
 	if (!finalLine.isEmpty()) lines.push_back({finalLine,hours.count() > 0 ? 1 : 1.5});
-	StageEphemeralPane(new AnnouncePane(lines,this));
+	AnnouncePane *pane=new AnnouncePane(lines,this);
+	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
+}
+
+void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
+{
+	ImageAnnouncePane *pane=new ImageAnnouncePane({
+		{QString("Now playing"),0.5},
+		{QString("%1").arg(song),1.0},
+		{"by",0.5},
+		{QString("%2").arg(artist),0.75},
+		{"from the ablum",0.5},
+		{QString("%3").arg(album),0.75}
+	},coverArt,this);
+	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	StageEphemeralPane(pane);
 }
 
 void Window::StageEphemeralPane(EphemeralPane *pane)
@@ -336,19 +370,6 @@ void Window::ReleaseLiveEphemeralPane()
 	}
 }
 
-void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
-{
-	ImageAnnouncePane *pane=new ImageAnnouncePane({
-		{QString("Now playing"),0.5},
-		{QString("%1").arg(song),1.0},
-		{"by",0.5},
-		{QString("%2").arg(artist),0.75},
-		{"from the ablum",0.5},
-		{QString("%3").arg(album),0.75}
-	},coverArt,this);
-	StageEphemeralPane(pane);
-}
-
 const QSize Window::ScreenThird()
 {
 	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
@@ -372,6 +393,7 @@ void Window::contextMenuEvent(QContextMenuEvent *event)
 	menu.addAction(&configureOptions);
 	menu.addAction(&configureCommands);
 	menu.addAction(&metrics);
+	menu.addAction(&vibePlaylist);
 	menu.exec(event->globalPos());
 	event->accept();
 }

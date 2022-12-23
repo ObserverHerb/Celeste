@@ -3,112 +3,196 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <algorithm>
 #include <cstring>
 #include "entities.h"
 #include "globals.h"
 
 Q_DECLARE_METATYPE(std::chrono::milliseconds)
 
-Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), path(parent->path), message(parent->message), protect(parent->protect), parent(parent)
+Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), duplicates(parent->duplicates), path(parent->path), files(parent->files), message(parent->message), protect(parent->protect), parent(parent)
 {
 	parent->children.push_back(this);
 }
 
+QStringList Command::FileListFilters(const CommandType type)
+{
+	QStringList filters={"*.*"};
+	if (type == CommandType::VIDEO) filters={"*.mp4"};
+	if (type == CommandType::AUDIO) filters={"*.mp3"};
+	return filters;
+}
+
+const QString Command::File()
+{
+	if (random)
+	{
+		if (duplicates)
+			return files->Random();
+		else
+			return files->Unique();
+	}
+	return files->First();
+}
+
+namespace File
+{
+	List::List(const QString &path,const QStringList &filters) : currentIndex(0)
+	{
+		const QFileInfo pathInfo(path);
+		if (pathInfo.isDir())
+		{
+			for (const QFileInfo &fileInfo : QDir(path).entryInfoList(filters))
+			{
+				if (fileInfo.isFile()) files.push_back(fileInfo.absoluteFilePath());
+			}
+		}
+		else
+		{
+			files.push_back(pathInfo.absoluteFilePath());
+		}
+		Shuffle();
+	}
+
+	List::List(const QStringList &list) : currentIndex(0)
+	{
+		files=list;
+		Shuffle();
+	}
+
+	const QString List::File(const int index) const
+	{
+		return files.at(index);
+	}
+
+	const QString List::First()
+	{
+		return files.front();
+	}
+
+	const QString List::Random()
+	{
+		return File(RandomIndex());
+	}
+
+	const QString List::Unique()
+	{
+		const QString candidate=files.at(currentIndex);
+		if (++currentIndex == files.size()) Reshuffle();
+		return candidate;
+	}
+
+	int List::RandomIndex()
+	{
+		return Random::Bounded(files);
+	}
+
+	const QStringList& List::operator()() const
+	{
+		return files;
+	}
+
+	void List::Shuffle()
+	{
+		Random::Shuffle(files);
+		currentIndex=0;
+	}
+
+	void List::Reshuffle()
+	{
+		QString last=files.takeLast();
+		Shuffle();
+		files.append(last);
+	}
+}
+
 namespace Music
 {
-	Player::Player(QObject *parent) : player(new QMediaPlayer(this)),
+	const char *Player::ERROR_LOADING="Failed to load vibe playlist";
+	const char *Player::OPERATION_LOADING="load vibe playlist";
+
+	Player::Player(QObject *parent,bool loop,int initialVolume) : player(this),
+		output(this),
+		loop(loop),
 		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10),
-		volumeAdjustment(player,"volume")
+		volumeAdjustment(&output,"volume")
 	{
-		player->setVolume(0);
+		player.setAudioOutput(&output);
+		player.audioOutput()->setVolume(TranslateVolume(initialVolume));
 
-		connect(player,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,&Player::ConvertError);
-		connect(player,&QMediaPlayer::stateChanged,this,&Player::StateChanged);
-
-		connect(&sources,&QMediaPlaylist::loadFailed,this,[this]() {
-			emit Print(QString("Failed to load vibe playlist: %1").arg(sources.errorString()));
-		}); // TODO: this shouldn't be a lambda anymore
-		connect(&sources,&QMediaPlaylist::loaded,this,&Player::PlaylistLoaded);
-	}
-
-	void Player::Load(const QString &location)
-	{
-		Load(QUrl::fromLocalFile(location));
-	}
-
-	void Player::Load(const QUrl &location)
-	{
-		sources.load(location);
+		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::DispatchError);
+		connect(&player,&QMediaPlayer::playbackStateChanged,this,&Player::StateChanged);
+		connect(&player,&QMediaPlayer::mediaStatusChanged,this,&Player::MediaStatusChanged);
 	}
 
 	void Player::Start()
 	{
-		player->play();
+		player.play();
 	}
 
 	void Player::Stop()
 	{
-		player->pause();
+		player.pause();
 	}
 
 	bool Player::Playing() const
 	{
-		return player->state() == QMediaPlayer::PlayingState;
+		return player.playbackState() == QMediaPlayer::PlayingState;
 	}
 
 	void Player::DuckVolume(bool duck)
 	{
-		if (player->volume() < static_cast<int>(settingSuppressedVolume)) return;
+		if (TranslateVolume(player.audioOutput()->volume()) < static_cast<int>(settingSuppressedVolume)) return;
 
 		if (duck)
 		{
 			if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.pause();
-			volumeAdjustment.setStartValue(player->volume());
-			player->setVolume(settingSuppressedVolume);
+			volumeAdjustment.setStartValue(player.audioOutput()->volume());
+			player.audioOutput()->setVolume(TranslateVolume(static_cast<int>(settingSuppressedVolume)));
 		}
 		else
 		{
-			int originalVolume=volumeAdjustment.startValue().toInt();
-			if (player->volume() < originalVolume) player->setVolume(originalVolume);
+			qreal originalVolume=volumeAdjustment.startValue().toFloat();
+			if (player.audioOutput()->volume() < originalVolume) player.audioOutput()->setVolume(originalVolume);
 			if (volumeAdjustment.state() == QAbstractAnimation::Paused) volumeAdjustment.resume();
 		}
 	}
 
-	void Player::Volume(unsigned int volume)
+	void Player::Volume(int volume)
 	{
-		player->setVolume(volume);
+		player.audioOutput()->setVolume(TranslateVolume(volume));
 	}
 
-	void Player::Volume(unsigned int targetVolume,std::chrono::seconds duration)
+	void Player::Volume(int targetVolume,std::chrono::seconds duration)
 	{
 		if (volumeAdjustment.state() == QAbstractAnimation::Paused) return;
 
 		emit Print(QString("Adjusting volume from %1% to %2% over %3 seconds").arg(
-			StringConvert::Integer(player->volume()),
+			StringConvert::Integer(TranslateVolume(player.audioOutput()->volume())),
 			StringConvert::Integer(targetVolume),
 			StringConvert::Integer(duration.count())
 		),"volume fade");
 
 		if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.stop();
 		volumeAdjustment.setDuration(TimeConvert::Milliseconds(duration).count());
-		volumeAdjustment.setStartValue(player->volume());
-		volumeAdjustment.setEndValue(targetVolume);
+		volumeAdjustment.setStartValue(player.audioOutput()->volume());
+		volumeAdjustment.setEndValue(TranslateVolume(targetVolume));
 		volumeAdjustment.start();
 	}
 
 	QString Player::SongTitle() const
 	{
-		return player->metaData("Title").toString();
+		return player.metaData().stringValue(QMediaMetaData::Title);
 	}
 
 	QString Player::AlbumTitle() const
 	{
-		return player->metaData("AlbumTitle").toString();
+		return player.metaData().stringValue(QMediaMetaData::AlbumTitle);
 	}
 
 	QString Player::AlbumArtist() const
 	{
-		return player->metaData("AlbumArtist").toString();
+		return player.metaData().stringValue(QMediaMetaData::AlbumArtist);
 	}
 
 	QImage Player::AlbumCoverArt() const
@@ -136,25 +220,64 @@ namespace Music
 
 	QString Player::Filename() const
 	{
-		return sources.currentMedia().request().url().toLocalFile();
+		return player.source().toLocalFile();
 	}
 
-	void Player::StateChanged(QMediaPlayer::State state)
+	void Player::Sources(const File::List &sources)
 	{
-		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(player->metaData("Title").toString(),player->metaData("AlbumArtist").toString()));
+		player.stop();
+		this->sources=sources;
+		Next();
 	}
 
-	void Player::ConvertError(QMediaPlayer::Error error)
+	const File::List& Player::Sources()
 	{
-		emit Print(QString("Failed to start: %1").arg(player->errorString()));
+		return sources;
 	}
 
-	void Player::PlaylistLoaded()
+	void Player::StateChanged(QMediaPlayer::PlaybackState state)
 	{
-		sources.shuffle();
-		sources.setCurrentIndex(Random::Bounded(0,sources.mediaCount()-1)); // TODO: create bounded template that can accept QMediaPlaylist?
-		player->setPlaylist(&sources);
-		emit Print("Playlist loaded!");
+		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(player.metaData().stringValue(QMediaMetaData::Title),player.metaData().stringValue(QMediaMetaData::AlbumArtist)));
+	}
+
+	void Player::MediaStatusChanged(QMediaPlayer::MediaStatus status)
+	{
+		if (status == QMediaPlayer::EndOfMedia)
+		{
+			if (Next() && loop) Start();
+		}
+	}
+
+	void Player::DispatchError(QMediaPlayer::Error error,const QString &errorString)
+	{
+		emit Print(QString{"Failed to start: %1"}.arg(errorString));
+	}
+
+	bool Player::Next()
+	{
+		try
+		{
+			player.setSource(QUrl::fromLocalFile(sources.Unique()));
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			emit Print(QString{"Could not queue next song: %1"}.arg(exception.what()));
+			player.stop();
+			return false;
+		}
+
+		return true;
+	}
+
+	int Player::TranslateVolume(qreal volume)
+	{
+		return static_cast<int>(std::clamp(volume,0.0,100.0));
+	}
+
+	qreal Player::TranslateVolume(int volume)
+	{
+		return static_cast<qreal>(std::clamp(volume,0,100));
 	}
 
 	ApplicationSetting& Player::SuppressedVolume()
@@ -182,7 +305,10 @@ namespace Music
 		Tag::Tag(const QString &filename) : APIC(nullptr)
 		{
 			static const std::unordered_map<QString,Frame::Frame> FRAMES={
-				{"APIC",Frame::Frame::APIC}
+				{"APIC",Frame::Frame::APIC},
+				{"TIT2",Frame::Frame::TIT2},
+				{"TALB",Frame::Frame::TALB},
+				{"TPE1",Frame::Frame::TPE1}
 			};
 
 			try
@@ -205,6 +331,15 @@ namespace Music
 					{
 					case Frame::Frame::APIC:
 						APIC=std::make_unique<Frame::APIC>(file,frameHeader.Size());
+						break;
+					case Frame::Frame::TIT2:
+						TIT2=std::make_unique<Frame::TIT2>(file,frameHeader.Size());
+						break;
+					case Frame::Frame::TALB:
+						TALB=std::make_unique<Frame::TALB>(file,frameHeader.Size());
+						break;
+					case Frame::Frame::TPE1:
+						TPE1=std::make_unique<Frame::TPE1>(file,frameHeader.Size());
 						break;
 					}
 				}
@@ -231,6 +366,21 @@ namespace Music
 		const QImage& Tag::AlbumCoverFront() const
 		{
 			return APIC ? APIC->Picture() : throw std::runtime_error("No image data in mp3 file");
+		}
+
+		const QString& Tag::Title() const
+		{
+			return TIT2 ? TIT2->Title() : throw std::runtime_error("No song title in mp3 file");
+		}
+
+		const QString& Tag::AlbumTitle() const
+		{
+			return TALB ? TALB->Title() : throw std::runtime_error("No album title in mp3 file");
+		}
+
+		const QString& Tag::Artist() const
+		{
+			return TPE1 ? TPE1->Title() : throw std::runtime_error("No artist in mp3 file");
 		}
 		
 		Header::Header(QFile &file) : file(file)
@@ -385,55 +535,46 @@ namespace Music
 				int value=size-2-MIMEType.size()-description.size(); // 2 = 1 byte for encoding, 1 byte for picture type
 				return value;
 			}
-		}
-	}
-}
 
-namespace File
-{
-	List::List(const QString &path)
-	{
-		const QFileInfo pathInfo(path);
-		if (pathInfo.isDir())
-		{
-			for (const QFileInfo &fileInfo : QDir(path).entryInfoList())
+			TIT2::TIT2(QFile &file,quint32 size) : file(file), size(size)
 			{
-				if (fileInfo.isFile()) files.push_back(fileInfo.absoluteFilePath());
+				ParseEncoding();
+				ParseTitle();
+			}
+
+			void TIT2::ParseEncoding()
+			{
+				char data;
+				if (!file.getChar(&data)) throw std::runtime_error("Invalid encoding in frame of mp3 file");
+				unsigned short numeric=data;
+				if (numeric > 3) throw std::out_of_range("Unrecognized encoding in frame of mp3 file");
+				encoding=static_cast<Encoding>(numeric);
+			}
+
+			void TIT2::ParseTitle()
+			{
+				int chunkSize=encoding == Encoding::UTF_16 || encoding == Encoding::UTF_16BE ? 2 : 1;
+				QByteArray terminator(chunkSize,'\0');
+				QByteArray chunk;
+				QByteArray data;
+				do
+				{
+					chunk=file.read(chunkSize);
+					if (chunk.size() < chunkSize) throw std::runtime_error("Invalid description in frame of mp3 file");
+					if (chunk == QByteArray::fromHex("FFFE") || chunk == QByteArray::fromHex("FEFF")) continue;
+					data.append(chunk);
+				}
+				while (chunk != terminator);
+				title=data;
+			}
+
+			const QString& TIT2::Title() const
+			{
+				return title;
 			}
 		}
-		else
-		{
-			files.push_back(pathInfo.absoluteFilePath());
-		}
-	}
-
-	List::List(const QStringList &list)
-	{
-		files=list;
-	}
-
-	const QString List::File(const int index)
-	{
-		return files.at(index);
-	}
-
-	const QString List::First()
-	{
-		return files.front();
-	}
-
-
-	const QString List::Random()
-	{
-		return File(RandomIndex());
-	}
-
-	int List::RandomIndex()
-	{
-		return Random::Bounded(files);
 	}
 }
-
 
 namespace Viewer
 {
@@ -450,6 +591,11 @@ namespace Viewer
 				else
 					emit Retrieved(QImage::fromData(reply->readAll()));
 			});
+		}
+
+		Remote::operator QImage() const
+		{
+			return image;
 		}
 	}
 
@@ -482,15 +628,29 @@ namespace Viewer
 	{
 		Network::Request({TWITCH_API_ENDPOINT_USERS},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
-			this->deleteLater();
-			QJsonParseError jsonError;
-			QJsonDocument json=QJsonDocument::fromJson(reply->readAll(),&jsonError);
-			if (json.isNull())
+			switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 			{
-				emit Print(QString("Failed: %1").arg(jsonError.errorString()),OPERATION);
+			case 400:
+				emit Print(QStringLiteral("Invalid or missing ID or login parameter"),OPERATION);
+				return;
+			case 401:
+				emit Print("Authentication failed",OPERATION);
 				return;
 			}
-			QJsonArray data=json.object().value("data").toArray();
+
+			if (reply->error())
+			{
+				emit Print(QStringLiteral("Unknown error obtaining viewer information"),OPERATION);
+				return;
+			}		
+
+			const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+			if (!parsedJSON)
+			{
+				emit Print(QString("Failed: %1").arg(parsedJSON.error),OPERATION);
+				return;
+			}
+			QJsonArray data=parsedJSON().object().value("data").toArray();
 			if (data.size() < 1)
 			{
 				emit Print("Invalid user",OPERATION);
@@ -498,6 +658,7 @@ namespace Viewer
 			}
 			QJsonObject details=data.at(0).toObject();
 			emit Recognized({details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),details.value("profile_image_url").toString(),details.value("description").toString()});
+			this->deleteLater();
 		},{
 			{"login",username}
 		},{

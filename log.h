@@ -13,7 +13,7 @@ public:
 		data=QString("== %1").arg(subsystem.toUpper());
 		if (!operation.isEmpty()) data.append(QString(" (%1)").arg(operation.toUpper()));
 		data.append(QString("\n%1").arg(message));
-		if (data.back() != "\n") data.append("\n");
+		if (data.back() != '\n') data.append("\n");
 	}
 	operator QString() const { return data; }
 	operator QByteArray() const { return StringConvert::ByteArray(data); }

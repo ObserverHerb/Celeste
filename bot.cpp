@@ -12,6 +12,7 @@ const char *COMMAND_TYPE_AUDIO="announce";
 const char *COMMAND_TYPE_VIDEO="video";
 const char *COMMAND_TYPE_PULSAR="pulsar";
 const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
+const char *VIBE_PLAYLIST_FILENAME="songs.json";
 const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
 const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
 const char *QUERY_PARAMETER_BROADCASTER_ID="broadcaster_id";
@@ -21,6 +22,7 @@ const char *JSON_KEY_COMMAND_ALIASES="aliases";
 const char *JSON_KEY_COMMAND_DESCRIPTION="description";
 const char *JSON_KEY_COMMAND_TYPE="type";
 const char *JSON_KEY_COMMAND_RANDOM_PATH="random";
+const char *JSON_KEY_COMMAND_DUPLICATES="duplicates";
 const char *JSON_KEY_COMMAND_PROTECTED="protected";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
@@ -29,6 +31,7 @@ const char *JSON_KEY_DATA="data";
 const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
 const char *JSON_KEY_BOT="bot";
+const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
@@ -42,11 +45,13 @@ const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
+const char *TWITCH_API_OPERATION_STREAM_TITLE="stream title";
 const char *TWITCH_API_OPERATION_STREAM_CATEGORY="stream category";
 const char *TWITCH_API_OPERATION_LOAD_BADGES="badges";
 const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 was incomplete";
 const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
 const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
+const char *TWITCH_API_ERROR_AUTH="Auth token or client ID missing or invalid";
 const char16_t *TWITCH_SYSTEM_ACCOUNT_NAME=u"jtv";
 const char16_t *CHAT_BADGE_BROADCASTER=u"broadcaster";
 const char16_t *CHAT_BADGE_MODERATOR=u"moderator";
@@ -54,9 +59,12 @@ const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
 const char16_t *CHAT_TAG_BADGES=u"badges";
 const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
-const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_CREATE="Failed to create command list file: %1";
-const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN="Failed to open command list file: %1";
-const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST_PARSE="Failed to parse command list file: %1";
+const char *FILE_OPERATION_CREATE="create";
+const char *FILE_OPERATION_OPEN="open";
+const char *FILE_OPERATION_PARSE="parse";
+const char *FILE_OPERATION_WRITE="write";
+const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST="Failed to %1 command list file: %2";
+const char *FILE_ERROR_TEMPLATE_VIBE_PLAYLIST="Failed to %1 vibe playlist list file: %2";
 
 const std::unordered_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
@@ -69,12 +77,11 @@ Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Security &security,QObject *parent) : QObject(parent),
-	vibeKeeper(new Music::Player(this)),
-	roaster(new QMediaPlayer(this)),
+	vibeKeeper(this,true,0),
+	roaster(this,false,100),
 	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
 	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),
-	settingVibePlaylist(SETTINGS_CATEGORY_VIBE,"Playlist"),
 	settingTextWallThreshold(SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400),
 	settingTextWallSound(SETTINGS_CATEGORY_EVENTS,"TextWallSound"),
 	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
@@ -126,8 +133,7 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
 
-	connect(vibeKeeper,&Music::Player::Print,this,&Bot::Print);
-	if (settingVibePlaylist) vibeKeeper->Load(settingVibePlaylist);
+	connect(&vibeKeeper,&Music::Player::Print,this,&Bot::Print);
 }
 
 void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
@@ -141,17 +147,16 @@ QJsonDocument Bot::LoadDynamicCommands()
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.exists())
 	{
-		if (!Filesystem::Touch(commandListFile)) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_CREATE).arg(commandListFile.fileName()).toStdString());
+		if (!Filesystem::Touch(commandListFile)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_CREATE,commandListFile.fileName()).toStdString());
 	}
-	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN).arg(commandListFile.fileName()).toStdString());
+	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()).toStdString());
 
 	QJsonParseError jsonError;
 	QByteArray data=commandListFile.readAll();
-	if (data.isEmpty()) data="[]";
-	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
-	if (json.isNull()) throw std::runtime_error(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_PARSE).arg(jsonError.errorString()).toStdString());
-
-	return json;
+	if (data.isEmpty()) data=JSON_ARRAY_EMPTY;
+	const JSON::ParseResult parsedJSON=JSON::Parse(data);
+	if (!parsedJSON) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_PARSE,parsedJSON.error).toStdString());
+	return parsedJSON();
 }
 
 const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
@@ -162,28 +167,27 @@ const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
 		QJsonObject jsonObject=jsonValue.toObject();
 
 		// check if this is triggered by a redemption
-		if (jsonObject.contains(JSON_KEY_COMMAND_REDEMPTION))
+		auto redemptionName=jsonObject.find(JSON_KEY_COMMAND_REDEMPTION);
+		if (redemptionName != jsonObject.end())
 		{
-			StageRedemptionCommand(jsonObject);
+			StageRedemptionCommand(redemptionName->toString(),jsonObject);
 			continue;
 		}
 
 		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
-			auto type=COMMAND_TYPE_LOOKUP.find(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
-			if (type == COMMAND_TYPE_LOOKUP.end())
-			{
-				emit Print(QString("Command type '%1' doesn't exist for command '%2'").arg(type->first,name));
-				continue;
-			}
+			std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
+			if (!type) continue;
 
 			commands.insert({name,{
 				name,
 				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-				type->second,
+				*type,
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
+				Container::Resolve(jsonObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
 				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
+				Command::FileListFilters(*type),
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_MESSAGE,{}).toString(),
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_PROTECTED,false).toBool()
 			}});
@@ -222,7 +226,6 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 		QJsonObject object;
 		object.insert(JSON_KEY_COMMAND_NAME,command.Name());
 
-		QString type;
 		switch (command.Type())
 		{
 		case CommandType::NATIVE:
@@ -232,7 +235,11 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
 			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
 			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
-			if (command.Random()) object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+			if (command.Random())
+			{
+				object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
+			}
 			if (!command.Message().isEmpty()) object.insert(JSON_KEY_COMMAND_MESSAGE,command.Message());
 			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
 			break;
@@ -240,7 +247,11 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
 			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
 			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
-			if (command.Random()) object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+			if (command.Random())
+			{
+				object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
+			}
 			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
 			break;
 		case CommandType::PULSAR:
@@ -289,26 +300,36 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 bool Bot::SaveDynamicCommands(const QJsonDocument &json)
 {
+	const char *OPERATION="save dynamic commands";
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
 	if (!commandListFile.open(QIODevice::WriteOnly))
 	{
-		emit Print(QString(FILE_ERROR_TEMPLATE_COMMANDS_LIST_OPEN).arg(commandListFile.fileName()),QStringLiteral("load dynamic commands"));
+		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()),OPERATION);
 		return false;
 	}
-	commandListFile.write(json.toJson(QJsonDocument::Indented));
+	if (commandListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_WRITE,commandListFile.fileName()),OPERATION);
+		return false;
+	}
 	return true;
 }
 
-void Bot::StageRedemptionCommand(const QJsonObject &jsonObject)
+void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject)
 {
-	const QString name=jsonObject.value(JSON_KEY_COMMAND_REDEMPTION).toString();
+	std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
+	if (!type) return;
+
 	redemptions[name]={
 		name,
 		jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-		COMMAND_TYPE_LOOKUP.at(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString()),
-		jsonObject.contains(JSON_KEY_COMMAND_RANDOM_PATH) ? jsonObject.value(JSON_KEY_COMMAND_RANDOM_PATH).toBool() : false,
+		*type,
+		Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
+		Container::Resolve(jsonObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
 		jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString()
+		Command::FileListFilters(*type),
+		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
+		false
 	};
 }
 
@@ -352,8 +373,8 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 
 void Bot::SaveViewerAttributes(bool resetWelcomes)
 {
-	QFile commandListFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
-	if (!commandListFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
+	QFile viewerAttributesFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
+	if (!viewerAttributesFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
 
 	QJsonObject entries;
 	for (const std::pair<QString,Viewer::Attributes> &viewer : viewers)
@@ -366,32 +387,70 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 		entries.insert(viewer.first,attributes);
 	}
 
-	commandListFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
+	viewerAttributesFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
+}
+
+const File::List& Bot::DeserializeVibePlaylist(const QJsonDocument &json)
+{
+	vibeKeeper.Sources(File::List{json.toVariant().toStringList()});
+	return vibeKeeper.Sources();
+}
+
+QJsonDocument Bot::LoadVibePlaylist()
+{
+	static const char *OPERATION="load vibe playlist";
+	QFile songListFile(Filesystem::DataPath().filePath(VIBE_PLAYLIST_FILENAME));
+
+	if (!songListFile.exists())
+	{
+		if (!Filesystem::Touch(songListFile)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_CREATE,songListFile.fileName()).toStdString());
+	}
+
+	if (!songListFile.open(QIODevice::ReadOnly))
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_OPEN,songListFile.errorString()),OPERATION);
+		return {};
+	}
+
+	QByteArray data=songListFile.readAll();
+	if (data.isEmpty()) data=JSON_ARRAY_EMPTY;
+	const JSON::ParseResult parsedJSON=JSON::Parse(data);
+	if (!parsedJSON)
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_PARSE,parsedJSON.error),OPERATION);
+		return {};
+	}
+
+	emit Print("Playlist loaded!",OPERATION);
+	return parsedJSON();
+}
+
+QJsonDocument Bot::SerializeVibePlaylist(const File::List &songs)
+{
+	return QJsonDocument::fromVariant(songs());
+}
+
+bool Bot::SaveVibePlaylist(const QJsonDocument &json)
+{
+	static const char *OPERATION="save vibe playlist";
+	QFile songListFile(Filesystem::DataPath().filePath(VIBE_PLAYLIST_FILENAME));
+	if (!songListFile.open(QIODevice::WriteOnly))
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_OPEN,songListFile.fileName()),OPERATION);
+		return false;
+	}
+	if (songListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+	{
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_WRITE,songListFile.fileName()),OPERATION);
+		return false;
+	}
+	return true;
 }
 
 void Bot::LoadRoasts()
 {
-	connect(&roastSources,&QMediaPlaylist::loadFailed,this,[this]() {
-		emit Print(QString("Failed to load roasts: %1").arg(roastSources.errorString()));
-	});
-	connect(&roastSources,&QMediaPlaylist::loaded,this,[this]() {
-		roastSources.shuffle();
-		roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
-		roaster->setPlaylist(&roastSources);
-		connect(&inactivityClock,&QTimer::timeout,roaster,&QMediaPlayer::play);
-		emit Print("Roasts loaded!");
-	});
-	roastSources.load(QUrl::fromLocalFile(settingRoasts));
-	connect(roaster,QOverload<QMediaPlayer::Error>::of(&QMediaPlayer::error),this,[this](QMediaPlayer::Error error) {
-		emit Print(QString("Roaster failed to start: %1").arg(roaster->errorString()));
-	});
-	connect(roaster,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
-		if (status == QMediaPlayer::EndOfMedia)
-		{
-			roaster->stop();
-			roastSources.setCurrentIndex(Random::Bounded(0,roastSources.mediaCount()));
-		}
-	});
+	connect(&roaster,&Music::Player::Print,this,&Bot::Print);
+	roaster.Sources(File::List{static_cast<QString>(settingRoasts),Command::FileListFilters(CommandType::AUDIO)});
 }
 
 void Bot::LoadBadgeIconURLs()
@@ -436,12 +495,7 @@ void Bot::LoadBadgeIconURLs()
 void Bot::StartClocks()
 {
 	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
-	if (settingPortraitVideo)
-	{
-		connect(&inactivityClock,&QTimer::timeout,this,[this]() {
-			emit PlayVideo(settingPortraitVideo);
-		});
-	}
+	if (settingRoasts) connect(&inactivityClock,&QTimer::timeout,&roaster,&Music::Player::Start);
 	inactivityClock.start();
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
@@ -465,7 +519,7 @@ void Bot::Redemption(const QString &login,const QString &name,const QString &rew
 	if (rewardTitle == "Crash Celeste")
 	{
 		DispatchPanic(name);
-		vibeKeeper->Stop();
+		vibeKeeper.Stop();
 		return;
 	}
 
@@ -507,12 +561,12 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 
 void Bot::SuppressMusic()
 {
-	vibeKeeper->DuckVolume(true);
+	vibeKeeper.DuckVolume(true);
 }
 
 void Bot::RestoreMusic()
 {
-	vibeKeeper->DuckVolume(false);
+	vibeKeeper.DuckVolume(false);
 }
 
 void Bot::DispatchArrival(const QString &login)
@@ -788,7 +842,7 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 				DispatchShoutout(command);
 				break;
 			case NativeCommandFlag::SONG:
-				emit ShowCurrentSong(vibeKeeper->SongTitle(),vibeKeeper->AlbumTitle(),vibeKeeper->AlbumArtist(),vibeKeeper->AlbumCoverArt());
+				emit ShowCurrentSong(vibeKeeper.SongTitle(),vibeKeeper.AlbumTitle(),vibeKeeper.AlbumArtist(),vibeKeeper.AlbumCoverArt());
 				break;
 			case NativeCommandFlag::TIMEZONE:
 				emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
@@ -830,23 +884,8 @@ bool Bot::DispatchChatNotification(const QStringView &message)
 
 void Bot::DispatchVideo(Command command)
 {
-	if (command.Random())
-		DispatchRandomVideo(command);
-	else
-		emit PlayVideo(command.Path());
-}
-
-void Bot::DispatchRandomVideo(Command command)
-{
-	// TODO: Modify File::List to accept a filter and use it
-	QDir directory(command.Path());
-	QStringList videos=directory.entryList(QStringList() << "*.mp4",QDir::Files);
-	if (videos.size() < 1)
-	{
-		emit Print("No videos found");
-		return;
-	}
-	emit PlayVideo(directory.absoluteFilePath(videos.at(Random::Bounded(videos))));
+	// FIXME: What if there are no videos in the directory?
+	emit PlayVideo(command.File());
 }
 
 void Bot::DispatchCommandList()
@@ -939,6 +978,22 @@ void Bot::DispatchShoutout(Command command)
 void Bot::DispatchUptime(bool total)
 {
 	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this,total](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(QStringLiteral("Invalid or missing type query parameter"),TWITCH_API_OPERATION_STREAM_INFORMATION);
+			return;
+		case 401:
+			emit Print(TWITCH_API_ERROR_AUTH,TWITCH_API_OPERATION_STREAM_INFORMATION);
+			return;
+		}
+
+		if (reply->error())
+		{
+			emit Print(QStringLiteral("Failed to obtain stream information"),TWITCH_API_OPERATION_STREAM_INFORMATION);
+			return;
+		}
+
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -990,13 +1045,13 @@ void Bot::DispatchUptime(bool total)
 
 void Bot::ToggleVibeKeeper()
 {
-	if (vibeKeeper->Playing())
+	if (vibeKeeper.Playing())
 	{
 		emit Print("Pausing the vibes...");
-		vibeKeeper->Stop();
+		vibeKeeper.Stop();
 		return;
 	}
-	vibeKeeper->Start();
+	vibeKeeper.Start();
 }
 
 void Bot::AdjustVibeVolume(Command command)
@@ -1007,7 +1062,7 @@ void Bot::AdjustVibeVolume(Command command)
 		std::optional<QStringView> targetVolume=StringView::Take(window,' ');
 		if (!targetVolume) throw std::runtime_error("Target volume is missing");
 		if (window.size() < 1) throw std::runtime_error("Duration for volume change is missing");
-		vibeKeeper->Volume(StringConvert::PositiveInteger(targetVolume->toString()),std::chrono::seconds(StringConvert::PositiveInteger(window.toString())));
+		vibeKeeper.Volume(StringConvert::PositiveInteger(targetVolume->toString()),std::chrono::seconds(StringConvert::PositiveInteger(window.toString())));
 	}
 
 	catch (const std::runtime_error &exception)
@@ -1019,6 +1074,22 @@ void Bot::AdjustVibeVolume(Command command)
 void Bot::ToggleEmoteOnly()
 {
 	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(QStringLiteral("Missing broadcaster_id query parameter"),TWITCH_API_OPERATION_EMOTE_ONLY);
+			return;
+		case 401:
+			emit Print(TWITCH_API_ERROR_AUTH,TWITCH_API_OPERATION_EMOTE_ONLY);
+			return;
+		}
+
+		if (reply->error())
+		{
+			emit Print(QStringLiteral("Failed to toggle emote-only chat"),TWITCH_API_OPERATION_EMOTE_ONLY);
+			return;
+		}
+
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -1084,12 +1155,26 @@ void Bot::EmoteOnly(bool enable)
 void Bot::StreamTitle(const QString &title)
 {
 	Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
-		if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
-			emit Print("Failed to change stream title");
+		case 400:
+			emit Print(QStringLiteral("A query parameter is invalid"),TWITCH_API_OPERATION_STREAM_TITLE);
+			return;
+		case 401:
+			emit Print("Missing or invalid OAuth token, client ID, or broadcaster ID; or bot does not have required scope (channel:manage:broadcast)",TWITCH_API_OPERATION_STREAM_TITLE);
+			return;
+		case 500:
+			emit Print("Something when wrong on Twitch's end",TWITCH_API_OPERATION_STREAM_TITLE);
 			return;
 		}
-		emit Print(QString(R"(Stream title changed to "%1")").arg(title));
+
+		if (reply->error() || reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
+		{
+			emit Print(QStringLiteral("Failed to change stream title"),TWITCH_API_OPERATION_STREAM_TITLE);
+			return;
+		}
+
+		emit Print(QString(R"(Stream title changed to "%1")").arg(title),TWITCH_API_OPERATION_STREAM_TITLE);
 	},{
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()}
 	},{
@@ -1160,6 +1245,17 @@ void Bot::StreamCategory(const QString &category)
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
+}
+
+std::optional<CommandType> Bot::ValidCommandType(const QString &type)
+{
+	auto candidate=COMMAND_TYPE_LOOKUP.find(type);
+	if (candidate == COMMAND_TYPE_LOOKUP.end())
+	{
+		emit Print(QString("Command type '%1' doesn't exist").arg(candidate->first));
+		return std::nullopt;
+	}
+	return candidate->second;
 }
 
 ApplicationSetting& Bot::ArrivalSound()

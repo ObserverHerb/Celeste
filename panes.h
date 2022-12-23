@@ -162,6 +162,7 @@ public:
 	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent);
 protected:
 	QMediaPlayer *audioPlayer;
+	QString path;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
 signals:

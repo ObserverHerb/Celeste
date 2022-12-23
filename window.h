@@ -26,6 +26,7 @@ protected:
 	QAction configureOptions;
 	QAction configureCommands;
 	QAction metrics;
+	QAction vibePlaylist;
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
@@ -41,6 +42,7 @@ signals:
 	void ConfigureOptions();
 	void ConfigureCommands();
 	void ShowMetrics();
+	void ShowVibePlaylist();
 	void CloseRequested(QCloseEvent *event);
 public slots:
 	void ShowChat();

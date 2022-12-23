@@ -4,7 +4,8 @@
 #include <QImage>
 #include <QUrl>
 #include <QMediaPlayer>
-#include <QMediaPlaylist>
+#include <QMediaMetaData>
+#include <QAudioOutput>
 #include <QPropertyAnimation>
 #include <QFile>
 #include <memory>
@@ -20,33 +21,60 @@ enum class CommandType
 	PULSAR
 };
 
+namespace File
+{
+	class List
+	{
+	public:
+		List() { }
+		List(const QString &path,const QStringList &filter={});
+		List(const QStringList &files);
+		const QString File(const int index) const;
+		const QString First();
+		const QString Random();
+		const QString Unique();
+		int RandomIndex();
+		const QStringList& operator()() const;
+	protected:
+		QStringList files;
+		int currentIndex;
+		void Shuffle();
+		void Reshuffle();
+	};
+}
+
 class Command
 {
 public:
 	using Lookup=std::unordered_map<QString,Command>;
 	using Entry=std::pair<const QString,Command>;
-	Command() : Command(QString(),QString(),CommandType::BLANK,false,QString(),QString()) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,QString(),QString(),protect) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool random,const QString &path,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), protect(protect), path(path), message(message), parent(nullptr) { }
+	Command() : Command({},{},CommandType::BLANK,false,true,{},{},{}) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},protect) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(std::make_shared<File::List>(path,filters)), message(message), parent(nullptr) { }
 	Command(const QString &name,Command* const parent);
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), protect(command.protect), path(command.path), message(message), parent(nullptr) { }
-	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), protect(other.protect), path(other.path), message(other.message), parent(nullptr) { }
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), duplicates(command.duplicates), protect(command.protect), path(command.path), files(command.files), message(message), parent(nullptr) { }
+	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), duplicates(other.duplicates), protect(other.protect), path(other.path), files(other.files), message(other.message), parent(nullptr) { }
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
 	bool Random() const { return random; }
+	bool Duplicates() const { return duplicates; }
 	bool Protected() const { return protect; }
 	const QString& Path() const { return path; }
+	const QString File();
 	const QString& Message() const { return message; }
 	const Command* Parent() const { return parent; }
 	const std::vector<Command*>& Children() const { return children; }
+	static QStringList FileListFilters(const CommandType type);
 protected:
 	QString name;
 	QString description;
 	CommandType type;
 	bool random;
+	bool duplicates;
 	bool protect;
 	QString path;
+	std::shared_ptr<File::List> files;
 	QString message;
 	Command *parent;
 	std::vector<Command*> children;
@@ -60,13 +88,10 @@ namespace Music
 	{
 		Q_OBJECT
 	public:
-		Player(QObject *parent);
+		Player(QObject *parent,bool loop,int initialVolume);
 		void DuckVolume(bool duck);
-		void Volume(unsigned int volume);
-		void Volume(unsigned int targetVolume,std::chrono::seconds duration);
-		void Load(const QString &location);
-		void Load(const QUrl &location);
-		void Start();
+		void Volume(int volume);
+		void Volume(int targetVolume,std::chrono::seconds duration);
 		void Stop();
 		bool Playing() const;
 		QString SongTitle() const;
@@ -74,18 +99,30 @@ namespace Music
 		QString AlbumArtist() const;
 		QImage AlbumCoverArt() const;
 		QString Filename() const;
+		void Sources(const File::List &sources);
+		const File::List& Sources();
 		ApplicationSetting& SuppressedVolume();
 	protected:
-		QMediaPlayer *player;
-		QMediaPlaylist sources;
+		QMediaPlayer player;
+		QAudioOutput output;
+		File::List sources;
+		bool loop;
 		ApplicationSetting settingSuppressedVolume;
 		QPropertyAnimation volumeAdjustment;
+		static const char *ERROR_LOADING;
+		static const char *OPERATION_LOADING;
+		bool Next();
+		int TranslateVolume(qreal volume);
+		qreal TranslateVolume(int volume);
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player")) const;
-	protected slots:
-		void StateChanged(QMediaPlayer::State state);
-		void ConvertError(QMediaPlayer::Error error);
 		void PlaylistLoaded();
+	public slots:
+		void Start();
+	protected slots:
+		void StateChanged(QMediaPlayer::PlaybackState state);
+		void MediaStatusChanged(QMediaPlayer::MediaStatus status);
+		void DispatchError(QMediaPlayer::Error error,const QString &errorString);
 	};
 
 	namespace ID3
@@ -114,7 +151,10 @@ namespace Music
 		{
 			enum class Frame
 			{
-				APIC
+				APIC,
+				TIT2,
+				TALB,
+				TPE1
 			};
 
 			enum class PictureType
@@ -184,6 +224,22 @@ namespace Music
 				void ParsePictureData();
 				quint32 DataSize();
 			};
+
+			class TIT2
+			{
+			public:
+				TIT2(QFile &file,quint32 size);
+				const QString& Title() const;
+			protected:
+				QFile &file;
+				quint32 size;
+				Encoding encoding;
+				QString title;
+				void ParseEncoding();
+				void ParseTitle();
+			};
+			using TALB=TIT2;
+			using TPE1=TIT2;
 		}
 
 		class Tag
@@ -192,28 +248,18 @@ namespace Music
 			Tag(const QString &filename);
 			~Tag();
 			const QImage& AlbumCoverFront() const;
+			const QString& Title() const;
+			const QString& AlbumTitle() const;
+			const QString& Artist() const;
 		protected:
 			QFile file;
 			std::unique_ptr<Frame::APIC> APIC;
+			std::unique_ptr<Frame::TIT2> TIT2;
+			std::unique_ptr<Frame::TALB> TALB;
+			std::unique_ptr<Frame::TPE1> TPE1;
 			void Destroy();
 		};
 	}
-}
-
-namespace File
-{
-	class List
-	{
-	public:
-		List(const QString &path);
-		List(const QStringList &files);
-		const QString File(const int index);
-		const QString First();
-		const QString Random();
-		int RandomIndex();
-	protected:
-		QStringList files;
-	};
 }
 
 namespace Viewer

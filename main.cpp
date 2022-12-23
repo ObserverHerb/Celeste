@@ -8,6 +8,8 @@
 #include <QListWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <string>
+#include <exception>
 #include "window.h"
 #include "widgets.h"
 #include "channel.h"
@@ -23,10 +25,20 @@ const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
 const char *SUBSYSTEM="initialization";
 
+class InitializationError : public std::runtime_error
+{
+public:
+	InitializationError(const std::string &operation,const std::string &message) : std::runtime_error(message), operation(operation) { }
+	const char* Operation() const { return operation.c_str(); }
+protected:
+	std::string operation;
+};
+
 enum
 {
 	OK,
 	NOT_CONFIGURED,
+	AUTHENTICATION_ERROR,
 	FATAL_ERROR,
 	UNKNOWN_ERROR
 };
@@ -106,13 +118,17 @@ int main(int argc,char *argv[])
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
 
-		security.connect(&security,&Security::TokenRequestFailed,[]() {
+		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
 			QMessageBox failureDialog;
-			failureDialog.setWindowTitle("Re-Authentication Failed");
+			failureDialog.setWindowTitle("Authentication Failed");
 			failureDialog.setText("Attempt to obtain OAuth token failed.");
 			failureDialog.setStandardButtons(QMessageBox::Ok);
 			failureDialog.setDefaultButton(QMessageBox::Ok);
 			failureDialog.exec();
+			application.exit(AUTHENTICATION_ERROR);
+		});
+		security.connect(&security,&Security::TokenRefreshFailed,[&log]() {
+			log.Write("Attempt to refresh OAuth token failed","refresh auth token",SUBSYSTEM);
 		});
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
@@ -270,7 +286,7 @@ int main(int argc,char *argv[])
 				.duration=announcePane.Duration()
 			}));
 			configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
-				.suppressedVolume=Music::Player(&window).SuppressedVolume()
+				.suppressedVolume=Music::Player(&window,false,0).SuppressedVolume()
 			}));
 			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
 				.arrivalSound=celeste.ArrivalSound(),
@@ -301,29 +317,55 @@ int main(int argc,char *argv[])
 
 			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
 			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
-				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to disk.";
+				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
 				if (!celeste.SaveDynamicCommands(celeste.SerializeCommands(commands)))
 				{
 					QMessageBox failureDialog(&window);
-					failureDialog.setWindowTitle("Save Commands Failed");
+					failureDialog.setWindowTitle("Save dynamic commands Failed");
 					failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
 					failureDialog.setIcon(QMessageBox::Warning);
 					failureDialog.setStandardButtons(QMessageBox::Ok);
 					failureDialog.setDefaultButton(QMessageBox::Ok);
 					failureDialog.exec();
-					log.Write(ERROR_COMMANDS_LIST_FILE,"save commands",SUBSYSTEM);
+					log.Write(ERROR_COMMANDS_LIST_FILE,"save dynamic commands",SUBSYSTEM);
 				}
 			});
 			window.connect(&window,&Window::ConfigureCommands,[configureCommands]() {
 				configureCommands->open();
 			});
 
+			UI::VibePlaylist::Dialog *configurePlaylist=nullptr;
+			try
+			{
+				configurePlaylist=new UI::VibePlaylist::Dialog(celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist()),&window);
+				configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&celeste,[&window,&celeste,&log](const File::List &files) {
+					static const char *ERROR_VIBE_PLAYLIST_FILE="Something went wrong saving the vibe playlist to a file";
+					if (!celeste.SaveVibePlaylist(celeste.SerializeVibePlaylist(files)))
+					{
+						QMessageBox failureDialog(&window);
+						failureDialog.setWindowTitle("Save vibe playlist Failed");
+						failureDialog.setText(ERROR_VIBE_PLAYLIST_FILE);
+						failureDialog.setIcon(QMessageBox::Warning);
+						failureDialog.setStandardButtons(QMessageBox::Ok);
+						failureDialog.setDefaultButton(QMessageBox::Ok);
+						failureDialog.exec();
+					}
+				});
+				window.connect(&window,&Window::ShowVibePlaylist,[configurePlaylist]() {
+					configurePlaylist->open();
+				});
+			}
+			catch (const std::runtime_error &exception)
+			{
+				throw InitializationError("load playlists",exception.what());
+			}
+
 			channel->Connect();
 		}
 
-		catch (const std::runtime_error &exception)
+		catch (const InitializationError &exception)
 		{
-			log.Write(exception.what(),"load commands",SUBSYSTEM);
+			log.Write(exception.what(),exception.Operation(),SUBSYSTEM);
 		}
 
 		return application.exec();
