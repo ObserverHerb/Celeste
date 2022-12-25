@@ -62,21 +62,25 @@ namespace File
 
 	const QString List::File(const int index) const
 	{
+		if (index < 0 || index >= files.size()) throw std::out_of_range("Index not valid for file list");
 		return files.at(index);
 	}
 
 	const QString List::First()
 	{
+		if (files.size() < 1) throw std::out_of_range("File list has no first item");
 		return files.front();
 	}
 
 	const QString List::Random()
 	{
+		if (files.isEmpty()) throw std::out_of_range("Cannot select random item from empty list");
 		return File(RandomIndex());
 	}
 
 	const QString List::Unique()
 	{
+		if (files.isEmpty()) throw std::out_of_range("Cannot select unique item from empty list");
 		const QString candidate=files.at(currentIndex);
 		if (++currentIndex == files.size()) Reshuffle();
 		return candidate;
@@ -127,6 +131,11 @@ namespace Music
 
 	void Player::Start()
 	{
+		if (sources().isEmpty())
+		{
+			emit Print("No songs available to play.");
+			return;
+		}
 		player.play();
 	}
 
@@ -264,6 +273,12 @@ namespace Music
 		{
 			emit Print(QString{"Could not queue next song: %1"}.arg(exception.what()));
 			player.stop();
+			return false;
+		}
+
+		catch (const std::out_of_range &exception)
+		{
+			emit Print(QString{"Invalid song list: %1"}.arg(exception.what()));
 			return false;
 		}
 
