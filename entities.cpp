@@ -272,12 +272,12 @@ namespace Music
 
 	int Player::TranslateVolume(qreal volume)
 	{
-		return static_cast<int>(std::clamp(volume,0.0,100.0));
+		return static_cast<int>(std::clamp(volume,0.0,1.0)*100);
 	}
 
 	qreal Player::TranslateVolume(int volume)
 	{
-		return static_cast<qreal>(std::clamp(volume,0,100));
+		return static_cast<qreal>(std::clamp(volume,0,100))/100;
 	}
 
 	ApplicationSetting& Player::SuppressedVolume()
