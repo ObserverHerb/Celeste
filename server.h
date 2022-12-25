@@ -12,6 +12,7 @@ class Server : public QTcpServer
 	Q_OBJECT
 public:
 	Server(QObject *parent=nullptr);
+	void SocketWrite(qintptr socketID,const QString &data,const QString &contentType) const;
 	bool Listen();
 protected:
 	std::unordered_map<qintptr,QTcpSocket*> sockets;

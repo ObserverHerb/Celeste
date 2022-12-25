@@ -88,7 +88,7 @@ const std::unordered_map<QString,QString> Server::ParseHeaders(const QStringList
 	return headers;
 }
 
-void Server::SocketWrite(qintptr socketID,const QString &data) const
+void Server::SocketWrite(qintptr socketID,const QString &data,const QString &contentType) const
 {
 	const char *OPERATION="send";
 	if (sockets.find(socketID) == sockets.end() || !sockets.at(socketID))
@@ -96,11 +96,16 @@ void Server::SocketWrite(qintptr socketID,const QString &data) const
 		Print("Tried to write to non-existent socket",OPERATION);
 		return;
 	}
-	const QString response=QString("HTTP/1.1 200 OK%1%3: %4%1%1%2").arg(LINE_BREAK,data,Network::CONTENT_TYPE,Network::CONTENT_TYPE_PLAIN);
+	const QString response=QString("HTTP/1.1 200 OK%1%3: %4%1%1%2").arg(LINE_BREAK,data,Network::CONTENT_TYPE,contentType);
 	if (int written=sockets.at(socketID)->write(StringConvert::ByteArray(response)); written < data.size())
 		Print(QString("Partial write: %1 or %2").arg(written,data.size()),OPERATION);
 	else
 		Print(StringConvert::Dump(response),OPERATION);
 	sockets.at(socketID)->flush();
 	sockets.at(socketID)->disconnectFromHost();
+}
+
+void Server::SocketWrite(qintptr socketID,const QString &data) const
+{
+	SocketWrite(socketID,data,Network::CONTENT_TYPE_PLAIN);
 }

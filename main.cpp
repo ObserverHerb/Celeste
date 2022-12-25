@@ -181,7 +181,7 @@ int main(int argc,char *argv[])
 			security.connect(&security,&Security::AdministratorProfileObtained,&security,[&security,&log,&server,&celeste]() {
 				EventSub *eventSub=new EventSub(security);
 				eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
-				eventSub->connect(eventSub,&EventSub::Response,&server,&Server::SocketWrite);
+				eventSub->connect(eventSub,&EventSub::Response,&server,QOverload<qintptr,const QString&>::of(&Server::SocketWrite));
 				eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
 				eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
 				eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
@@ -204,12 +204,9 @@ int main(int argc,char *argv[])
 			authenticateDialog.setDefaultButton(QMessageBox::Yes);
 			if (authenticateDialog.exec() == QMessageBox::No) return;
 
-			reauthorize=server.connect(&server,&Server::Dispatch,[&reauthorize,&security,&server](qintptr socketID,const QUrlQuery &query) {
+			reauthorize=server.connect(&server,&Server::Dispatch,[&reauthorize,&security,&server](qintptr socketID,const QUrlQuery& query) {
 				server.disconnect(reauthorize); // break any connection with security's slots so we don't conflict with EventSub later
-				emit server.SocketWrite(socketID,QJsonDocument(QJsonObject({
-					{QUERY_PARAMETER_CODE,query.queryItemValue(QUERY_PARAMETER_CODE)},
-					{QUERY_PARAMETER_SCOPE,query.queryItemValue(QUERY_PARAMETER_SCOPE)}
-				})).toJson(QJsonDocument::Compact));
+				server.SocketWrite(socketID,QStringLiteral(R"(<html><body><h1>Authorization Successful!</h1><br><b>Token:</b> %1<br><b>Scope:</b> %2</body></html>)").arg(QString(query.queryItemValue(QUERY_PARAMETER_CODE).size(),'*'),query.queryItemValue(QUERY_PARAMETER_SCOPE).replace('+',", ")),Network::CONTENT_TYPE_HTML);
 				security.RequestToken(query.queryItemValue(QUERY_PARAMETER_CODE),query.queryItemValue(QUERY_PARAMETER_SCOPE));
 			});
 			security.AuthorizeUser();

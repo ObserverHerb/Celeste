@@ -219,6 +219,7 @@ namespace Network
 {
 	inline const char *CONTENT_TYPE="Content-Type";
 	inline const char *CONTENT_TYPE_PLAIN="text/plain";
+	inline const char* CONTENT_TYPE_HTML="text/html";
 	inline const char *CONTENT_TYPE_JSON="application/json";
 	inline const char *CONTENT_TYPE_FORM="application/x-www-form-urlencoded";
 
