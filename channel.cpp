@@ -71,7 +71,7 @@ const std::unordered_map<QString,Notice> notices={
 
 Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject(parent),
 	security(security),
-	settingChannel(SETTINGS_CATEGORY_CHANNEL,"Name",""),
+	settingChannel(SETTINGS_CATEGORY_CHANNEL,"Name",security.Administrator().Value()),
 	settingProtect(SETTINGS_CATEGORY_CHANNEL,"Protect",false),
 	ircSocket(socket)
 {
