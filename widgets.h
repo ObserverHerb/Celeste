@@ -410,7 +410,6 @@ namespace UI
 			public:
 				struct Settings
 				{
-					//ApplicationSetting &vibePlaylist; // TODO: implement this when the decision as to how I will be changing playlists for Qt 6 is made
 					ApplicationSetting &arrivalSound;
 					ApplicationSetting &portraitVideo;
 					ApplicationSetting &cheerVideo;
