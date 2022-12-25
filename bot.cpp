@@ -121,8 +121,8 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	DeclareCommand({settingCommandNameShoutout,"Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
 	DeclareCommand({settingCommandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
 	DeclareCommand({settingCommandNameTimezone,"Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
-	DeclareCommand({settingCommandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
-	DeclareCommand({settingCommandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
+	DeclareCommand({settingCommandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
+	DeclareCommand({settingCommandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
 	DeclareCommand({settingCommandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
 	DeclareCommand({settingCommandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	LoadViewerAttributes();
