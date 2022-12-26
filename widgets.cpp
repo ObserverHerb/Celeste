@@ -150,6 +150,40 @@ namespace UI
 		setStyleSheet(QString("border: 1px solid black; color: %1; background-color: %1;").arg(color));
 	}
 
+	namespace Security
+	{
+		Scopes::Scopes(QWidget *parent) : QDialog(parent),
+			layout(this),
+			list(this),
+			scopes({"chat:read"})
+		{
+			setLayout(&layout);
+			setSizeGripEnabled(true);
+
+			list.setSelectionMode(QAbstractItemView::ExtendedSelection);
+			list.addItems(::Security::SCOPES);
+			layout.addWidget(&list);
+
+			QDialogButtonBox *buttons=new QDialogButtonBox(this);
+			QPushButton *okay=buttons->addButton(QDialogButtonBox::Ok);
+			okay->setDefault(true);
+			layout.addWidget(buttons);
+
+			connect(buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
+			connect(this,&QDialog::accepted,this,&Scopes::Save);
+		}
+
+		QStringList Scopes::operator()()
+		{
+			return scopes;
+		}
+
+		void Scopes::Save()
+		{
+			for (QListWidgetItem *item : list.selectedItems()) scopes.append(item->text());
+		}
+	}
+
 	namespace Commands
 	{
 		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
@@ -1489,6 +1523,78 @@ namespace UI
 			void Log::Save()
 			{
 				settings.directory.Set(directory.text());
+			}
+
+			Security::Security(QWidget *parent,::Security &settings) : Category(parent,QStringLiteral("Security")),
+				administrator(this),
+				clientID(this),
+				clientSecret(this),
+				token(this),
+				serverToken(this),
+				callbackURL(this),
+				permissions(this),
+				selectPermissions(Text::CHOOSE,this),
+				settings(settings)
+			{
+				details.setVisible(false);
+
+				administrator.setText(settings.Administrator());
+				clientID.setText(settings.ClientID());
+				clientID.setEchoMode(QLineEdit::Password);
+				clientSecret.setText(settings.ClientSecret());
+				clientSecret.setEchoMode(QLineEdit::Password);
+				token.setText(settings.OAuthToken());
+				token.setEchoMode(QLineEdit::Password);
+				serverToken.setText(settings.ServerToken());
+				serverToken.setEchoMode(QLineEdit::Password);
+				callbackURL.setText(settings.CallbackURL());
+				permissions.setText(settings.Scope());
+
+				connect(&selectPermissions,&QPushButton::clicked,this,&Security::SelectPermissions);
+
+				Rows({
+					{Label(QStringLiteral("Administrator (Broascaster)")),&administrator},
+					{Label(QStringLiteral("Client ID")),&clientID},
+					{Label(QStringLiteral("Client Secret")),&clientSecret},
+					{Label(QStringLiteral("OAuth Token")),&token},
+					{Label(QStringLiteral("Server Token")),&serverToken},
+					{Label(QStringLiteral("Callback URL")),&callbackURL},
+					{Label(QStringLiteral("Permissions")),&permissions,&selectPermissions}
+				});
+			}
+
+			bool Security::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &administrator) emit Help(QStringLiteral("Twitch user name of the broadcaster."));
+					if (object == &clientID) emit Help(QStringLiteral("Client ID from Twitch developer console."));
+					if (object == &clientSecret) emit Help(QStringLiteral("Client Secret from Twitch developer console."));
+					if (object == &token) emit Help(QStringLiteral(R"(OAuth token obtained from Twitch authorization process (usually automatic, but can be manually obtained and entered). This is for "Authorization code grant flow" for Celeste's main API calls.)"));
+					if (object == &serverToken) emit Help(QStringLiteral(R"(Server token obtained from Twitch authorization process. This is for "Client credentials grant flow" for Celete's EventSub web hook support.)"));
+					if (object == &callbackURL) emit Help(QStringLiteral("The URL Twitch will contact with an OAuth token (or error message)."));
+					if (object == &permissions || object == &selectPermissions) emit Help(QStringLiteral(R"(The list of permissions (Twitch refers to as "scopes") the bot will require.)"));
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			void Security::SelectPermissions()
+			{
+				UI::Security::Scopes scopes(this);
+				if (scopes.exec()) permissions.setText(scopes().join(" "));
+			}
+
+			void Security::Save()
+			{
+				settings.Administrator().Set(administrator.text());
+				settings.ClientID().Set(clientID.text());
+				settings.ClientSecret().Set(clientSecret.text());
+				settings.OAuthToken().Set(token.text());
+				settings.ServerToken().Set(serverToken.text());
+				settings.CallbackURL().Set(callbackURL.text());
+				settings.Scope().Set(permissions.text());
 			}
 		}
 

@@ -85,25 +85,8 @@ int main(int argc,char *argv[])
 	}
 	if (!security.Scope() || static_cast<QStringList>(security.Scope()).isEmpty())
 	{
-		QDialog scopeDialog;
-		QGridLayout *layout=new QGridLayout(&scopeDialog);
-		scopeDialog.setLayout(layout);
-		scopeDialog.setSizeGripEnabled(true);
-		QListWidget *listBox=new QListWidget(&scopeDialog);
-		listBox->setSelectionMode(QAbstractItemView::ExtendedSelection);
-		listBox->addItems(Security::SCOPES);
-		scopeDialog.layout()->addWidget(listBox);
-		QDialogButtonBox *buttons=new QDialogButtonBox(&scopeDialog);
-		QPushButton *okay=buttons->addButton(QDialogButtonBox::Ok);
-		okay->setDefault(true);
-		okay->connect(okay,&QPushButton::clicked,&scopeDialog,&QDialog::accept);
-		scopeDialog.layout()->addWidget(buttons);
-		if (scopeDialog.exec())
-		{
-			QStringList scopes({"chat:read"});
-			for (QListWidgetItem *item : listBox->selectedItems()) scopes.append(item->text());
-			security.Scope().Set(scopes.join(" "));
-		}
+		UI::Security::Scopes scopes(nullptr);
+		if (scopes.exec()) security.Scope().Set(scopes().join(" "));
 		security.OAuthToken().Unset();
 	}
 
@@ -300,6 +283,7 @@ int main(int argc,char *argv[])
 			configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
 				.directory=log.Directory()
 			}));
+			configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
 
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 			configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);

@@ -97,6 +97,22 @@ namespace UI
 		inline const char *BUTTON_REMOVE="&Remove";
 	}
 
+	namespace Security
+	{
+		class Scopes : public QDialog
+		{
+			Q_OBJECT
+		public:
+			Scopes(QWidget *parent);
+			QStringList operator()();
+		protected:
+			QGridLayout layout;
+			QListWidget list;
+			QStringList scopes;
+			void Save();
+		};
+	}
+
 	namespace Commands
 	{
 		enum class Type
@@ -491,6 +507,27 @@ namespace UI
 			protected slots:
 				void OpenDirectory();
 				void ValidateDirectory(const QString &path);
+			};
+
+			class Security : public Category
+			{
+				Q_OBJECT
+			public:
+				Security(QWidget *parent,::Security &settings);
+				void Save() override;
+			protected:
+				QLineEdit administrator;
+				QLineEdit clientID;
+				QLineEdit clientSecret;
+				QLineEdit token;
+				QLineEdit serverToken;
+				QLineEdit callbackURL;
+				QLineEdit permissions;
+				QPushButton selectPermissions;
+				::Security &settings;
+				bool eventFilter(QObject *object,QEvent *event) override;
+			protected slots:
+				void SelectPermissions();
 			};
 		}
 
