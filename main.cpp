@@ -230,6 +230,7 @@ int main(int argc,char *argv[])
 
 		UI::Commands::Dialog *configureCommands=nullptr;
 		UI::Options::Dialog *configureOptions=nullptr;
+		Music::Player player(&window,false,0);
 		try
 		{
 			configureOptions=new UI::Options::Dialog(&window);
@@ -266,7 +267,7 @@ int main(int argc,char *argv[])
 				.duration=announcePane.Duration()
 			}));
 			configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
-				.suppressedVolume=Music::Player(&window,false,0).SuppressedVolume()
+				.suppressedVolume=player.SuppressedVolume()
 			}));
 			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
 				.arrivalSound=celeste.ArrivalSound(),
