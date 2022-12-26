@@ -1297,7 +1297,8 @@ namespace UI
 				textWallThreshold(this),
 				textWallSound(this),
 				selectTextWallSound(Text::BROWSE,this),
-				previewTextWallSound(Text::PREVIEW,this)
+				previewTextWallSound(Text::PREVIEW,this),
+				settings(settings)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
 				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
@@ -1480,6 +1481,15 @@ namespace UI
 
 			void Bot::Save()
 			{
+				settings.arrivalSound.Set(arrivalSound.text());
+				settings.portraitVideo.Set(portraitVideo.text());
+				settings.cheerVideo.Set(cheerVideo.text());
+				settings.subscriptionSound.Set(subscriptionSound.text());
+				settings.raidSound.Set(raidSound.text());
+				settings.inactivityCooldown.Set(inactivityCooldown.value());
+				settings.helpCooldown.Set(helpCooldown.value());
+				settings.textWallThreshold.Set(textWallThreshold.value());
+				settings.textWallSound.Set(textWallSound.text());
 			}
 
 			Log::Log(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Logging")),

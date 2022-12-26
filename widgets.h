@@ -460,6 +460,7 @@ namespace UI
 				QPushButton selectTextWallSound;
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
+				Settings settings;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void PlayArrivalSound(const QString &name,QImage profileImage,const QString &audioPath);
