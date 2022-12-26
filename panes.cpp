@@ -385,18 +385,6 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
-	connect(audioPlayer,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
-		if (status == QMediaPlayer::LoadedMedia)
-		{
-			audioPlayer->play();
-			return;
-		}
-		if (status == QMediaPlayer::InvalidMedia)
-		{
-			emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
-			emit Finished();
-		}
-	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
 		emit Print(QString("Failed to play audio: %1").arg(errorString));
@@ -412,8 +400,21 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 
 void AudioAnnouncePane::showEvent(QShowEvent *event)
 {
+	connect(audioPlayer,&QMediaPlayer::mediaStatusChanged,this,[this,event](QMediaPlayer::MediaStatus status) {
+		if (status == QMediaPlayer::LoadedMedia)
+		{
+			audioPlayer->play();
+			QWidget::showEvent(event);
+			return;
+		}
+		if (status == QMediaPlayer::InvalidMedia)
+		{
+			emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
+			emit Finished();
+		}
+		event->ignore();
+	});
 	audioPlayer->setSource(QUrl::fromLocalFile(path));
-	QWidget::showEvent(event);
 }
 
 void AudioAnnouncePane::hideEvent(QHideEvent *event)
