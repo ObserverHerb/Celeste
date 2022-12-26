@@ -1,5 +1,5 @@
 #define MyAppName "Celeste"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.00"
 #define MyAppPublisher "The Engineering Deck"
 #define MyAppURL "https://github.com/EngineeringDeck/Celeste"
 #define MyAppExeName "Celeste.exe"
@@ -30,25 +30,22 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "C:\src\Celeste\packaging\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\src\Celeste\packaging\Pulsar.dll"; DestDir: "{code:OBSLocation}"; Flags: ignoreversion; Components: pulsar
-Source: "C:\src\Celeste\packaging\D3Dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\src\Celeste\packaging\libcrypto-1_1-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\libEGL.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\libGLESv2.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\src\Celeste\packaging\libssl-1_1-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5Core.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5Gui.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5Multimedia.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5MultimediaWidgets.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5Network.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5Widgets.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt5WinExtras.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\audio\*"; DestDir: "{app}\audio"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\bearer\*"; DestDir: "{app}\bearer"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\src\Celeste\packaging\Qt6Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\Qt6Gui.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\Qt6Multimedia.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\Qt6MultimediaWidgets.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\Qt6Network.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\Qt6Svg.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\Qt6Widgets.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\src\Celeste\packaging\iconengines\*"; DestDir: "{app}\iconengines"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\src\Celeste\packaging\imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\mediaservice\*"; DestDir: "{app}\mediaservice"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\src\Celeste\packaging\networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\src\Celeste\packaging\platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\playlistformats\*"; DestDir: "{app}\playlistformats"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\src\Celeste\packaging\styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\src\Celeste\packaging\tls\*"; DestDir: "{app}\tls"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\src\Celeste\packaging\translations\*"; DestDir: "{app}\translations"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
