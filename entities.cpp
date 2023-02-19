@@ -127,6 +127,7 @@ namespace Music
 		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::MediaError);
 		connect(&player,&QMediaPlayer::playbackStateChanged,this,&Player::StateChanged);
 		connect(&player,&QMediaPlayer::mediaStatusChanged,this,&Player::MediaStatusChanged);
+		connect(&volumeAdjustment,&QPropertyAnimation::finished,this,&Player::VolumeMuted);
 	}
 
 	void Player::Start()
@@ -187,6 +188,15 @@ namespace Music
 		volumeAdjustment.setStartValue(player.audioOutput()->volume());
 		volumeAdjustment.setEndValue(TranslateVolume(targetVolume));
 		volumeAdjustment.start();
+	}
+
+	void Player::VolumeMuted()
+	{
+		if (player.audioOutput()->volume() == 0.0f)
+		{
+			emit Print(QString("Silencing vibe player"));
+			player.stop();
+		}
 	}
 
 	QString Player::SongTitle() const

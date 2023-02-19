@@ -124,6 +124,7 @@ namespace Music
 		void StateChanged(QMediaPlayer::PlaybackState state);
 		void MediaStatusChanged(QMediaPlayer::MediaStatus status);
 		void MediaError(QMediaPlayer::Error error,const QString &errorString);
+		void VolumeMuted();
 	};
 
 	namespace ID3
