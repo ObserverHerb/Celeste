@@ -124,7 +124,7 @@ namespace Music
 		player.setAudioOutput(&output);
 		player.audioOutput()->setVolume(TranslateVolume(initialVolume));
 
-		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::DispatchError);
+		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::MediaError);
 		connect(&player,&QMediaPlayer::playbackStateChanged,this,&Player::StateChanged);
 		connect(&player,&QMediaPlayer::mediaStatusChanged,this,&Player::MediaStatusChanged);
 	}
@@ -246,19 +246,33 @@ namespace Music
 
 	void Player::StateChanged(QMediaPlayer::PlaybackState state)
 	{
-		if (state == QMediaPlayer::PlayingState) emit Print(QString("Now playing %1 by %2").arg(player.metaData().stringValue(QMediaMetaData::Title),player.metaData().stringValue(QMediaMetaData::AlbumArtist)));
+		switch (state)
+		{
+		case QMediaPlayer::PlayingState:
+			emit Print(QString("Now playing %1 by %2").arg(player.metaData().stringValue(QMediaMetaData::Title),player.metaData().stringValue(QMediaMetaData::AlbumArtist)));
+			break;
+		case QMediaPlayer::StoppedState:
+			disconnect(autoPlay);
+			break;
+		}
 	}
 
 	void Player::MediaStatusChanged(QMediaPlayer::MediaStatus status)
 	{
 		if (status == QMediaPlayer::EndOfMedia)
 		{
-			if (Next() && loop) Start();
+			if (Next() && loop)
+			{
+				autoPlay=connect(&player,&QMediaPlayer::mediaStatusChanged,[this](QMediaPlayer::MediaStatus status) {
+					if (status == QMediaPlayer::LoadedMedia) Start();
+				});
+			}
 		}
 	}
 
-	void Player::DispatchError(QMediaPlayer::Error error,const QString &errorString)
+	void Player::MediaError(QMediaPlayer::Error error,const QString &errorString)
 	{
+		disconnect(autoPlay);
 		emit Print(QString{"Failed to start: %1"}.arg(errorString));
 	}
 

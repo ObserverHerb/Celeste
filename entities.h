@@ -106,6 +106,7 @@ namespace Music
 		QMediaPlayer player;
 		QAudioOutput output;
 		File::List sources;
+		QMetaObject::Connection autoPlay;
 		bool loop;
 		ApplicationSetting settingSuppressedVolume;
 		QPropertyAnimation volumeAdjustment;
@@ -122,7 +123,7 @@ namespace Music
 	protected slots:
 		void StateChanged(QMediaPlayer::PlaybackState state);
 		void MediaStatusChanged(QMediaPlayer::MediaStatus status);
-		void DispatchError(QMediaPlayer::Error error,const QString &errorString);
+		void MediaError(QMediaPlayer::Error error,const QString &errorString);
 	};
 
 	namespace ID3
