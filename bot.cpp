@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QTimeZone>
 #include <QNetworkReply>
+#include <ranges>
 #include "bot.h"
 #include "globals.h"
 
@@ -27,6 +28,7 @@ const char *JSON_KEY_COMMAND_PROTECTED="protected";
 const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
 const char *JSON_KEY_COMMAND_REDEMPTION="redemption";
+const char *JSON_KEY_COMMAND_VIEWERS="viewers";
 const char *JSON_KEY_DATA="data";
 const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
@@ -189,6 +191,7 @@ const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
 				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
 				Command::FileListFilters(*type),
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_MESSAGE,{}).toString(),
+				Container::Resolve(jsonObject,JSON_KEY_COMMAND_VIEWERS,{}).toVariant().toStringList(),
 				Container::Resolve(jsonObject,JSON_KEY_COMMAND_PROTECTED,false).toBool()
 			}});
 		}
@@ -242,6 +245,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 			}
 			if (!command.Message().isEmpty()) object.insert(JSON_KEY_COMMAND_MESSAGE,command.Message());
 			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
+			if (!command.Viewers().empty()) object.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(command.Viewers()));
 			break;
 		case CommandType::VIDEO:
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
@@ -253,6 +257,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
 			}
 			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
+			if (!command.Viewers().empty()) object.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(command.Viewers()));
 			break;
 		case CommandType::PULSAR:
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_PULSAR);
@@ -329,6 +334,7 @@ void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObje
 		jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
 		Command::FileListFilters(*type),
 		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
+		{},
 		false
 	};
 }
@@ -573,22 +579,56 @@ void Bot::DispatchArrival(const QString &login)
 {
 	if (auto viewer=viewers.find(login); viewer != viewers.end())
 	{
+		// if the viewer is a bot or is already welcomed, bail
 		if (viewer->second.bot || viewer->second.welcomed) return;
 	}
 	else
 	{
+		// we've never seen this person before, so add a new object to represent them
 		viewers.insert({login,{}});
 	}
 
-	if (!settingArrivalSound) return; // this isn't an error; clearing the setting is how you turn arrival announcements off
-
+	// viewer (whether they've been seen before or not) hasn't been welcomed yet
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
 		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settingRaidInterruptDuration)) return;
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
-			emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+			// Do we have a sound configured to announce them with? If so, fire the signal.
+			if (settingArrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+
+			// Do we have any commands that are triggered by the viewers we've seen?
+			for (const Command &candidateCommand : commands | std::views::values | std::views::filter([](const Command &command) {
+				return !command.Viewers().isEmpty();
+			}))
+			{
+				// look through the list of viewers attached to the command
+				// we're looking for when all of the viewers in the list have been welcomed _except_ the one that just arrived
+				bool triggerViewerIsCandidate=false;
+				if (std::all_of(candidateCommand.Viewers().begin(),candidateCommand.Viewers().end(),[&triggerViewerIsCandidate,&triggerViewer=viewer,this](const QString &name) {
+					auto candidateViewer=viewers.find(name);
+					if (candidateViewer != viewers.end()) // if the name from the command is in the list of names we've seen in the channel
+					{
+						// is this the triggering viewer?
+						if (triggerViewer.Name() == candidateViewer->first)
+						{
+							// if so, we only want to act if they haven't been welcomed yet
+							if (candidateViewer->second.welcomed) return false;
+							triggerViewerIsCandidate=true;
+						}
+						else
+						{
+							// otherwise, we want to make sure this person has been welcomed already
+							if (!candidateViewer->second.welcomed) return false;
+						}
+						return true;
+					}
+					return false;
+				}) && triggerViewerIsCandidate) emit DispatchCommand(candidateCommand,security.Administrator());
+			}
+
+			// save the viewer object and its attributes, marking it as welcomed
 			viewers.at(viewer.Name()).welcomed=true;
 			SaveViewerAttributes(false);
 			emit Welcomed(viewer.Name());

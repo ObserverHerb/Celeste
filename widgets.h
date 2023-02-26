@@ -131,11 +131,11 @@ namespace UI
 			PULSAR
 		};
 
-		class Aliases : public QDialog
+		class NamesList : public QDialog
 		{
 			Q_OBJECT
 		public:
-			Aliases(QWidget *parent);
+			NamesList(const QString &title,const QString &placeholder,QWidget *parent);
 			void Populate(const QStringList &names);
 			QStringList operator()() const;
 		protected:
@@ -161,6 +161,7 @@ namespace UI
 			QString Description() const;
 			QStringList Aliases() const;
 			void Aliases(const QStringList &names);
+			QStringList Triggers() const;
 			QString Path() const;
 			QStringList Filters() const;
 			CommandType Type() const;
@@ -175,6 +176,7 @@ namespace UI
 			QLineEdit name;
 			QLineEdit description;
 			QPushButton openAliases;
+			QPushButton openTriggers;
 			QLineEdit path;
 			QPushButton browse;
 			QComboBox type;
@@ -182,7 +184,8 @@ namespace UI
 			QCheckBox duplicates;
 			QCheckBox protect;
 			QTextEdit message;
-			UI::Commands::Aliases aliases;
+			UI::Commands::NamesList aliases;
+			UI::Commands::NamesList triggers;
 			void Native();
 			void Pulsar();
 			void Browse();
@@ -202,7 +205,7 @@ namespace UI
 			void TypeChanged(int index);
 		};
 
-		class Dialog : public QDialog		
+		class Dialog : public QDialog
 		{
 			Q_OBJECT
 		public:

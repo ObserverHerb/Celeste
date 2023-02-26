@@ -48,12 +48,12 @@ class Command
 public:
 	using Lookup=std::unordered_map<QString,Command>;
 	using Entry=std::pair<const QString,Command>;
-	Command() : Command({},{},CommandType::BLANK,false,true,{},{},{}) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},protect) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(std::make_shared<File::List>(path,filters)), message(message), parent(nullptr) { }
+	Command() : Command({},{},CommandType::BLANK,false,true,{},{},{},{}) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},{},protect) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,const QStringList &viewers,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(std::make_shared<File::List>(path,filters)), message(message), viewers(viewers), parent(nullptr) { }
 	Command(const QString &name,Command* const parent);
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), duplicates(command.duplicates), protect(command.protect), path(command.path), files(command.files), message(message), parent(nullptr) { }
-	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), duplicates(other.duplicates), protect(other.protect), path(other.path), files(other.files), message(other.message), parent(nullptr) { }
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), duplicates(command.duplicates), protect(command.protect), path(command.path), files(command.files), message(message), viewers(command.viewers), parent(nullptr) { }
+	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), duplicates(other.duplicates), protect(other.protect), path(other.path), files(other.files), message(other.message), viewers(other.viewers), parent(nullptr) { }
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
@@ -63,6 +63,7 @@ public:
 	const QString& Path() const { return path; }
 	const QString File();
 	const QString& Message() const { return message; }
+	const QStringList& Viewers() const { return viewers; }
 	const Command* Parent() const { return parent; }
 	const std::vector<Command*>& Children() const { return children; }
 	static QStringList FileListFilters(const CommandType type);
@@ -76,6 +77,7 @@ protected:
 	QString path;
 	std::shared_ptr<File::List> files;
 	QString message;
+	QStringList viewers; //! the names of the viewers needed in chat to trigger the command
 	Command *parent;
 	std::vector<Command*> children;
 };

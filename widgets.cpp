@@ -186,7 +186,13 @@ namespace UI
 
 	namespace Commands
 	{
-		Aliases::Aliases(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
+		/*!
+		 * \brief NamesList::NamesList
+		 * \param title Window title of the dialog
+		 * \param placeholder Descriptive text for input field for adding items to the list
+		 * \param parent Parent QWidget that contains the dialog
+		 */
+		NamesList::NamesList(const QString &title,const QString &placeholder,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			layout(this),
 			list(this),
 			name(this),
@@ -194,36 +200,36 @@ namespace UI
 			remove(Text::BUTTON_REMOVE,this)
 		{
 			setModal(true);
-			setWindowTitle("Command Aliases");
+			setWindowTitle(title);
 
 			setLayout(&layout);
 
-			name.setPlaceholderText("Alias");
+			name.setPlaceholderText(placeholder);
 
 			layout.addWidget(&list,0,0,1,3);
 			layout.addWidget(&name,1,0);
 			layout.addWidget(&add,1,1);
 			layout.addWidget(&remove,1,2);
 
-			connect(&add,&QPushButton::clicked,this,&Aliases::Add);
-			connect(&remove,&QPushButton::clicked,this,&Aliases::Remove);
+			connect(&add,&QPushButton::clicked,this,&NamesList::Add);
+			connect(&remove,&QPushButton::clicked,this,&NamesList::Remove);
 
 			setSizeGripEnabled(true);
 		}
 
-		void Aliases::Populate(const QStringList &names)
+		void NamesList::Populate(const QStringList &names)
 		{
 			for (const QString &name : names) list.addItem(name);
 		}
 
-		QStringList Aliases::operator()() const
+		QStringList NamesList::operator()() const
 		{
 			QStringList result;
 			for (int index=0; index < list.count(); index++) result.append(list.item(index)->text());
 			return result;
 		}
 
-		void Aliases::Add()
+		void NamesList::Add()
 		{
 			const QString candidate=name.text();
 			if (!list.findItems(candidate,Qt::MatchExactly).isEmpty())
@@ -241,7 +247,7 @@ namespace UI
 			list.addItem(candidate);
 		}
 
-		void Aliases::Remove()
+		void NamesList::Remove()
 		{
 			QListWidgetItem *item=list.currentItem();
 			if (!item) return;
@@ -249,7 +255,7 @@ namespace UI
 			if (item) delete item;
 		}
 
-		void Aliases::hideEvent(QHideEvent *event)
+		void NamesList::hideEvent(QHideEvent *event)
 		{
 			emit Finished();
 		}
@@ -260,6 +266,7 @@ namespace UI
 			name(this),
 			description(this),
 			openAliases("Aliases",this),
+			openTriggers("Triggers",this),
 			path(this),
 			browse(Text::BROWSE,this),
 			type(this),
@@ -267,7 +274,8 @@ namespace UI
 			duplicates("Duplicates",this),
 			protect("Protect",this),
 			message(this),
-			aliases(this)
+			aliases(QStringLiteral("Command Aliases"),QStringLiteral("Alias"),this),
+			triggers(QStringLiteral("Command Triggers"),QStringLiteral("Viewer Name"),this)
 		{
 			setLayout(&layout);
 
@@ -288,21 +296,22 @@ namespace UI
 			name.setPlaceholderText("Command Name");
 			detailsLayout->addWidget(&name,0,0);
 			detailsLayout->addWidget(&openAliases,0,1);
-			detailsLayout->addWidget(&protect,0,2);
+			detailsLayout->addWidget(&openTriggers,0,2);
+			detailsLayout->addWidget(&protect,0,3);
 			description.setPlaceholderText("Command Description");
-			detailsLayout->addWidget(&description,1,0,1,3);
-			detailsLayout->addWidget(&path,2,0,1,2);
-			detailsLayout->addWidget(&browse,2,2,1,1);
+			detailsLayout->addWidget(&description,1,0,1,4);
+			detailsLayout->addWidget(&path,2,0,1,3);
+			detailsLayout->addWidget(&browse,2,3,1,1);
 			type.addItems({
 				"Video",
 				"Announce",
 				"Pulsar"
 			});
 			type.setPlaceholderText("Native");
-			detailsLayout->addWidget(&type,3,0,1,1);
-			detailsLayout->addWidget(&random,3,1,1,1);
-			detailsLayout->addWidget(&duplicates,3,2,1,1);
-			detailsLayout->addWidget(&message,4,0,1,3);
+			detailsLayout->addWidget(&type,3,0,1,2);
+			detailsLayout->addWidget(&random,3,2,1,1);
+			detailsLayout->addWidget(&duplicates,3,3,1,1);
+			detailsLayout->addWidget(&message,4,0,1,4);
 			frameLayout->addWidget(&details);
 
 			connect(&header,&QPushButton::clicked,this,&Entry::ToggleFold);
@@ -310,16 +319,18 @@ namespace UI
 			connect(&name,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::UpdateHeader));
 			connect(&description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
 			connect(&openAliases,&QPushButton::clicked,&aliases,&QDialog::show);
+			connect(&openTriggers,&QPushButton::clicked,&triggers,&QDialog::show);
 			connect(&path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 			connect(&random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
 			connect(&message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 			connect(&type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 			connect(&browse,&QPushButton::clicked,this,&Entry::Browse);
-			connect(&aliases,&Aliases::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
+			connect(&aliases,&NamesList::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
 
 			name.installEventFilter(this);
 			description.installEventFilter(this);
 			aliases.installEventFilter(this);
+			triggers.installEventFilter(this);
 			path.installEventFilter(this);
 			browse.installEventFilter(this);
 			type.installEventFilter(this);
@@ -334,6 +345,7 @@ namespace UI
 			random.setChecked(command.Random());
 			duplicates.setChecked(command.Duplicates());
 			message.setText(command.Message());
+			triggers.Populate(command.Viewers());
 
 			int defaultIndex=static_cast<int>(Type());
 			switch (command.Type())
@@ -375,6 +387,11 @@ namespace UI
 		{
 			aliases.Populate(names);
 			UpdateHeader();
+		}
+
+		QStringList Entry::Triggers() const
+		{
+			return triggers();
 		}
 
 		QString Entry::Path() const
@@ -691,6 +708,7 @@ namespace UI
 				{},
 				Command::FileListFilters(CommandType::VIDEO),
 				{},
+				{},
 				false
 			},this);
 			entries[entry->Name()]=entry;
@@ -755,6 +773,7 @@ namespace UI
 					entry->Path(),
 					entry->Filters(),
 					entry->Message(),
+					entry->Triggers(),
 					entry->Protected()
 				};
 				commands[command.Name()]=command;
