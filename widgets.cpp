@@ -239,6 +239,7 @@ namespace UI
 			}
 
 			list.addItem(candidate);
+			name.clear();
 		}
 
 		void Aliases::Remove()
