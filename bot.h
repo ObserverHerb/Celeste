@@ -82,7 +82,6 @@ protected:
 	ApplicationSetting settingSubscriptionSound;
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
-	ApplicationSetting settingHostSound;
 	ApplicationSetting settingDeniedCommandVideo;
 	ApplicationSetting settingUptimeHistory;
 	ApplicationSetting settingCommandNameAgenda;
@@ -115,7 +114,6 @@ protected:
 	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
 	void DispatchCommand(const Command &command,const QString &login);
 	void DispatchArrival(const QString &login);
-	bool DispatchChatNotification(const QStringView &message);
 	void DispatchVideo(Command command);
 	void DispatchCommandList();
 	void DispatchFollowage(const Viewer::Local &viewer);
@@ -151,7 +149,6 @@ signals:
 	void AnnounceRaid(const QString &viewer,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
-	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
 	void AnnounceDeniedCommand(const QString &videoPath);
 	void Welcomed(const QString &user);
 public slots:

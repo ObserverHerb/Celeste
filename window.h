@@ -52,7 +52,6 @@ public slots:
 	void AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath);
 	void AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
-	void AnnounceHost(const QString &hostingChannel,const QString &audioPath);
 	void AnnounceDeniedCommand(const QString &videoPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);

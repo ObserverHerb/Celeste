@@ -134,16 +134,6 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 	StageEphemeralPane(pane);
 }
 
-void Window::AnnounceHost(const QString &hostingChannel,const QString &audioPath)
-{
-	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{hostingChannel,1.5},
-		{"is hosting the stream!",1}
-	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
-	StageEphemeralPane(pane);
-}
-
 void Window::AnnounceDeniedCommand(const QString &videoPath)
 {
 	VideoPane *pane=new VideoPane(videoPath,this);

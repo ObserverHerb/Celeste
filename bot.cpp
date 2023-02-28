@@ -52,7 +52,6 @@ const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 wa
 const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
 const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
 const char *TWITCH_API_ERROR_AUTH="Auth token or client ID missing or invalid";
-const char16_t *TWITCH_SYSTEM_ACCOUNT_NAME=u"jtv";
 const char16_t *CHAT_BADGE_BROADCASTER=u"broadcaster";
 const char16_t *CHAT_BADGE_MODERATOR=u"moderator";
 const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
@@ -91,7 +90,6 @@ Bot::Bot(Security &security,QObject *parent) : QObject(parent),
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
-	settingHostSound(SETTINGS_CATEGORY_EVENTS,"Host"),
 	settingDeniedCommandVideo(SETTINGS_CATEGORY_COMMANDS,"Denied"),
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0),
 	settingCommandNameAgenda(SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"),
@@ -682,11 +680,6 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	if (!user) return;
 	login=*user;
 
-	if (login == TWITCH_SYSTEM_ACCOUNT_NAME)
-	{
-		if (DispatchChatNotification(remainingText.toString())) return;
-	}
-
 	// determine if this is a command, and if so, process it as such
 	// and if it's valid, we're done
 	window=message;
@@ -865,18 +858,6 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 			break;
 		};
 	});
-}
-
-bool Bot::DispatchChatNotification(const QStringView &message)
-{
-	if (message.contains(u"is now hosting you."))
-	{
-		std::optional<QStringView> host=StringView::First(message,' ');
-		if (!host) return false;
-		emit AnnounceHost(host->toString(),settingHostSound);
-		return true;
-	}
-	return false;
 }
 
 void Bot::DispatchVideo(Command command)
