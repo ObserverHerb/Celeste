@@ -300,6 +300,7 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 		{QString("%3").arg(album),0.75}
 	},coverArt,this);
 	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
 
