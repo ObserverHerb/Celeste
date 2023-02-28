@@ -27,6 +27,17 @@ namespace StyleSheet
 	const QString Colors(const QColor &foreground,const QColor &background);
 }
 
+class StaticTextEdit : public QTextEdit
+{
+	Q_OBJECT
+public:
+	StaticTextEdit(QWidget *parent);
+protected:
+	void contextMenuEvent(QContextMenuEvent *event) override;
+signals:
+	void ContextMenu(QContextMenuEvent *event);
+};
+
 class PinnedTextEdit : public QTextEdit
 {
 	Q_OBJECT

@@ -30,6 +30,13 @@ namespace StyleSheet
 	}
 }
 
+StaticTextEdit::StaticTextEdit(QWidget *parent) : QTextEdit(parent) { }
+
+void StaticTextEdit::contextMenuEvent(QContextMenuEvent *event)
+{
+	emit ContextMenu(event);
+}
+
 PinnedTextEdit::PinnedTextEdit(QWidget *parent) : QTextEdit(parent), scrollTransition(QPropertyAnimation(verticalScrollBar(),"sliderPosition"))
 {
 	connect(&scrollTransition,&QPropertyAnimation::finished,this,&PinnedTextEdit::Tail);

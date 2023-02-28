@@ -8,30 +8,32 @@
 const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
 
 StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
+	output(this),
 	settingFont(SETTINGS_CATEGORY,"Font","Droid Sans Mono"),
 	settingFontSize(SETTINGS_CATEGORY,"FontSize",10),
 	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
 	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
 {
-	output=new QTextEdit(this);
-	output->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
-	output->setFontFamily(settingFont);
-	output->setFontPointSize(settingFontSize);
-	output->document()->setDocumentMargin(16);
-	output->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	output->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	output->setFrameStyle(QFrame::NoFrame);
+	output.setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	output.setFontFamily(settingFont);
+	output.setFontPointSize(settingFontSize);
+	output.document()->setDocumentMargin(16);
+	output.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	output.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	output.setFrameStyle(QFrame::NoFrame);
+
+	connect(&output,&StaticTextEdit::ContextMenu,this,&StatusPane::ContextMenu);
 
 	setLayout(new QVBoxLayout(this));
 	layout()->setContentsMargins(0,0,0,0);
-	layout()->addWidget(output);
+	layout()->addWidget(&output);
 }
 
 void StatusPane::Print(const QString &text)
 {
-	output->insertPlainText(text);
-	output->insertPlainText("\n");
-	output->ensureCursorVisible();
+	output.insertPlainText(text);
+	output.insertPlainText("\n");
+	output.ensureCursorVisible();
 }
 
 ApplicationSetting& StatusPane::Font()

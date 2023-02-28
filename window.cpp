@@ -56,7 +56,9 @@ Window::Window() : QMainWindow(nullptr),
 	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
 	connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
 
-	SwapPersistentPane(new StatusPane(this));
+	StatusPane *pane=new StatusPane(this);
+	connect(pane,&StatusPane::ContextMenu,this,&Window::contextMenuEvent);
+	SwapPersistentPane(pane);
 }
 
 void Window::SwapPersistentPane(PersistentPane *pane)

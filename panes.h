@@ -39,12 +39,14 @@ public:
 	ApplicationSetting& ForegroundColor();
 	ApplicationSetting& BackgroundColor();
 protected:
-	QTextEdit *output;
+	StaticTextEdit output;
 	ApplicationSetting settingFont;
 	ApplicationSetting settingFontSize;
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
+signals:
+	void ContextMenu(QContextMenuEvent *event);
 public slots:
 	void Print(const QString &text) override;
 };
