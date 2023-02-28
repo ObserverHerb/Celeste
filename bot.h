@@ -122,6 +122,7 @@ protected:
 	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
 	void DispatchUptime(bool total);
+	void DispatchHelpText();
 	void ToggleVibeKeeper();
 	void AdjustVibeVolume(Command command);
 	void StreamTitle(const QString &title);

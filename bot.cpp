@@ -499,10 +499,7 @@ void Bot::StartClocks()
 	inactivityClock.start();
 
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
-	connect(&helpClock,&QTimer::timeout,this,[this]() {
-		std::unordered_map<QString,Command>::iterator candidate=std::next(std::begin(commands),Random::Bounded(commands));
-		emit ShowCommand(candidate->second.Name(),candidate->second.Description());
-	});
+	connect(&helpClock,&QTimer::timeout,this,&Bot::DispatchHelpText);
 	helpClock.start();
 }
 
@@ -1041,6 +1038,19 @@ void Bot::DispatchUptime(bool total)
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
+}
+
+void Bot::DispatchHelpText()
+{
+	std::vector<const Command*> candidates;
+	for (auto candidate=commands.begin(); candidate != commands.end(); ++candidate)
+	{
+		// NOTE: for some reason I can't completely explain, if I use a range-loop here,
+		// I end up with a vector full of the same command
+		if (!candidate->second.Protected()) candidates.push_back(&candidate->second);
+	}
+	const Command *candidate=candidates[Random::Bounded(candidates)];
+	emit ShowCommand(candidate->Name(),candidate->Description());
 }
 
 void Bot::ToggleVibeKeeper()
