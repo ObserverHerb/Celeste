@@ -87,6 +87,7 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 		{message,1}
 	},this);
 	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
 
