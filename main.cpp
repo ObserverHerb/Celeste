@@ -222,8 +222,8 @@ int main(int argc,char *argv[])
 			closeEvent->accept();
 		});
 
-		if (!log.Open()) throw std::runtime_error("Could not open log file!");
-		if (!server.Listen()) throw std::runtime_error("Could not start server!");
+		if (!log.Open()) QMessageBox(QMessageBox::Critical,"Error Opening Log","Failed to open log file. Log messages will not be saved to filesystem",QMessageBox::Ok).exec();
+		if (!server.Listen()) QMessageBox(QMessageBox::Critical,"Error Starting Web Server","Unable to start local server. Events will not be received from Twitch.",QMessageBox::Ok).exec();
 		pulsar.LoadTriggers();
 		window.show();
 
