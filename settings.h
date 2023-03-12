@@ -10,7 +10,7 @@
 class BasicSetting
 {
 public:
-	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(std::make_shared<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName))
+	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &defaultValue=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(defaultValue), source(std::make_shared<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName))
 	{
 		// if the setting is the word "true" or "false", convert the value to an actual boolean
 		// this is because everything is read in as a QString (https://stackoverflow.com/questions/32654233/qsettings-with-different-types)
