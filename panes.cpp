@@ -252,8 +252,9 @@ void VideoPane::hideEvent(QHideEvent *event)
 
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
 
-AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(parent),
-	output(new QLabel(text,this)),
+AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent) : EphemeralPane(parent),
+	lines(lines),
+	output(new QLabel(this)),
 	settingDuration(SETTINGS_CATEGORY,"Duration",5000),
 	settingFont(SETTINGS_CATEGORY,"Font","Copperplate Gothic Bold"),
 	settingFontSize(SETTINGS_CATEGORY,"FontSize",20),
@@ -274,11 +275,17 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : EphemeralPane(
 
 	clock.setSingleShot(true);
 	connect(&clock,&QTimer::timeout,this,&AnnouncePane::Finished);
+	connect(this,&AnnouncePane::Resized,this,&AnnouncePane::AdjustText,Qt::QueuedConnection);
 }
 
-AnnouncePane::AnnouncePane(const std::vector<std::pair<QString,double>> &lines,QWidget *parent) : AnnouncePane("",parent)
+AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(Lines{},parent)
 {
-	output->setText(BuildParagraph(lines));
+	SingleLine(text);
+}
+
+void AnnouncePane::SingleLine(const QString &text)
+{
+	lines.emplace_back(Line{text,1});
 }
 
 bool AnnouncePane::event(QEvent *event)
@@ -300,20 +307,34 @@ void AnnouncePane::hideEvent(QHideEvent *event)
 	QWidget::hideEvent(event);
 }
 
+void AnnouncePane::resizeEvent(QResizeEvent *event)
+{
+	emit Resized(event->size().width());
+	QWidget::resizeEvent(event);
+}
+
+void AnnouncePane::AdjustText(int width)
+{
+	output->setText(BuildParagraph(width));
+}
+
 void AnnouncePane::Polish()
 {
 	layout()->addWidget(output);
 }
 
-const QString AnnouncePane::BuildParagraph(const std::vector<std::pair<QString,double>> &lines)
+QString AnnouncePane::BuildParagraph(int width)
 {
 	QString paragraph;
-	for (const std::pair<QString,double> &line : lines)
+	QFont font=output->font();
+	for (const Line &line : lines)
 	{
-		if (line.second == 1)
+		font.setPointSizeF(output->font().pointSizeF()*line.second);
+		int pointSize=StringConvert::RestrictFontWidth(font,line.first,width-output->margin()*2);
+		if (line.second == 1 && font.pointSizeF() == output->font().pointSizeF())
 			paragraph.append(QString("%1").arg(line.first));
 		else
-			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.first,StringConvert::Integer(static_cast<int>(settingFontSize)*line.second)));
+			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.first,StringConvert::Integer(pointSize)));
 		paragraph.append("<br>");
 	}
 	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);
@@ -349,7 +370,7 @@ ApplicationSetting& AnnouncePane::Duration()
 	return settingDuration;
 }
 
-ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(text,parent), commands(new ScrollingTextEdit(this))
+ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(lines,parent), commands(new ScrollingTextEdit(this))
 {
 	commands->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	commands->setFontFamily(settingFont);
@@ -365,11 +386,6 @@ ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent
 	connect(commands,&ScrollingTextEdit::Finished,this,&ScrollingAnnouncePane::Finished);
 }
 
-ScrollingAnnouncePane::ScrollingAnnouncePane(const Lines &lines,QWidget *parent) : ScrollingAnnouncePane("",parent)
-{
-	commands->setText(BuildParagraph(lines));
-}
-
 void ScrollingAnnouncePane::Polish()
 {
 	layout()->addWidget(commands);
@@ -382,7 +398,12 @@ void ScrollingAnnouncePane::showEvent(QShowEvent *event)
 	QWidget::showEvent(event);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AnnouncePane(text,parent), audioPlayer(Multimedia::Player(this,1)), path(path)
+void ScrollingAnnouncePane::resizeEvent(QResizeEvent *event)
+{
+	QWidget::resizeEvent(event);
+}
+
+AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AnnouncePane(lines,parent), audioPlayer(Multimedia::Player(this,1)), path(path)
 {
 	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
@@ -392,12 +413,11 @@ AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWi
 		emit Print(QString("Failed to play audio: %1").arg(errorString));
 		emit Finished();
 	});
-	output->setText(text);
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AudioAnnouncePane("",path,parent)
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AudioAnnouncePane(Lines{},path,parent)
 {
-	output->setText(BuildParagraph(lines));
+	SingleLine(text);
 }
 
 void AudioAnnouncePane::showEvent(QShowEvent *event)
@@ -425,7 +445,7 @@ void AudioAnnouncePane::hideEvent(QHideEvent *event)
 	QWidget::hideEvent(event);
 }
 
-ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : AnnouncePane(text,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
+ImageAnnouncePane::ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent) : AnnouncePane(lines,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
 {
 	stack=new QStackedWidget(this);
 	qobject_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
@@ -443,9 +463,9 @@ ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWi
 	output->setGraphicsEffect(shadow);
 }
 
-ImageAnnouncePane::ImageAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,QWidget *parent) : ImageAnnouncePane("",image,parent)
+ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : ImageAnnouncePane(Lines{},image,parent)
 {
-	output->setText(BuildParagraph(lines));
+	SingleLine(text);
 }
 
 void ImageAnnouncePane::resizeEvent(QResizeEvent *event)
@@ -455,6 +475,7 @@ void ImageAnnouncePane::resizeEvent(QResizeEvent *event)
 		int coverSize=std::max(event->size().width(),event->size().height());
 		if (!image.isNull()) pixmap->setPixmap(QPixmap::fromImage(QImage(image).scaled(QSize(coverSize,coverSize))));
 	}
+	AnnouncePane::resizeEvent(event);
 }
 
 void ImageAnnouncePane::Polish()
@@ -465,22 +486,22 @@ void ImageAnnouncePane::Polish()
 	layout()->addWidget(stack);
 }
 
-MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane("",parent), imagePane(nullptr)
+MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane(Lines{},parent), imagePane(nullptr)
 {
-	audioPane=new AudioAnnouncePane("",path,this);
+	audioPane=new AudioAnnouncePane(Lines{},path,this);
 	connect(audioPane,&AudioAnnouncePane::Finished,this,&MultimediaAnnouncePane::Finished);
 	connect(audioPane,&AudioAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
 	connect(imagePane,&ImageAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
 }
 
+MultimediaAnnouncePane::MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
+{
+	imagePane=new ImageAnnouncePane(lines,image,this);
+}
+
 MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
 {
 	imagePane=new ImageAnnouncePane(text,image,this);
-}
-
-MultimediaAnnouncePane::MultimediaAnnouncePane(const std::vector<std::pair<QString,double>> &lines,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
-{
-	imagePane=new ImageAnnouncePane(lines,image,this);
 }
 
 void MultimediaAnnouncePane::Polish()

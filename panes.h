@@ -18,7 +18,8 @@
 #include "widgets.h"
 #include "entities.h"
 
-using Lines=std::vector<std::pair<QString,double>>;
+using Line=std::pair<QString,double>;
+using Lines=std::vector<Line>;
 
 class PersistentPane : public QWidget
 {
@@ -118,10 +119,10 @@ class AnnouncePane : public EphemeralPane
 {
 	Q_OBJECT
 public:
-	AnnouncePane(const QString &text,QWidget *parent);
 	AnnouncePane(const Lines &lines,QWidget *parent);
+	AnnouncePane(const QString &text,QWidget *parent);
 	void Duration(const int duration) { clock.setInterval(duration); }
-	const QString BuildParagraph(const Lines &lines);
+	QString BuildParagraph(int width);
 	ApplicationSetting& Font();
 	ApplicationSetting& FontSize();
 	ApplicationSetting& ForegroundColor();
@@ -129,6 +130,7 @@ public:
 	ApplicationSetting& AccentColor();
 	ApplicationSetting& Duration();
 protected:
+	Lines lines;
 	QLabel *output;
 	QTimer clock;
 	ApplicationSetting settingDuration;
@@ -139,9 +141,15 @@ protected:
 	ApplicationSetting settingAccentColor;
 	static const QString SETTINGS_CATEGORY;
 	virtual void Polish();
+	void SingleLine(const QString &text);
 	bool event(QEvent *event) override;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
+	void resizeEvent(QResizeEvent *event) override;
+signals:
+	void Resized(int width);
+protected slots:
+	void AdjustText(int width);
 };
 
 class ScrollingAnnouncePane : public AnnouncePane
@@ -149,19 +157,19 @@ class ScrollingAnnouncePane : public AnnouncePane
 	Q_OBJECT
 public:
 	ScrollingAnnouncePane(const QString &text,QWidget *parent);
-	ScrollingAnnouncePane(const Lines &lines,QWidget *parent);
 protected:
 	ScrollingTextEdit *commands;
 	void Polish() override;
 	void showEvent(QShowEvent *event) override;
+	void resizeEvent(QResizeEvent *event) override;
 };
 
 class AudioAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent);
 	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent);
+	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent);
 protected:
 	QMediaPlayer *audioPlayer;
 	QString path;
@@ -175,8 +183,8 @@ class ImageAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
 	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent);
+	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
 protected:
 	QGraphicsScene *scene;
 	QGraphicsView *view;
@@ -192,8 +200,8 @@ class MultimediaAnnouncePane : public AnnouncePane
 {
 	Q_OBJECT
 public:
-	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
 	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent);
+	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
 protected:
 	MultimediaAnnouncePane(const QString &path,QWidget *parent);
 	AudioAnnouncePane *audioPane;

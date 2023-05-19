@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QMediaPlayer>
 #include <QAudioOutput>
+#include <QFont>
+#include <QFontMetrics>
 #include <chrono>
 #include <optional>
 #include <random>
@@ -97,6 +99,21 @@ namespace StringConvert
 #else
 		return QString("> (data)");
 #endif
+	}
+
+	inline int RestrictFontWidth(QFont font,const QString &text,int maxPixels)
+	{
+		int originalPointSize=font.pointSize();
+		QFontMetrics metrics{font};
+		QRect bounds=metrics.boundingRect(text);
+		while (bounds.width() > maxPixels)
+		{
+			font.setPointSize(font.pointSize()-1);
+			if (font.pointSize() < 1) return originalPointSize;
+			metrics=QFontMetrics{font};
+			bounds=metrics.boundingRect(text);
+		}
+		return font.pointSize();
 	}
 }
 
