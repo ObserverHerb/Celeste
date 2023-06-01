@@ -10,12 +10,27 @@
 class BasicSetting
 {
 public:
-	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &value=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(value), source(std::make_shared<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName)) { }
+	BasicSetting(const QString &applicationName,const QString &category,const QString &name,const QVariant &defaultValue=QVariant()) : name(QString("%1/%2").arg(category,name)), defaultValue(defaultValue), source(std::make_shared<QSettings>(Platform::Windows() ? QSettings::IniFormat : QSettings::NativeFormat,QSettings::UserScope,qApp->organizationName(),applicationName))
+	{
+		// if the setting is the word "true" or "false", convert the value to an actual boolean
+		// this is because everything is read in as a QString (https://stackoverflow.com/questions/32654233/qsettings-with-different-types)
+		// this is a problem because I'm relying on type information to differentiate between whether a value is false or nonexistent
+		// this hack will have unintended side-effects that may become a problem later
+		QString text=Value().toString();
+		if (text == "true")	Set(true);
+		if (text == "false") Set(false);
+	}
 	const QString Name() const { return name; }
 	const QVariant Value() const { return source->value(name,defaultValue); }
 	void Set(const QVariant &value) { source->setValue(name,value); }
 	void Unset() { source->remove(name); }
-	operator bool() const { return source->contains(name) ? Value().userType() == QMetaType::Bool ? true : true : false; }
+	operator bool() const
+	{
+		const QVariant candidate=Value();
+		if (!candidate.isValid()) return false; // setting does not appear in file, no default value
+		if (Value().userType() == QMetaType::Bool) return candidate.toBool(); // setting appears in file and it a boolean
+		return true; // setting appears in file
+	}
 	operator QString() const { return Value().toString(); }
 	operator unsigned int() const { return Value().toUInt(); }
 	operator int() const { return Value().toInt(); }

@@ -56,7 +56,9 @@ Window::Window() : QMainWindow(nullptr),
 	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
 	connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
 
-	SwapPersistentPane(new StatusPane(this));
+	StatusPane *pane=new StatusPane(this);
+	connect(pane,&StatusPane::ContextMenu,this,&Window::contextMenuEvent);
+	SwapPersistentPane(pane);
 }
 
 void Window::SwapPersistentPane(PersistentPane *pane)
@@ -87,6 +89,7 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 		{message,1}
 	},this);
 	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
 
@@ -128,16 +131,6 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 {
 	AudioAnnouncePane *pane=new AudioAnnouncePane({
 		{message,0.5},
-	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
-	StageEphemeralPane(pane);
-}
-
-void Window::AnnounceHost(const QString &hostingChannel,const QString &audioPath)
-{
-	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{hostingChannel,1.5},
-		{"is hosting the stream!",1}
 	},audioPath,this);
 	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
@@ -200,9 +193,8 @@ void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>
 		if (QStringList aliases=std::get<1>(command); !aliases.empty()) text.append(QString("<span class='aliases'>%1<br></span>").arg("!"+std::get<1>(command).join(", !")));
 		text.append(QString("<span class='description'>%1</span><br></div>").arg(std::get<2>(command)));
 	}
-	ScrollingAnnouncePane *pane=new ScrollingAnnouncePane(text,this);
-	connect(pane,&ScrollingAnnouncePane::Print,this,&Window::Print);
-	pane->LowerPriority();
+	ScrollingPane *pane=new ScrollingPane(text,this);
+	connect(pane,&ScrollingPane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 }
 
@@ -299,6 +291,7 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 		{QString("%3").arg(album),0.75}
 	},coverArt,this);
 	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
 

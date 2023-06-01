@@ -123,7 +123,6 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::AnnounceRaid,&window,&Window::AnnounceRaid);
 		celeste.connect(&celeste,&Bot::AnnounceCheer,&window,&Window::AnnounceCheer);
 		celeste.connect(&celeste,&Bot::AnnounceTextWall,&window,&Window::AnnounceTextWall);
-		celeste.connect(&celeste,&Bot::AnnounceHost,&window,&Window::AnnounceHost);
 		celeste.connect(&celeste,&Bot::AnnounceDeniedCommand,&window,&Window::AnnounceDeniedCommand);
 		celeste.connect(&celeste,&Bot::SetAgenda,&window,&Window::SetAgenda);
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
@@ -223,8 +222,8 @@ int main(int argc,char *argv[])
 			closeEvent->accept();
 		});
 
-		if (!log.Open()) throw std::runtime_error("Could not open log file!");
-		if (!server.Listen()) throw std::runtime_error("Could not start server!");
+		if (!log.Open()) QMessageBox(QMessageBox::Critical,"Error Opening Log","Failed to open log file. Log messages will not be saved to filesystem",QMessageBox::Ok).exec();
+		if (!server.Listen()) QMessageBox(QMessageBox::Critical,"Error Starting Web Server","Unable to start local server. Events will not be received from Twitch.",QMessageBox::Ok).exec();
 		pulsar.LoadTriggers();
 		window.show();
 
