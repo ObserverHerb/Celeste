@@ -193,9 +193,8 @@ void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>
 		if (QStringList aliases=std::get<1>(command); !aliases.empty()) text.append(QString("<span class='aliases'>%1<br></span>").arg("!"+std::get<1>(command).join(", !")));
 		text.append(QString("<span class='description'>%1</span><br></div>").arg(std::get<2>(command)));
 	}
-	ScrollingAnnouncePane *pane=new ScrollingAnnouncePane(text,this);
-	connect(pane,&ScrollingAnnouncePane::Print,this,&Window::Print);
-	pane->LowerPriority();
+	ScrollingPane *pane=new ScrollingPane(text,this);
+	connect(pane,&ScrollingPane::Print,this,&Window::Print);
 	StageEphemeralPane(pane);
 }
 

@@ -250,6 +250,35 @@ void VideoPane::hideEvent(QHideEvent *event)
 	QWidget::hideEvent(event);
 }
 
+const QString ScrollingPane::SETTINGS_CATEGORY="ScrollingPane";
+
+ScrollingPane::ScrollingPane(const QString &text,QWidget *parent) : EphemeralPane(parent,false),
+	commands(new ScrollingTextEdit(this)),
+	settingFont(SETTINGS_CATEGORY,"Font","Copperplate Gothic Bold"),
+	settingFontSize(SETTINGS_CATEGORY,"FontSize",20),
+	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
+	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
+{
+	QGridLayout *gridLayout=new QGridLayout(this);
+	setLayout(gridLayout);
+	gridLayout->setContentsMargins(0,0,0,0);
+	gridLayout->setSpacing(0);
+
+	commands->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	commands->setFontFamily(settingFont);
+	commands->setFontPointSize(settingFontSize);
+	commands->document()->setDefaultStyleSheet(QString("div.name { font-family: '%1'; font-size: %2pt; } span.description, span.aliases { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)),StringConvert::Integer(static_cast<int>(settingFontSize)*0.7)));
+	commands->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
+	commands->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	commands->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	commands->setFrameStyle(QFrame::NoFrame);
+	commands->setCursorWidth(0);
+	commands->setText(text);
+	gridLayout->addWidget(commands);
+
+	connect(commands,&ScrollingTextEdit::Finished,this,&ScrollingPane::Finished);
+}
+
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
 
 AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent) : EphemeralPane(parent),
@@ -262,9 +291,10 @@ AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent) : EphemeralPane(p
 	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000"),
 	settingAccentColor(SETTINGS_CATEGORY,"AccentColor","#ff000000")
 {
-	setLayout(new QVBoxLayout(this));
-	layout()->setContentsMargins(0,0,0,0);
-	layout()->setSpacing(0);
+	QVBoxLayout *verticalLayout=new QVBoxLayout(this);
+	setLayout(verticalLayout);
+	verticalLayout->setContentsMargins(0,0,0,0);
+	verticalLayout->setSpacing(0);
 
 	output->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
 	output->setFont(QFont(settingFont,settingFontSize,QFont::Bold));
@@ -368,39 +398,6 @@ ApplicationSetting& AnnouncePane::AccentColor()
 ApplicationSetting& AnnouncePane::Duration()
 {
 	return settingDuration;
-}
-
-ScrollingAnnouncePane::ScrollingAnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(lines,parent), commands(new ScrollingTextEdit(this))
-{
-	commands->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
-	commands->setFontFamily(settingFont);
-	commands->setFontPointSize(settingFontSize);
-	commands->document()->setDefaultStyleSheet(QString("div.name { font-family: '%1'; font-size: %2pt; } span.description, span.aliases { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)),StringConvert::Integer(static_cast<int>(settingFontSize)*0.7)));
-	commands->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
-	commands->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	commands->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	commands->setFrameStyle(QFrame::NoFrame);
-	commands->setCursorWidth(0);
-	commands->setText(text);
-
-	connect(commands,&ScrollingTextEdit::Finished,this,&ScrollingAnnouncePane::Finished);
-}
-
-void ScrollingAnnouncePane::Polish()
-{
-	layout()->addWidget(commands);
-}
-
-void ScrollingAnnouncePane::showEvent(QShowEvent *event)
-{
-	// override standard announce pane show event so we don't start the clock
-	// let the scrolling text edit tell us when to finish
-	QWidget::showEvent(event);
-}
-
-void ScrollingAnnouncePane::resizeEvent(QResizeEvent *event)
-{
-	QWidget::resizeEvent(event);
 }
 
 AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AnnouncePane(lines,parent), audioPlayer(Multimedia::Player(this,1)), path(path)

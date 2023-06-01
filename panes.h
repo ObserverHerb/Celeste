@@ -115,6 +115,20 @@ protected:
 	void hideEvent(QHideEvent *event) override;
 };
 
+class ScrollingPane : public EphemeralPane
+{
+	Q_OBJECT
+public:
+	ScrollingPane(const QString &text,QWidget *parent);
+protected:
+	ScrollingTextEdit *commands;
+	ApplicationSetting settingFont;
+	ApplicationSetting settingFontSize;
+	ApplicationSetting settingForegroundColor;
+	ApplicationSetting settingBackgroundColor;
+	static const QString SETTINGS_CATEGORY;
+};
+
 class AnnouncePane : public EphemeralPane
 {
 	Q_OBJECT
@@ -150,18 +164,6 @@ signals:
 	void Resized(int width);
 protected slots:
 	void AdjustText(int width);
-};
-
-class ScrollingAnnouncePane : public AnnouncePane
-{
-	Q_OBJECT
-public:
-	ScrollingAnnouncePane(const QString &text,QWidget *parent);
-protected:
-	ScrollingTextEdit *commands;
-	void Polish() override;
-	void showEvent(QShowEvent *event) override;
-	void resizeEvent(QResizeEvent *event) override;
 };
 
 class AudioAnnouncePane : public AnnouncePane
