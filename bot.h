@@ -38,7 +38,7 @@ class Bot : public QObject
 	Q_OBJECT
 public:
 	using NativeCommandFlagLookup=std::unordered_map<QString,NativeCommandFlag>;
-	Bot(Security &security,QObject *parent=nullptr);
+	Bot(Music::Player &musicPlayer,Security &security,QObject *parent=nullptr);
 	Bot(const Bot& other)=delete;
 	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
@@ -65,7 +65,7 @@ protected:
 	Command::Lookup redemptions;
 	NativeCommandFlagLookup nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
-	Music::Player vibeKeeper;
+	Music::Player &vibeKeeper;
 	Music::Player roaster;
 	QTimer inactivityClock;
 	QTimer helpClock;

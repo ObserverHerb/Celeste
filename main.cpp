@@ -45,6 +45,75 @@ enum
 
 using ApplicationWindow=std::conditional<Platform::Windows(),Win32Window,Window>::type;
 
+void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Player &musicPlayer,Log &log,Security &security)
+{
+	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
+		.name=channel->Name(),
+		.protection=channel->Protection()
+	}));
+	configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
+		.backgroundColor=window.BackgroundColor(),
+		.dimensions=window.Dimensions()
+	}));
+	StatusPane statusPane(&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
+		.font=statusPane.Font(),
+		.fontSize=statusPane.FontSize(),
+		.foregroundColor=statusPane.ForegroundColor(),
+		.backgroundColor=statusPane.BackgroundColor()
+	}));
+	ChatPane chatPane(&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
+		.font=chatPane.Font(),
+		.fontSize=chatPane.FontSize(),
+		.foregroundColor=chatPane.ForegroundColor(),
+		.backgroundColor=chatPane.BackgroundColor(),
+		.statusInterval=chatPane.StatusInterval()
+	}));
+	AnnouncePane announcePane(QString{},&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
+		.font=announcePane.Font(),
+		.fontSize=announcePane.FontSize(),
+		.foregroundColor=announcePane.ForegroundColor(),
+		.backgroundColor=announcePane.BackgroundColor(),
+		.accentColor=announcePane.AccentColor(),
+		.duration=announcePane.Duration()
+	}));
+	configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
+		.suppressedVolume=musicPlayer.SuppressedVolume()
+	}));
+	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
+		.arrivalSound=bot.ArrivalSound(),
+		.portraitVideo=bot.PortraitVideo(),
+		.cheerVideo=bot.CheerVideo(),
+		.subscriptionSound=bot.SubscriptionSound(),
+		.raidSound=bot.RaidSound(),
+		.inactivityCooldown=bot.InactivityCooldown(),
+		.helpCooldown=bot.HelpCooldown(),
+		.textWallThreshold=bot.TextWallThreshold(),
+		.textWallSound=bot.TextWallSound()
+	});
+	configureOptions->AddCategory(optionsCategoryBot);
+	configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
+		.directory=log.Directory()
+	}));
+	configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
+
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
+	configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
+	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int finished) {
+		configureOptions->deleteLater();
+	});
+
+	configureOptions->open();
+}
+
 int main(int argc,char *argv[])
 {
 	if constexpr (Platform::Windows()) qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmediafoundation");
@@ -96,7 +165,8 @@ int main(int argc,char *argv[])
 		IRCSocket socket;
 		Channel *channel=new Channel(security,&socket);
 		Server server;
-		Bot celeste(security);
+		Music::Player musicPlayer(true,0);
+		Bot celeste(musicPlayer,security);
 		Pulsar pulsar;
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
@@ -221,6 +291,9 @@ int main(int argc,char *argv[])
 
 			closeEvent->accept();
 		});
+		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
+			ShowOptions(window,channel,celeste,musicPlayer,log,security);
+		});
 
 		if (!log.Open()) QMessageBox(QMessageBox::Critical,"Error Opening Log","Failed to open log file. Log messages will not be saved to filesystem",QMessageBox::Ok).exec();
 		if (!server.Listen()) QMessageBox(QMessageBox::Critical,"Error Starting Web Server","Unable to start local server. Events will not be received from Twitch.",QMessageBox::Ok).exec();
@@ -228,74 +301,8 @@ int main(int argc,char *argv[])
 		window.show();
 
 		UI::Commands::Dialog *configureCommands=nullptr;
-		UI::Options::Dialog *configureOptions=nullptr;
-		Music::Player player(&window,false,0);
 		try
 		{
-			configureOptions=new UI::Options::Dialog(&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
-				.name=channel->Name(),
-				.protection=channel->Protection()
-			}));
-			configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
-				.backgroundColor=window.BackgroundColor(),
-				.dimensions=window.Dimensions()
-			}));
-			StatusPane statusPane(&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
-				.font=statusPane.Font(),
-				.fontSize=statusPane.FontSize(),
-				.foregroundColor=statusPane.ForegroundColor(),
-				.backgroundColor=statusPane.BackgroundColor()
-			}));
-			ChatPane chatPane(&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
-				.font=chatPane.Font(),
-				.fontSize=chatPane.FontSize(),
-				.foregroundColor=chatPane.ForegroundColor(),
-				.backgroundColor=chatPane.BackgroundColor(),
-				.statusInterval=chatPane.StatusInterval()
-			}));
-			AnnouncePane announcePane(QString{},&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
-				.font=announcePane.Font(),
-				.fontSize=announcePane.FontSize(),
-				.foregroundColor=announcePane.ForegroundColor(),
-				.backgroundColor=announcePane.BackgroundColor(),
-				.accentColor=announcePane.AccentColor(),
-				.duration=announcePane.Duration()
-			}));
-			configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
-				.suppressedVolume=player.SuppressedVolume()
-			}));
-			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
-				.arrivalSound=celeste.ArrivalSound(),
-				.portraitVideo=celeste.PortraitVideo(),
-				.cheerVideo=celeste.CheerVideo(),
-				.subscriptionSound=celeste.SubscriptionSound(),
-				.raidSound=celeste.RaidSound(),
-				.inactivityCooldown=celeste.InactivityCooldown(),
-				.helpCooldown=celeste.HelpCooldown(),
-				.textWallThreshold=celeste.TextWallThreshold(),
-				.textWallSound=celeste.TextWallSound()
-			});
-			configureOptions->AddCategory(optionsCategoryBot);
-			configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
-				.directory=log.Directory()
-			}));
-			configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
-
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
-			configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
-			window.connect(&window,&Window::ConfigureOptions,configureOptions,[configureOptions]() {
-				configureOptions->open();
-			});
-
 			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
 			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
 				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
