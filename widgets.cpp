@@ -787,8 +787,8 @@ namespace UI
 			Category::Category(QWidget *parent,const QString &name) : QFrame(parent),
 				layout(this),
 				header(this),
-				details(this),
-				detailsLayout(&details)
+				details(nullptr),
+				detailsLayout(nullptr)
 			{
 				setLayout(&layout);
 				setFrameShape(QFrame::Box);
@@ -798,7 +798,9 @@ namespace UI
 				header.setFlat(true);
 				header.setText(name);
 				layout.addWidget(&header);
-				layout.addWidget(&details);
+
+				details=new QFrame(this);
+				layout.addWidget(details);
 
 				connect(&header,&QPushButton::clicked,this,&Category::ToggleDetails);
 			}
@@ -847,7 +849,7 @@ namespace UI
 
 			void Category::ToggleDetails()
 			{
-				details.setVisible(!details.isVisible());
+				details->setVisible(!details->isVisible());
 			}
 
 			void Category::PickColor(QLineEdit &control)
@@ -1554,7 +1556,7 @@ namespace UI
 				selectPermissions(Text::CHOOSE,this),
 				settings(settings)
 			{
-				details.setVisible(false);
+				details->setVisible(false);
 
 				administrator.setText(settings.Administrator());
 				clientID.setText(settings.ClientID());

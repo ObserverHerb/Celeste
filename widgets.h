@@ -251,7 +251,7 @@ namespace UI
 				virtual void Save()=0;
 			protected:
 				QPushButton header;
-				QFrame details;
+				QFrame *details;
 				QGridLayout detailsLayout;
 				QLabel* Label(const QString &text);
 				void Rows(std::vector<std::vector<QWidget*>> widgets);
