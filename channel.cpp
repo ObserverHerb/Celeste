@@ -35,6 +35,7 @@ enum class IRCCommand
 	PART,
 	PRIVMSG,
 	NOTICE,
+	USERNOTICE,
 	PING
 };
 
@@ -44,6 +45,7 @@ const std::unordered_map<QString,IRCCommand> nonNumericIRCCommands={
 	{"PART",IRCCommand::PART},
 	{"PRIVMSG",IRCCommand::PRIVMSG},
 	{"NOTICE",IRCCommand::NOTICE},
+	{"USERNOTICE",IRCCommand::USERNOTICE},
 	{"PING",IRCCommand::PING}
 };
 
@@ -196,6 +198,9 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 	case static_cast<int>(IRCCommand::NOTICE):
 		ParseNotice(finalParameter);
 		break;
+	case static_cast<int>(IRCCommand::USERNOTICE):
+		ParseUserNotice(prefix,finalParameter);
+		break;
 	case static_cast<int>(IRCCommand::PING):
 		emit Ping(finalParameter);
 		break;
@@ -263,6 +268,11 @@ void Channel::ParseNotice(const QString &message)
 		emit Print("Authentication information was sent incorrectly",OPERATION_NOTICES);
 		break;
 	}
+}
+
+void Channel::ParseUserNotice(const QString &prefix,const QString &message)
+{
+	emit Print(QString("%1 - %2").arg(prefix,message),QStringLiteral("USERNOTICE"));
 }
 
 void Channel::Connect()
