@@ -290,7 +290,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 		}));
 	}
 
-	this->commands.swap(commands);
+	commands=entries;
 	nativeCommandFlags.swap(mergedNativeCommandFlags);
 
 	return QJsonDocument(array);

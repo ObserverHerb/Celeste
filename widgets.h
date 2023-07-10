@@ -128,6 +128,7 @@ namespace UI
 	{
 		enum class Type
 		{
+			INVALID=-2,
 			NATIVE=-1,
 			VIDEO,
 			AUDIO,
@@ -180,20 +181,30 @@ namespace UI
 			QString Message() const;
 			bool Protected() const;
 		protected:
+			QString commandName;
+			QString commandDescription;
+			short commandProtect;
+			QString commandPath;
+			short commandRandom;
+			short commandDuplicates;
+			QString commandMessage;
+			UI::Commands::Type commandType;
+			QStringList commandAliases;
 			QGridLayout layout;
-			QFrame details;
+			QGridLayout detailsLayout;
+			QFrame *details;
 			QPushButton header;
-			QLineEdit name;
-			QLineEdit description;
-			QPushButton openAliases;
-			QLineEdit path;
-			QPushButton browse;
-			QComboBox type;
-			QCheckBox random;
-			QCheckBox duplicates;
-			QCheckBox protect;
-			QTextEdit message;
-			UI::Commands::Aliases aliases;
+			QLineEdit *name;
+			QLineEdit *description;
+			QPushButton *openAliases;
+			QLineEdit *path;
+			QPushButton *browse;
+			QComboBox *type;
+			QCheckBox *random;
+			QCheckBox *duplicates;
+			QCheckBox *protect;
+			QTextEdit *message;
+			UI::Commands::Aliases *aliases;
 			void Native();
 			void Pulsar();
 			void Browse();

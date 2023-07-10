@@ -114,6 +114,30 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 	configureOptions->open();
 }
 
+void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands,Log &log)
+{
+	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
+	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log,configureCommands](const Command::Lookup& commands) {
+		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
+		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
+		{
+			QMessageBox failureDialog(&window);
+			failureDialog.setWindowTitle("Save dynamic commands Failed");
+			failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
+			failureDialog.setIcon(QMessageBox::Warning);
+			failureDialog.setStandardButtons(QMessageBox::Ok);
+			failureDialog.setDefaultButton(QMessageBox::Ok);
+			failureDialog.exec();
+			log.Write(ERROR_COMMANDS_LIST_FILE,"save dynamic commands",SUBSYSTEM);
+		}
+	});
+	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int finished) {
+		configureCommands->deleteLater();
+	});
+
+	configureCommands->open();
+}
+
 int main(int argc,char *argv[])
 {
 	if constexpr (Platform::Windows()) qputenv("QT_MULTIMEDIA_PREFERRED_PLUGINS", "windowsmediafoundation");
@@ -167,6 +191,7 @@ int main(int argc,char *argv[])
 		Server server;
 		Music::Player musicPlayer(true,0);
 		Bot celeste(musicPlayer,security);
+		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
 		Pulsar pulsar;
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
@@ -294,6 +319,9 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
 			ShowOptions(window,channel,celeste,musicPlayer,log,security);
 		});
+		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands,&log]() {
+			ShowCommands(window,celeste,botCommands,log);
+		});
 
 		if (!log.Open()) QMessageBox(QMessageBox::Critical,"Error Opening Log","Failed to open log file. Log messages will not be saved to filesystem",QMessageBox::Ok).exec();
 		if (!server.Listen()) QMessageBox(QMessageBox::Critical,"Error Starting Web Server","Unable to start local server. Events will not be received from Twitch.",QMessageBox::Ok).exec();
@@ -303,25 +331,6 @@ int main(int argc,char *argv[])
 		UI::Commands::Dialog *configureCommands=nullptr;
 		try
 		{
-			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
-			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
-				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
-				if (!celeste.SaveDynamicCommands(celeste.SerializeCommands(commands)))
-				{
-					QMessageBox failureDialog(&window);
-					failureDialog.setWindowTitle("Save dynamic commands Failed");
-					failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
-					failureDialog.setIcon(QMessageBox::Warning);
-					failureDialog.setStandardButtons(QMessageBox::Ok);
-					failureDialog.setDefaultButton(QMessageBox::Ok);
-					failureDialog.exec();
-					log.Write(ERROR_COMMANDS_LIST_FILE,"save dynamic commands",SUBSYSTEM);
-				}
-			});
-			window.connect(&window,&Window::ConfigureCommands,[configureCommands]() {
-				configureCommands->open();
-			});
-
 			UI::VibePlaylist::Dialog *configurePlaylist=nullptr;
 			try
 			{
