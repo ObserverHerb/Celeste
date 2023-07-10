@@ -21,18 +21,12 @@
 #include "security.h"
 #include "pulsar.h"
 
+using namespace Qt::Literals::StringLiterals;
+
 const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
-const char *SUBSYSTEM="initialization";
-
-class InitializationError : public std::runtime_error
-{
-public:
-	InitializationError(const std::string &operation,const std::string &message) : std::runtime_error(message), operation(operation) { }
-	const char* Operation() const { return operation.c_str(); }
-protected:
-	std::string operation;
-};
+const char *SUBSYSTEM_DIALOG="configuration dialog";
+const char *SUBSYSTEM_AUTHORIZATION="authorization";
 
 enum
 {
@@ -44,6 +38,123 @@ enum
 };
 
 using ApplicationWindow=std::conditional<Platform::Windows(),Win32Window,Window>::type;
+
+void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Player &musicPlayer,Log &log,Security &security)
+{
+	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
+		.name=channel->Name(),
+		.protection=channel->Protection()
+	}));
+	configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
+		.backgroundColor=window.BackgroundColor(),
+		.dimensions=window.Dimensions()
+	}));
+	StatusPane statusPane(&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
+		.font=statusPane.Font(),
+		.fontSize=statusPane.FontSize(),
+		.foregroundColor=statusPane.ForegroundColor(),
+		.backgroundColor=statusPane.BackgroundColor()
+	}));
+	ChatPane chatPane(&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
+		.font=chatPane.Font(),
+		.fontSize=chatPane.FontSize(),
+		.foregroundColor=chatPane.ForegroundColor(),
+		.backgroundColor=chatPane.BackgroundColor(),
+		.statusInterval=chatPane.StatusInterval()
+	}));
+	AnnouncePane announcePane(QString{},&window);
+	configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
+		.font=announcePane.Font(),
+		.fontSize=announcePane.FontSize(),
+		.foregroundColor=announcePane.ForegroundColor(),
+		.backgroundColor=announcePane.BackgroundColor(),
+		.accentColor=announcePane.AccentColor(),
+		.duration=announcePane.Duration()
+	}));
+	configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
+		.suppressedVolume=musicPlayer.SuppressedVolume()
+	}));
+	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
+		.arrivalSound=bot.ArrivalSound(),
+		.portraitVideo=bot.PortraitVideo(),
+		.cheerVideo=bot.CheerVideo(),
+		.subscriptionSound=bot.SubscriptionSound(),
+		.raidSound=bot.RaidSound(),
+		.inactivityCooldown=bot.InactivityCooldown(),
+		.helpCooldown=bot.HelpCooldown(),
+		.textWallThreshold=bot.TextWallThreshold(),
+		.textWallSound=bot.TextWallSound()
+	});
+	configureOptions->AddCategory(optionsCategoryBot);
+	configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
+		.directory=log.Directory()
+	}));
+	configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
+
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
+	configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
+	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int finished) {
+		configureOptions->deleteLater();
+	});
+
+	configureOptions->open();
+}
+
+void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands,Log &log)
+{
+	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
+	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log,configureCommands](const Command::Lookup& commands) {
+		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
+		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
+		{
+			QMessageBox failureDialog(&window);
+			failureDialog.setWindowTitle(u"Save dynamic commands Failed"_s);
+			failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
+			failureDialog.setIcon(QMessageBox::Warning);
+			failureDialog.setStandardButtons(QMessageBox::Ok);
+			failureDialog.setDefaultButton(QMessageBox::Ok);
+			failureDialog.exec();
+			log.Write(ERROR_COMMANDS_LIST_FILE,u"save dynamic commands"_s,SUBSYSTEM_DIALOG);
+		}
+	});
+	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int finished) {
+		configureCommands->deleteLater();
+	});
+
+	configureCommands->open();
+}
+
+void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log &log)
+{
+	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
+	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
+		static const char *ERROR_VIBE_PLAYLIST_FILE="Something went wrong saving the vibe playlist to a file";
+		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
+		{
+			QMessageBox failureDialog(&window);
+			failureDialog.setWindowTitle(u"Save vibe playlist Failed"_s);
+			failureDialog.setText(ERROR_VIBE_PLAYLIST_FILE);
+			failureDialog.setIcon(QMessageBox::Warning);
+			failureDialog.setStandardButtons(QMessageBox::Ok);
+			failureDialog.setDefaultButton(QMessageBox::Ok);
+			failureDialog.exec();
+			log.Write(ERROR_VIBE_PLAYLIST_FILE,u"save playlist"_s,SUBSYSTEM_DIALOG);
+		}
+	});
+	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int finished) {
+		configurePlaylist->deleteLater();
+	});
+
+	configurePlaylist->open();
+}
 
 int main(int argc,char *argv[])
 {
@@ -96,7 +207,10 @@ int main(int argc,char *argv[])
 		IRCSocket socket;
 		Channel *channel=new Channel(security,&socket);
 		Server server;
-		Bot celeste(security);
+		Music::Player musicPlayer(true,0);
+		Bot celeste(musicPlayer,security);
+		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
+		const File::List &musicPlaylist=celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist());
 		Pulsar pulsar;
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
@@ -111,7 +225,7 @@ int main(int argc,char *argv[])
 			application.exit(AUTHENTICATION_ERROR);
 		});
 		security.connect(&security,&Security::TokenRefreshFailed,[&log]() {
-			log.Write("Attempt to refresh OAuth token failed","refresh auth token",SUBSYSTEM);
+			log.Write("Attempt to refresh OAuth token failed","refresh auth token",SUBSYSTEM_AUTHORIZATION);
 		});
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
@@ -221,133 +335,21 @@ int main(int argc,char *argv[])
 
 			closeEvent->accept();
 		});
+		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
+			ShowOptions(window,channel,celeste,musicPlayer,log,security);
+		});
+		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands,&log]() {
+			ShowCommands(window,celeste,botCommands,log);
+		});
+		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&log]() {
+			ShowPlaylist(musicPlaylist,window,celeste,log);
+		});
 
 		if (!log.Open()) QMessageBox(QMessageBox::Critical,"Error Opening Log","Failed to open log file. Log messages will not be saved to filesystem",QMessageBox::Ok).exec();
 		if (!server.Listen()) QMessageBox(QMessageBox::Critical,"Error Starting Web Server","Unable to start local server. Events will not be received from Twitch.",QMessageBox::Ok).exec();
 		pulsar.LoadTriggers();
 		window.show();
-
-		UI::Commands::Dialog *configureCommands=nullptr;
-		UI::Options::Dialog *configureOptions=nullptr;
-		Music::Player player(&window,false,0);
-		try
-		{
-			configureOptions=new UI::Options::Dialog(&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
-				.name=channel->Name(),
-				.protection=channel->Protection()
-			}));
-			configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
-				.backgroundColor=window.BackgroundColor(),
-				.dimensions=window.Dimensions()
-			}));
-			StatusPane statusPane(&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
-				.font=statusPane.Font(),
-				.fontSize=statusPane.FontSize(),
-				.foregroundColor=statusPane.ForegroundColor(),
-				.backgroundColor=statusPane.BackgroundColor()
-			}));
-			ChatPane chatPane(&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
-				.font=chatPane.Font(),
-				.fontSize=chatPane.FontSize(),
-				.foregroundColor=chatPane.ForegroundColor(),
-				.backgroundColor=chatPane.BackgroundColor(),
-				.statusInterval=chatPane.StatusInterval()
-			}));
-			AnnouncePane announcePane(QString{},&window);
-			configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
-				.font=announcePane.Font(),
-				.fontSize=announcePane.FontSize(),
-				.foregroundColor=announcePane.ForegroundColor(),
-				.backgroundColor=announcePane.BackgroundColor(),
-				.accentColor=announcePane.AccentColor(),
-				.duration=announcePane.Duration()
-			}));
-			configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
-				.suppressedVolume=player.SuppressedVolume()
-			}));
-			UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
-				.arrivalSound=celeste.ArrivalSound(),
-				.portraitVideo=celeste.PortraitVideo(),
-				.cheerVideo=celeste.CheerVideo(),
-				.subscriptionSound=celeste.SubscriptionSound(),
-				.raidSound=celeste.RaidSound(),
-				.inactivityCooldown=celeste.InactivityCooldown(),
-				.helpCooldown=celeste.HelpCooldown(),
-				.textWallThreshold=celeste.TextWallThreshold(),
-				.textWallSound=celeste.TextWallSound()
-			});
-			configureOptions->AddCategory(optionsCategoryBot);
-			configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
-				.directory=log.Directory()
-			}));
-			configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
-
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
-			configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
-			configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
-			window.connect(&window,&Window::ConfigureOptions,configureOptions,[configureOptions]() {
-				configureOptions->open();
-			});
-
-			configureCommands=new UI::Commands::Dialog(celeste.DeserializeCommands(celeste.LoadDynamicCommands()),&window);
-			configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&celeste,[&window,&celeste,&log,configureCommands](const Command::Lookup &commands) {
-				static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
-				if (!celeste.SaveDynamicCommands(celeste.SerializeCommands(commands)))
-				{
-					QMessageBox failureDialog(&window);
-					failureDialog.setWindowTitle("Save dynamic commands Failed");
-					failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
-					failureDialog.setIcon(QMessageBox::Warning);
-					failureDialog.setStandardButtons(QMessageBox::Ok);
-					failureDialog.setDefaultButton(QMessageBox::Ok);
-					failureDialog.exec();
-					log.Write(ERROR_COMMANDS_LIST_FILE,"save dynamic commands",SUBSYSTEM);
-				}
-			});
-			window.connect(&window,&Window::ConfigureCommands,[configureCommands]() {
-				configureCommands->open();
-			});
-
-			UI::VibePlaylist::Dialog *configurePlaylist=nullptr;
-			try
-			{
-				configurePlaylist=new UI::VibePlaylist::Dialog(celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist()),&window);
-				configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&celeste,[&window,&celeste,&log](const File::List &files) {
-					static const char *ERROR_VIBE_PLAYLIST_FILE="Something went wrong saving the vibe playlist to a file";
-					if (!celeste.SaveVibePlaylist(celeste.SerializeVibePlaylist(files)))
-					{
-						QMessageBox failureDialog(&window);
-						failureDialog.setWindowTitle("Save vibe playlist Failed");
-						failureDialog.setText(ERROR_VIBE_PLAYLIST_FILE);
-						failureDialog.setIcon(QMessageBox::Warning);
-						failureDialog.setStandardButtons(QMessageBox::Ok);
-						failureDialog.setDefaultButton(QMessageBox::Ok);
-						failureDialog.exec();
-					}
-				});
-				window.connect(&window,&Window::ShowVibePlaylist,[configurePlaylist]() {
-					configurePlaylist->open();
-				});
-			}
-			catch (const std::runtime_error &exception)
-			{
-				throw InitializationError("load playlists",exception.what());
-			}
-
-			channel->Connect();
-		}
-
-		catch (const InitializationError &exception)
-		{
-			log.Write(exception.what(),exception.Operation(),SUBSYSTEM);
-		}
+		channel->Connect();
 
 		return application.exec();
 	}

@@ -115,7 +115,7 @@ namespace Music
 	const char *Player::ERROR_LOADING="Failed to load vibe playlist";
 	const char *Player::OPERATION_LOADING="load vibe playlist";
 
-	Player::Player(QObject *parent,bool loop,int initialVolume) : player(this),
+	Player::Player(bool loop,int initialVolume,QObject *parent) : player(this),
 		output(this),
 		loop(loop),
 		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10),
