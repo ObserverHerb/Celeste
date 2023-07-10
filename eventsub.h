@@ -10,6 +10,7 @@ inline const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_r
 inline const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
 inline const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
 inline const char *SUBSCRIPTION_TYPE_SUBSCRIPTION="channel.subscribe";
+inline const char *SUBSCRIPTION_TYPE_RESUBSCRIPTION="channel.subscription.message";
 
 enum class SubscriptionType
 {
