@@ -90,7 +90,7 @@ namespace Music
 	{
 		Q_OBJECT
 	public:
-		Player(QObject *parent,bool loop,int initialVolume);
+		Player(bool loop,int initialVolume,QObject *parent=nullptr);
 		void DuckVolume(bool duck);
 		void Volume(int volume);
 		void Volume(int targetVolume,std::chrono::seconds duration);

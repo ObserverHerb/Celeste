@@ -128,6 +128,7 @@ namespace UI
 	{
 		enum class Type
 		{
+			INVALID=-2,
 			NATIVE=-1,
 			VIDEO,
 			AUDIO,
@@ -181,22 +182,33 @@ namespace UI
 			QString Message() const;
 			bool Protected() const;
 		protected:
+			QString commandName;
+			QString commandDescription;
+			short commandProtect;
+			QString commandPath;
+			short commandRandom;
+			short commandDuplicates;
+			QString commandMessage;
+			UI::Commands::Type commandType;
+			QStringList commandAliases;
+			QStringList commandTriggers;
 			QGridLayout layout;
-			QFrame details;
+			QGridLayout detailsLayout;
+			QFrame *details;
 			QPushButton header;
-			QLineEdit name;
-			QLineEdit description;
-			QPushButton openAliases;
-			QPushButton openTriggers;
-			QLineEdit path;
-			QPushButton browse;
-			QComboBox type;
-			QCheckBox random;
-			QCheckBox duplicates;
-			QCheckBox protect;
-			QTextEdit message;
-			UI::Commands::NamesList aliases;
-			UI::Commands::NamesList triggers;
+			QLineEdit *name;
+			QLineEdit *description;
+			QPushButton *openAliases;
+			QPushButton *openTriggers;
+			QLineEdit *path;
+			QPushButton *browse;
+			QComboBox *type;
+			QCheckBox *random;
+			QCheckBox *duplicates;
+			QCheckBox *protect;
+			QTextEdit *message;
+			UI::Commands::NamesList *aliases;
+			UI::Commands::NamesList *triggers;
 			void Native();
 			void Pulsar();
 			void Browse();
@@ -254,7 +266,7 @@ namespace UI
 				virtual void Save()=0;
 			protected:
 				QPushButton header;
-				QFrame details;
+				QFrame *details;
 				QGridLayout detailsLayout;
 				QLabel* Label(const QString &text);
 				void Rows(std::vector<std::vector<QWidget*>> widgets);

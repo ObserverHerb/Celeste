@@ -77,9 +77,9 @@ const std::unordered_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
 Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
-Bot::Bot(Security &security,QObject *parent) : QObject(parent),
-	vibeKeeper(this,true,0),
-	roaster(this,false,100),
+Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObject(parent),
+	vibeKeeper(musicPlayer),
+	roaster(false,100,this),
 	security(security),
 	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
 	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),
@@ -295,7 +295,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 		}));
 	}
 
-	this->commands.swap(commands);
+	commands=entries;
 	nativeCommandFlags.swap(mergedNativeCommandFlags);
 
 	return QJsonDocument(array);
