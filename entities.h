@@ -319,6 +319,8 @@ namespace Viewer
 		bool commands { true };
 		bool welcomed { false };
 		bool bot { false };
+		bool limited { false };
+		std::chrono::time_point<std::chrono::system_clock> commandTimestamp;
 	};
 }
 

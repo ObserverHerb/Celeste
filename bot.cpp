@@ -33,6 +33,7 @@ const char *JSON_KEY_DATA="data";
 const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
 const char *JSON_KEY_BOT="bot";
+const char *JSON_KEY_LIMIT_COMMANDS="limited";
 const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
@@ -93,6 +94,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
 	settingDeniedCommandVideo(SETTINGS_CATEGORY_COMMANDS,"Denied"),
+	settingCommandCooldown(SETTINGS_CATEGORY_COMMANDS,"Cooldown",10), // in minutes
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0),
 	settingCommandNameAgenda(SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"),
 	settingCommandNameStreamCategory(SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"),
@@ -101,6 +103,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	settingCommandNameEmote(SETTINGS_CATEGORY_COMMANDS,"EmoteOnly","emote"),
 	settingCommandNameFollowage(SETTINGS_CATEGORY_COMMANDS,"Followage","followage"),
 	settingCommandNameHTML(SETTINGS_CATEGORY_COMMANDS,"HTML","html"),
+	settingCommandNameLimit(SETTINGS_CATEGORY_COMMANDS,"Limit","limit"),
 	settingCommandNamePanic(SETTINGS_CATEGORY_COMMANDS,"Panic","panic"),
 	settingCommandNameShoutout(SETTINGS_CATEGORY_COMMANDS,"Shoutout","so"),
 	settingCommandNameSong(SETTINGS_CATEGORY_COMMANDS,"Song","song"),
@@ -117,6 +120,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	DeclareCommand({settingCommandNameEmote,"Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
 	DeclareCommand({settingCommandNameFollowage,"Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
 	DeclareCommand({settingCommandNameHTML,"Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
+	DeclareCommand({settingCommandNameLimit,"Limit frequency of viewer's commands with a cooldown",CommandType::NATIVE,true},NativeCommandFlag::LIMIT);
 	DeclareCommand({settingCommandNamePanic,"Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
 	DeclareCommand({settingCommandNameShoutout,"Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
 	DeclareCommand({settingCommandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
@@ -369,6 +373,7 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 			Container::Resolve(attributes,JSON_KEY_COMMANDS,true).toBool(),
 			Container::Resolve(attributes,JSON_KEY_WELCOME,false).toBool(),
 			Container::Resolve(attributes,JSON_KEY_BOT,false).toBool(),
+			Container::Resolve(attributes,JSON_KEY_LIMIT_COMMANDS,false).toBool()
 		};
 	}
 
@@ -386,7 +391,8 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 		QJsonObject attributes={
 			{JSON_KEY_COMMANDS,viewer.second.commands},
 			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.welcomed},
-			{JSON_KEY_BOT,viewer.second.bot}
+			{JSON_KEY_BOT,viewer.second.bot},
+			{JSON_KEY_LIMIT_COMMANDS,viewer.second.limited}
 		};
 		entries.insert(viewer.first,attributes);
 	}
@@ -799,12 +805,14 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 	}
 }
 
-bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login)
+bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login) // build a command object from a command name and a chat message and forward
 {
-	auto candidate=commands.find(name);
-	if (candidate == commands.end()) return false;
-	const Command &command=candidate->second;
+	// FIRST! determine if command exists
+	auto commandCandidate=commands.find(name);
+	if (commandCandidate == commands.end()) return false;
+	const Command &command=commandCandidate->second;
 
+	// deny command if user must be a mod and isn't
 	if (command.Protected() && !chatMessage.Privileged())
 	{
 		emit AnnounceDeniedCommand(File::List(settingDeniedCommandVideo).Random());
@@ -812,6 +820,19 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 		return false;
 	}
 
+	// have the viewer's command privileges been limited?
+	if (auto viewerCandidate=viewers.find(login); viewerCandidate != viewers.end())
+	{
+		Viewer::Attributes &viewer=viewerCandidate->second;
+		if (viewer.limited && std::chrono::duration_cast<std::chrono::minutes>(std::chrono::system_clock::now()-viewer.commandTimestamp) < std::chrono::minutes(settingCommandCooldown) && !chatMessage.Privileged())
+		{
+			emit AnnounceDeniedCommand(File::List(settingDeniedCommandVideo).Random());
+			return false;
+		}
+		viewer.commandTimestamp=std::chrono::system_clock::now();
+	}
+
+	// command is reformatting text, so feed the formatted chat message back into the system
 	if (command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
 	{
 		emit ChatMessage({
@@ -864,6 +885,9 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 				break;
 			case NativeCommandFlag::FOLLOWAGE:
 				DispatchFollowage(viewer);
+				break;
+			case NativeCommandFlag::LIMIT:
+				ToggleLimitViewer(command.Message());
 				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());
@@ -1072,6 +1096,29 @@ void Bot::DispatchHelpText()
 	}
 	const Command *candidate=candidates[Random::Bounded(candidates)];
 	emit ShowCommand(candidate->Name(),candidate->Description());
+}
+
+void Bot::ToggleLimitViewer(const QString &target)
+{
+	static const char *OPERATION="LIMIT VIEWER";
+	std::unordered_map<QString,Viewer::Attributes>::iterator candidate=viewers.find(target);
+	if (candidate == viewers.end())
+	{
+		emit Print("Could not limit unrecognized viewer",OPERATION);
+		return;
+	}
+
+	Viewer::Attributes &attributes=candidate->second;
+	if (attributes.limited)
+	{
+		attributes.limited=false;
+		emit Print("Unlimiting viewer's command privileges",OPERATION);
+	}
+	else
+	{
+		attributes.limited=true;
+		emit Print("Limiting viewer's command privileges with cooldown",OPERATION);
+	}
 }
 
 void Bot::ToggleVibeKeeper()

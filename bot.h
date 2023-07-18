@@ -22,6 +22,7 @@ enum class NativeCommandFlag
 	EMOTE,
 	FOLLOWAGE,
 	HTML,
+	LIMIT,
 	PANIC,
 	SHOUTOUT,
 	SONG,
@@ -83,6 +84,7 @@ protected:
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
 	ApplicationSetting settingDeniedCommandVideo;
+	ApplicationSetting settingCommandCooldown;
 	ApplicationSetting settingUptimeHistory;
 	ApplicationSetting settingCommandNameAgenda;
 	ApplicationSetting settingCommandNameStreamCategory;
@@ -91,6 +93,7 @@ protected:
 	ApplicationSetting settingCommandNameEmote;
 	ApplicationSetting settingCommandNameFollowage;
 	ApplicationSetting settingCommandNameHTML;
+	ApplicationSetting settingCommandNameLimit;
 	ApplicationSetting settingCommandNamePanic;
 	ApplicationSetting settingCommandNameShoutout;
 	ApplicationSetting settingCommandNameSong;
@@ -121,6 +124,7 @@ protected:
 	void DispatchShoutout(Command command);
 	void DispatchUptime(bool total);
 	void DispatchHelpText();
+	void ToggleLimitViewer(const QString &target);
 	void ToggleVibeKeeper();
 	void AdjustVibeVolume(Command command);
 	void StreamTitle(const QString &title);
