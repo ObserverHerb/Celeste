@@ -84,6 +84,28 @@ void Security::AuthorizeUser()
 	QDesktopServices::openUrl(request);
 }
 
+void Security::AuthorizeServer()
+{
+	Network::Request({u"https://id.twitch.tv/oauth2/token"_s},Network::Method::POST,[this](QNetworkReply *reply) {
+		// I'm not worried about handling errors here because any problems will trigger a failure in the EventSub
+		// subscription again, which will ultimately bring us back through here via Channel::Connect() if the user wishes
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON) return;
+
+		const QJsonObject jsonObject=parsedJSON().object();
+		auto jsonFieldAccessToken=jsonObject.find(JSON_KEY_ACCESS_TOKEN);
+		if (jsonFieldAccessToken == jsonObject.end()) return;
+
+		settingServerToken.Set(jsonFieldAccessToken->toString());
+	},{
+		{QUERY_PARAMETER_CLIENT_ID,settingClientID},
+		{QUERY_PARAMETER_CLIENT_SECRET,settingClientSecret},
+		{QUERY_PARAMETER_GRANT_TYPE,u"client_credentials"_s}
+	},{
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM}
+	});
+}
+
 void Security::RequestToken(const QString &code,const QString &scopes)
 {
 	if (code.isEmpty() || scopes.isEmpty()) emit TokenRequestFailed();

@@ -13,8 +13,6 @@
 #include "globals.h"
 #include "widgets.h"
 
-using namespace Qt::Literals::StringLiterals;
-
 namespace StyleSheet
 {
 	const QString Colors(const QColor &foreground,const QColor &background)
