@@ -9,7 +9,6 @@ const char *LINE_BREAK="\r\n";
 Server::Server(QObject *parent) : QTcpServer(parent),
 	settingListenPort(SETTINGS_CATEGORY_SERVER,"Port",4443)
 {
-	//connect(this,&EventSubscriber::acceptError,this,QOverload<QAbstractSocket::SocketError>::of(&EventSubscriber::)) // FIXME: handle error here?
 	connect(this,&Server::newConnection,this,&Server::ConnectionAvailable);
 }
 
