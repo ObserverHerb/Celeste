@@ -9,6 +9,7 @@
 const char *HEADER_SUBSCRIPTION_TYPE="Twitch-Eventsub-Subscription-Type";
 
 const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
+const char *TWITCH_API_OPERATION_SUBSCRIBE="subscribe to event";
 
 const char *JSON_KEY_CHALLENGE="challenge";
 const char *JSON_KEY_EVENT="event";
@@ -35,35 +36,77 @@ EventSub::EventSub(Security &security,QObject *parent) : QObject(parent),
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_SUBSCRIPTION,SubscriptionType::CHANNEL_SUBSCRIPTION});
 }
 
+void EventSub::Subscribe()
+{
+	defaultTypes.push(SUBSCRIPTION_TYPE_REDEMPTION);
+	defaultTypes.push(SUBSCRIPTION_TYPE_RAID);
+	defaultTypes.push(SUBSCRIPTION_TYPE_SUBSCRIPTION);
+	defaultTypes.push(SUBSCRIPTION_TYPE_CHEER);
+	Subscribe(defaultTypes.front());
+}
+
 void EventSub::Subscribe(const QString &type)
 {
-	const char *OPERATION="subscribe";
 	QUrl callbackURL(security.CallbackURL());
 	callbackURL.setScheme("https");
-	emit Print(QString("Requesting subscription to %1").arg(type),OPERATION);
-	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},Network::Method::POST,[this](QNetworkReply *reply) {
-		// FIXME: check the validity of this reply!
-		emit Print(StringConvert::Dump(reply->readAll()),"twitch");
+	emit Print(u"Requesting subscription to %1"_s.arg(type),TWITCH_API_OPERATION_SUBSCRIBE);
+	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},Network::Method::POST,[this,type](QNetworkReply *reply) {
+		emit Print(StringConvert::Dump(reply->readAll()),TWITCH_API_OPERATION_SUBSCRIBE);
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 202:
+			emit Print(u"Successfully subscribed to %1"_s.arg(type),TWITCH_API_OPERATION_SUBSCRIBE);
+			NextSubscription();
+			return;
+		case 400:
+			emit Print(u"The subscription request was malformatted"_s,TWITCH_API_OPERATION_SUBSCRIBE);
+			break;
+		case 401:
+			emit Print(u"Invalid OAuth token or authorization header was malformatted"_s,TWITCH_API_OPERATION_SUBSCRIBE);
+			emit Unauthorized();
+			return;
+		case 403:
+			emit Print(u"Access token is missing the required scopes"_s,TWITCH_API_OPERATION_SUBSCRIBE);
+			break;
+		case 409:
+			emit Print(u"Subscription already exists"_s,TWITCH_API_OPERATION_SUBSCRIBE);
+			NextSubscription();
+			return;
+		case 429:
+			emit Print(u"Too many subscription requests"_s,TWITCH_API_OPERATION_SUBSCRIBE);
+			emit RateLimitHit();
+			return;
+		}
+		emit SubscriptionFailed(type);
 	},{},{
-		{"Authorization",StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.ServerToken())))},
+		{"Authorization","Bearer "_ba.append(security.ServerToken())},
 		{"Client-ID",security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({
-		{"type",type},
-		{"version","1"},
+		{u"type"_s,type},
+		{u"version"_s,"1"},
 		{
-			"condition",
-			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? "to_broadcaster_user_id" : "broadcaster_user_id",security.AdministratorID()}})
+			u"condition"_s,
+			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? u"to_broadcaster_user_id"_s : u"broadcaster_user_id"_s,security.AdministratorID()}})
 		},
 		{
-			"transport",
+			u"transport"_s,
 			QJsonObject({
-				{"method","webhook"},
-				{"callback",callbackURL.toString()},
-				{"secret",secret}
+				{u"method"_s,"webhook"},
+				{u"callback"_s,callbackURL.toString()},
+				{u"secret"_s,secret}
 			})
 		}
 	})).toJson(QJsonDocument::Compact));
+}
+
+void EventSub::NextSubscription()
+{
+	if (!defaultTypes.empty())
+	{
+		defaultTypes.pop();
+		if (!defaultTypes.empty()) Subscribe(defaultTypes.front());
+	}
 }
 
 void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content)

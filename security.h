@@ -33,6 +33,7 @@ public:
 	PrivateSetting& Scope() { return settingScope; }
 	const QString& AdministratorID() const;
 	void AuthorizeUser();
+	void AuthorizeServer();
 	void RequestToken(const QString &code,const QString &scopes);
 	void ObtainAdministratorProfile();
 	static const QStringList SCOPES;

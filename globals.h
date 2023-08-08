@@ -19,6 +19,8 @@
 #include <concepts>
 #include <stdexcept>
 
+using namespace Qt::Literals::StringLiterals;
+
 namespace Resources
 {
 	inline const char *CELESTE=":/celeste.png";
@@ -254,9 +256,9 @@ namespace Network
 
 	inline void Request(QUrl url,Method method,Reply callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
 	{
-		networkManager.connect(&networkManager,&QNetworkAccessManager::finished,[](QNetworkReply *reply) {
+		networkManager.connect(&networkManager,&QNetworkAccessManager::finished,&networkManager,[](QNetworkReply *reply) {
 			reply->deleteLater();
-		});
+		},Qt::QueuedConnection);
 
 		QNetworkRequest request;
 		for (const std::pair<QByteArray,QByteArray> &header : headers) request.setRawHeader(header.first,header.second);
@@ -268,12 +270,12 @@ namespace Network
 			request.setUrl(url);
 			auto sendRequest=[request,callback]() {
 				QNetworkReply *reply=networkManager.get(request);
-				networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback);
-				reply->connect(reply,&QNetworkReply::finished,[]() {
+				networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback,Qt::QueuedConnection);
+				reply->connect(reply,&QNetworkReply::finished,reply,[]() {
 					int size=queue.size();
 					queue.pop();
 					if (queue.size() > 0) queue.front().first();
-				});
+				},Qt::QueuedConnection);
 			};
 			if (queue.size() == 0) sendRequest();
 			queue.push({sendRequest,callback});
@@ -281,12 +283,12 @@ namespace Network
 		}
 		case Method::POST:
 			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback,Qt::QueuedConnection);
 			break;
 		case Method::PATCH:
 			url.setQuery(queryParameters);
 			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"PATCH",payload),callback);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"PATCH",payload),callback,Qt::QueuedConnection);
 			break;
 		}
 	}

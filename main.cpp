@@ -21,8 +21,6 @@
 #include "security.h"
 #include "pulsar.h"
 
-using namespace Qt::Literals::StringLiterals;
-
 const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
 const char *SUBSYSTEM_DIALOG="configuration dialog";
@@ -38,6 +36,17 @@ enum
 };
 
 using ApplicationWindow=std::conditional<Platform::Windows(),Win32Window,Window>::type;
+
+int MessageBox(const QString &title,const QString &text,QMessageBox::Icon icon,QMessageBox::StandardButtons buttons,QMessageBox::StandardButton defaultButton,QWidget *parent=nullptr)
+{
+	QMessageBox box(parent);
+	box.setWindowTitle(title);
+	box.setText(text);
+	box.setIcon(icon);
+	box.setStandardButtons(buttons);
+	box.setDefaultButton(defaultButton);
+	return box.exec();
+}
 
 void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Player &musicPlayer,Log &log,Security &security)
 {
@@ -115,13 +124,7 @@ void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &comm
 		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
-			QMessageBox failureDialog(&window);
-			failureDialog.setWindowTitle(u"Save dynamic commands Failed"_s);
-			failureDialog.setText(ERROR_COMMANDS_LIST_FILE);
-			failureDialog.setIcon(QMessageBox::Warning);
-			failureDialog.setStandardButtons(QMessageBox::Ok);
-			failureDialog.setDefaultButton(QMessageBox::Ok);
-			failureDialog.exec();
+			MessageBox(u"Save dynamic commands Failed"_s,ERROR_COMMANDS_LIST_FILE,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 			log.Write(ERROR_COMMANDS_LIST_FILE,u"save dynamic commands"_s,SUBSYSTEM_DIALOG);
 		}
 	});
@@ -139,13 +142,7 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 		static const char *ERROR_VIBE_PLAYLIST_FILE="Something went wrong saving the vibe playlist to a file";
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
-			QMessageBox failureDialog(&window);
-			failureDialog.setWindowTitle(u"Save vibe playlist Failed"_s);
-			failureDialog.setText(ERROR_VIBE_PLAYLIST_FILE);
-			failureDialog.setIcon(QMessageBox::Warning);
-			failureDialog.setStandardButtons(QMessageBox::Ok);
-			failureDialog.setDefaultButton(QMessageBox::Ok);
-			failureDialog.exec();
+			MessageBox(u"Save vibe playlist Failed"_s,ERROR_VIBE_PLAYLIST_FILE,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 			log.Write(ERROR_VIBE_PLAYLIST_FILE,u"save playlist"_s,SUBSYSTEM_DIALOG);
 		}
 	});
@@ -166,7 +163,7 @@ int main(int argc,char *argv[])
 	if constexpr (!Platform::Windows()) application.setWindowIcon(QIcon(Resources::CELESTE));
 
 #ifdef DEVELOPER_MODE
-	if (QMessageBox(QMessageBox::Warning,"DEVELOPER MODE","**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?",QMessageBox::Yes|QMessageBox::No).exec() == QMessageBox::No) return OK;
+	if (MessageBox(u"DEVELOPER MODE"_s,u"**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?"_s,QMessageBox::Warning,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::No) return OK;
 #endif
 
 	Security security;
@@ -216,12 +213,7 @@ int main(int argc,char *argv[])
 		UI::Metrics::Dialog metrics(&window);
 
 		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
-			QMessageBox failureDialog;
-			failureDialog.setWindowTitle("Authentication Failed");
-			failureDialog.setText("Attempt to obtain OAuth token failed.");
-			failureDialog.setStandardButtons(QMessageBox::Ok);
-			failureDialog.setDefaultButton(QMessageBox::Ok);
-			failureDialog.exec();
+			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
 			application.exit(AUTHENTICATION_ERROR);
 		});
 		security.connect(&security,&Security::TokenRefreshFailed,[&log]() {
@@ -264,42 +256,50 @@ int main(int argc,char *argv[])
 			log.disconnect(echo);
 			celeste.connect(&celeste,&Bot::Print,&window,&Window::Print);
 		});
-		channel->connect(channel,&Channel::Disconnected,[channel]() {
-			QMessageBox retryDialog;
-			retryDialog.setWindowTitle("Connection Failed");
-			retryDialog.setText("Failed to connect to Twitch. Would you like to try again?");
-			retryDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
-			retryDialog.setDefaultButton(QMessageBox::Yes);
-			if (retryDialog.exec() == QMessageBox::No) return;
+		channel->connect(channel,&Channel::Disconnected,[channel,&window]() {
+			qApp->alert(&window);
+			qApp->beep();
+			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&server,&celeste,&log]() {
-			security.connect(&security,&Security::AdministratorProfileObtained,&security,[&security,&log,&server,&celeste]() {
-				EventSub *eventSub=new EventSub(security);
-				eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
-				eventSub->connect(eventSub,&EventSub::Response,&server,QOverload<qintptr,const QString&>::of(&Server::SocketWrite));
-				eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
-				eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
-				eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
-				eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
-				eventSub->Subscribe(SUBSCRIPTION_TYPE_REDEMPTION);
-				eventSub->Subscribe(SUBSCRIPTION_TYPE_RAID);
-				eventSub->Subscribe(SUBSCRIPTION_TYPE_SUBSCRIPTION);
-				eventSub->Subscribe(SUBSCRIPTION_TYPE_CHEER);
-				server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
-			});
+		QMetaObject::Connection events;
+		QMetaObject::Connection administratorProfile; // have to do it this way because Qt::UniqueConnection doesn't work with lambdas (https://bugreports.qt.io/browse/QTBUG-52438)
+		channel->connect(channel,&Channel::Connected,[&events,&administratorProfile,&security,channel,&server,&celeste,&log]() {
+			if (!administratorProfile)
+			{
+				administratorProfile=security.connect(&security,&Security::AdministratorProfileObtained,&security,[&events,&security,channel,&log,&server,&celeste]() mutable {
+					EventSub *eventSub=new EventSub(security);
+					events=server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
+					eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
+					eventSub->connect(eventSub,&EventSub::Response,&server,QOverload<qintptr,const QString&>::of(&Server::SocketWrite));
+					eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
+					eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
+					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
+					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
+					eventSub->connect(eventSub,&EventSub::SubscriptionFailed,eventSub,[eventSub](const QString &type) {
+						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
+					},Qt::QueuedConnection);
+					eventSub->connect(eventSub,&EventSub::Unauthorized,eventSub,[eventSub,&events,&security,&server,channel]() {
+						if (MessageBox(u"EventSub Authorization Failed"_s,u"There was a problem with authorization while subscribing to an event. Would you like to attempt to renew the server token?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes)
+						{
+							server.disconnect(events);
+							security.AuthorizeServer();
+							eventSub->deleteLater();
+							channel->Disconnect();
+						}
+					},Qt::QueuedConnection);
+					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[eventSub]() {
+						MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
+					},Qt::QueuedConnection);
+					eventSub->Subscribe();
+				});
+			}
 			security.ObtainAdministratorProfile();
 		});
 		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
 		QMetaObject::Connection reauthorize;
 		channel->connect(channel,&Channel::Denied,[&reauthorize,&security,&server]() {
-			QMessageBox authenticateDialog;
-			authenticateDialog.setWindowTitle("Authentication Failed");
-			authenticateDialog.setText("Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?");
-			authenticateDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
-			authenticateDialog.setDefaultButton(QMessageBox::Yes);
-			if (authenticateDialog.exec() == QMessageBox::No) return;
-
+			if (MessageBox(u"Authentication Failed"_s,u"Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			reauthorize=server.connect(&server,&Server::Dispatch,[&reauthorize,&security,&server](qintptr socketID,const QUrlQuery& query) {
 				server.disconnect(reauthorize); // break any connection with security's slots so we don't conflict with EventSub later
 				server.SocketWrite(socketID,QStringLiteral(R"(<html><body><h1>Authorization Successful!</h1><br><b>Token:</b> %1<br><b>Scope:</b> %2</body></html>)").arg(QString(query.queryItemValue(QUERY_PARAMETER_CODE).size(),'*'),query.queryItemValue(QUERY_PARAMETER_SCOPE).replace('+',", ")),Network::CONTENT_TYPE_HTML);
@@ -317,22 +317,11 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
 		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::show);
 		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
-			if (channel->Protection()) {
-				QMessageBox emoteOnlyDialog;
-				emoteOnlyDialog.setWindowTitle("Channel Protection");
-				emoteOnlyDialog.setText("Enable emote-only chat?");
-				emoteOnlyDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
-				emoteOnlyDialog.setDefaultButton(QMessageBox::No);
-				if (emoteOnlyDialog.exec() == QMessageBox::Yes) celeste.EmoteOnly(true);
+			if (channel->Protection())
+			{
+				if (MessageBox(u"Channel Protection"_s,u"Enable emote-only chat?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::Yes) celeste.EmoteOnly(true);
 			}
-
-			QMessageBox resetDialog;
-			resetDialog.setWindowTitle("Reset Next Session");
-			resetDialog.setText("Would you like to reset the session for the next stream?");
-			resetDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
-			resetDialog.setDefaultButton(QMessageBox::Yes);
-			celeste.SaveViewerAttributes(resetDialog.exec() == QMessageBox::Yes);
-
+			celeste.SaveViewerAttributes(MessageBox(u"Reset Next Session"_s,u"Would you like to reset the session for the next stream?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes);
 			closeEvent->accept();
 		});
 		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
@@ -345,8 +334,8 @@ int main(int argc,char *argv[])
 			ShowPlaylist(musicPlaylist,window,celeste,log);
 		});
 
-		if (!log.Open()) QMessageBox(QMessageBox::Critical,"Error Opening Log","Failed to open log file. Log messages will not be saved to filesystem",QMessageBox::Ok).exec();
-		if (!server.Listen()) QMessageBox(QMessageBox::Critical,"Error Starting Web Server","Unable to start local server. Events will not be received from Twitch.",QMessageBox::Ok).exec();
+		if (!log.Open()) MessageBox(u"Error Opening Log"_s,u"Failed to open log file. Log messages will not be saved to filesystem"_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
+		if (!server.Listen()) MessageBox(u"Error Starting Web Server"_s,u"Unable to start local server. Events will not be received from Twitch."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
 		pulsar.LoadTriggers();
 		window.show();
 		channel->Connect();
