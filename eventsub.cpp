@@ -42,6 +42,7 @@ void EventSub::Subscribe()
 	defaultTypes.push(SUBSCRIPTION_TYPE_REDEMPTION);
 	defaultTypes.push(SUBSCRIPTION_TYPE_RAID);
 	defaultTypes.push(SUBSCRIPTION_TYPE_SUBSCRIPTION);
+	defaultTypes.push(SUBSCRIPTION_TYPE_RESUBSCRIPTION);
 	defaultTypes.push(SUBSCRIPTION_TYPE_CHEER);
 	Subscribe(defaultTypes.front());
 }
