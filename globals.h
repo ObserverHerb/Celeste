@@ -94,14 +94,12 @@ namespace StringConvert
 
 	inline const QString Dump(const QString &data)
 	{
-#ifdef QT_DEBUG
-#ifdef DEVELOPER_MODE
+#if defined QT_DEBUG && defined DEVELOPER_MODE
 		QStringList lines=data.split("\n",Split::Behavior(Split::Behaviors::SKIP_EMPTY_PARTS));
 		for (QString &line : lines) line.prepend("> ");
 		return lines.join("\n");
 #else
 		return QString("> (data)");
-#endif
 #endif
 	}
 
