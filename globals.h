@@ -248,7 +248,8 @@ namespace Network
 	{
 		GET,
 		POST,
-		PATCH
+		PATCH,
+		DELETE
 	};
 
 	using Reply=std::function<void(QNetworkReply*)>;
@@ -288,7 +289,12 @@ namespace Network
 		case Method::PATCH:
 			url.setQuery(queryParameters);
 			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"PATCH",payload),callback,Qt::QueuedConnection);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"PATCH"_ba,payload),callback,Qt::QueuedConnection);
+			break;
+		case Method::DELETE:
+			url.setQuery(queryParameters);
+			request.setUrl(url);
+			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"DELETE"_ba,payload),callback,Qt::QueuedConnection);
 			break;
 		}
 	}
@@ -296,6 +302,11 @@ namespace Network
 
 namespace JSON
 {
+	namespace Keys
+	{
+		inline const char *DATA="data";
+	}
+
 	struct ParseResult
 	{
 		bool success;

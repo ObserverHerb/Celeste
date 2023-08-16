@@ -44,7 +44,7 @@ public:
 	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
 	void EmoteOnly(bool enable);
-	void SaveViewerAttributes(bool resetWelcomes);
+	void SaveViewerAttributes(bool reset);
 	const Command::Lookup& Commands() const;
 	const Command::Lookup& DeserializeCommands(const QJsonDocument &json);
 	QJsonDocument LoadDynamicCommands();

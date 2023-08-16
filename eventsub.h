@@ -42,14 +42,18 @@ protected:
 signals:
 	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub")) const;
 	void Response(qintptr socketID,const QString &content=QString("Acknowledged: %1").arg(QDateTime::currentDateTime().toString()));
-	void SubscriptionFailed(const QString &type);
+	void EventSubscriptionFailed(const QString &type);
 	void Unauthorized();
 	void RateLimitHit();
 	void Follow();
 	void Redemption(const QString &login,const QString &viewer,const QString &rewardTitle,const QString &message);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void Raid(const QString &raider,const unsigned int viewers);
-	void Subscription(const QString &login,const QString &displayName);
+	void ChannelSubscription(const QString &login,const QString &displayName);
+	void EventSubscription(const QString &id,const QString &type,const QDateTime &creationDate,const QString &callbackURL);
+	void EventSubscriptionRemoved(const QString &id);
 public slots:
 	void ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content);
+	void RequestEventSubscriptionList();
+	void RemoveEventSubscription(const QString &id);
 };

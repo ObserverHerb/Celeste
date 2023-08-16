@@ -1,6 +1,9 @@
+#include <windows.h>
 #include <QFileInfo>
 #include <QDir>
-#include <windows.h>
+
+#undef DELETE
+
 #include "window.h"
 
 Win32Window::Win32Window() : Window()

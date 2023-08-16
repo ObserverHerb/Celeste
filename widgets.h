@@ -106,6 +106,7 @@ namespace UI
 		inline const char *BUTTON_APPLY="&Apply";
 		inline const char *BUTTON_ADD="&Add";
 		inline const char *BUTTON_REMOVE="&Remove";
+		inline const char *BUTTON_CLOSE="&Close";
 	}
 
 	namespace Security
@@ -601,7 +602,7 @@ namespace UI
 
 	namespace VibePlaylist
 	{
-		class Dialog: public QDialog
+		class Dialog : public QDialog
 		{
 			Q_OBJECT
 		public:
@@ -620,12 +621,38 @@ namespace UI
 			void Save();
 			void Add(const QString &path);
 			void Add(const QStringList &paths,bool failurePrompt);
-			QTableWidgetItem* ReadOnlyItem(const QString &text);
+			void showEvent(QShowEvent *event) override;
 			static const int COLUMN_COUNT;
 		signals:
 			void Save(const File::List &files);
 		protected slots:
 			void Add();
+			void Remove();
+		};
+	}
+
+	namespace EventSubscriptions
+	{
+		class Dialog : public QDialog
+		{
+			Q_OBJECT
+		public:
+			Dialog(QWidget *parent);
+		protected:
+			QVBoxLayout layout;
+			QTableWidget list;
+			QDialogButtonBox buttons;
+			QPushButton remove;
+			QPushButton close;
+			static const int COLUMN_COUNT;
+			void showEvent(QShowEvent *event) override;
+		signals:
+			void RequestSubscriptionList();
+			void RemoveSubscription(const QString &id);
+		public slots:
+			void Add(const QString &id,const QString &type,const QDateTime &creationDate,const QString &callbackURL);
+			void Removed(const QString &id);
+		protected slots:
 			void Remove();
 		};
 	}

@@ -25,6 +25,7 @@ protected:
 	ApplicationSetting settingBackgroundColor;
 	QAction configureOptions;
 	QAction configureCommands;
+	QAction configureEventSubscriptions;
 	QAction metrics;
 	QAction vibePlaylist;
 	void SwapPersistentPane(PersistentPane *pane);
@@ -41,6 +42,7 @@ signals:
 	void RestoreMusic();
 	void ConfigureOptions();
 	void ConfigureCommands();
+	void ConfigureEventSubscriptions();
 	void ShowMetrics();
 	void ShowVibePlaylist();
 	void CloseRequested(QCloseEvent *event);

@@ -204,3 +204,8 @@ const QString& Security::AdministratorID() const
 	if (administratorID.isNull()) throw std::logic_error("Administrator ID used before it was obtained from Twitch");
 	return administratorID;
 }
+
+QByteArray Security::Bearer(const QByteArray &token)
+{
+	return "Bearer "_ba.append(token);
+}

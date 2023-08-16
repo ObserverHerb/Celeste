@@ -8,6 +8,9 @@
 inline const char *QUERY_PARAMETER_CODE="code";
 inline const char *QUERY_PARAMETER_SCOPE="scope";
 
+inline const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
+inline const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
+
 class PrivateSetting : public BasicSetting
 {
 public:
@@ -32,6 +35,7 @@ public:
 	PrivateSetting& CallbackURL() { return settingCallbackURL; }
 	PrivateSetting& Scope() { return settingScope; }
 	const QString& AdministratorID() const;
+	QByteArray Bearer(const QByteArray &token);
 	void AuthorizeUser();
 	void AuthorizeServer();
 	void RequestToken(const QString &code,const QString &scopes);

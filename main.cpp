@@ -135,6 +135,19 @@ void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &comm
 	configureCommands->open();
 }
 
+void ShowEventSubscriptions(ApplicationWindow &window,EventSub *eventSub)
+{
+	UI::EventSubscriptions::Dialog *configureEventSubscriptions=new UI::EventSubscriptions::Dialog(&window);
+	eventSub->connect(eventSub,&EventSub::EventSubscription,configureEventSubscriptions,&UI::EventSubscriptions::Dialog::Add,Qt::QueuedConnection);
+	eventSub->connect(eventSub,&EventSub::EventSubscriptionRemoved,configureEventSubscriptions,&UI::EventSubscriptions::Dialog::Removed,Qt::QueuedConnection);
+	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::RequestSubscriptionList,eventSub,&EventSub::RequestEventSubscriptionList,Qt::QueuedConnection);
+	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::RemoveSubscription,eventSub,&EventSub::RemoveEventSubscription,Qt::QueuedConnection);
+	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::finished,configureEventSubscriptions,[configureEventSubscriptions](int finished) {
+		configureEventSubscriptions->deleteLater();
+	},Qt::QueuedConnection);
+	configureEventSubscriptions->open();
+}
+
 void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log &log)
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
@@ -264,19 +277,19 @@ int main(int argc,char *argv[])
 		});
 		QMetaObject::Connection events;
 		QMetaObject::Connection administratorProfile; // have to do it this way because Qt::UniqueConnection doesn't work with lambdas (https://bugreports.qt.io/browse/QTBUG-52438)
-		channel->connect(channel,&Channel::Connected,[&events,&administratorProfile,&security,channel,&server,&celeste,&log]() {
+		channel->connect(channel,&Channel::Connected,[&events,&administratorProfile,&security,&window,channel,&server,&celeste,&log]() {
 			if (!administratorProfile)
 			{
-				administratorProfile=security.connect(&security,&Security::AdministratorProfileObtained,&security,[&events,&security,channel,&log,&server,&celeste]() mutable {
+				administratorProfile=security.connect(&security,&Security::AdministratorProfileObtained,&security,[&events,&security,&window,channel,&log,&server,&celeste]() mutable {
 					EventSub *eventSub=new EventSub(security);
 					events=server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
 					eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
 					eventSub->connect(eventSub,&EventSub::Response,&server,QOverload<qintptr,const QString&>::of(&Server::SocketWrite));
 					eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
-					eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
+					eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
 					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
-					eventSub->connect(eventSub,&EventSub::SubscriptionFailed,eventSub,[eventSub](const QString &type) {
+					eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[eventSub](const QString &type) {
 						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
 					eventSub->connect(eventSub,&EventSub::Unauthorized,eventSub,[eventSub,&events,&security,&server,channel]() {
@@ -291,6 +304,10 @@ int main(int argc,char *argv[])
 					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[eventSub]() {
 						MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
+					window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
+						ShowEventSubscriptions(window,eventSub);
+					});
+
 					eventSub->Subscribe();
 				});
 			}

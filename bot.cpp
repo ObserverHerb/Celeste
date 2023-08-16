@@ -15,8 +15,6 @@ const char *COMMAND_TYPE_PULSAR="pulsar";
 const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
 const char *VIEWER_ATTRIBUTES_ERROR="Failed to add viewer to list of viewers";
 const char *VIBE_PLAYLIST_FILENAME="songs.json";
-const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
-const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
 const char *QUERY_PARAMETER_BROADCASTER_ID="broadcaster_id";
 const char *QUERY_PARAMETER_MODERATOR_ID="moderator_id";
 const char *JSON_KEY_COMMAND_NAME="command";
@@ -30,7 +28,6 @@ const char *JSON_KEY_COMMAND_PATH="path";
 const char *JSON_KEY_COMMAND_MESSAGE="message";
 const char *JSON_KEY_COMMAND_REDEMPTION="redemption";
 const char *JSON_KEY_COMMAND_VIEWERS="viewers";
-const char *JSON_KEY_DATA="data";
 const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
 const char *JSON_KEY_BOT="bot";
@@ -383,7 +380,7 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 	return true;
 }
 
-void Bot::SaveViewerAttributes(bool resetWelcomes)
+void Bot::SaveViewerAttributes(bool reset)
 {
 	QFile viewerAttributesFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
 	if (!viewerAttributesFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
@@ -393,10 +390,10 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 	{
 		QJsonObject attributes={
 			{JSON_KEY_COMMANDS,viewer.second.commands},
-			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.welcomed},
+			{JSON_KEY_WELCOME,reset ? false : viewer.second.welcomed},
 			{JSON_KEY_BOT,viewer.second.bot},
 			{JSON_KEY_LIMIT_COMMANDS,viewer.second.limited},
-			{JSON_KEY_SUBSCRIBED,viewer.second.subscribed}
+			{JSON_KEY_SUBSCRIBED,reset ? false : viewer.second.subscribed}
 		};
 		entries.insert(viewer.first,attributes);
 	}
@@ -483,7 +480,7 @@ void Bot::LoadBadgeIconURLs()
 		}
 
 		const QJsonObject object=parsedJSON().object();
-		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
 		if (jsonFieldData == object.end()) return;
 		for (const QJsonValue &set : jsonFieldData->toArray())
 		{
@@ -501,7 +498,7 @@ void Bot::LoadBadgeIconURLs()
 			}
 		}
 	},{},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
 	});
 }
@@ -546,17 +543,21 @@ void Bot::Redemption(const QString &login,const QString &name,const QString &rew
 
 void Bot::Subscription(const QString &login,const QString &displayName)
 {
-	if (auto viewer=viewers.find(login); viewer != viewers.end())
+	std::unordered_map<QString,Viewer::Attributes>::iterator viewer;
+	if (auto candidate=viewers.find(login); candidate != viewers.end())
 	{
-		if (viewer->second.subscribed) return;
+		if (candidate->second.subscribed) return;
+		viewer=candidate;
 	}
 	else
 	{
-		if (!viewers.insert({login,{}}).second)
+		auto inserted=viewers.insert({login,{}});
+		if (!inserted.second)
 		{
 			emit Print(VIEWER_ATTRIBUTES_ERROR,u"announce subscription"_s);
 			return;
 		}
+		viewer=inserted.first;
 	}
 
 	if (static_cast<QString>(settingSubscriptionSound).isEmpty())
@@ -565,6 +566,7 @@ void Bot::Subscription(const QString &login,const QString &displayName)
 		return;
 	}
 	emit AnnounceSubscription(displayName,settingSubscriptionSound);
+	viewer->second.subscribed=true;
 }
 
 void Bot::Raid(const QString &viewer,const unsigned int viewers)
@@ -977,7 +979,7 @@ void Bot::DispatchFollowage(const Viewer::Local &viewer)
 		}
 
 		const QJsonObject object=parsedJSON().object();
-		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
 		if (jsonFieldData == object.end())
 		{
 			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_USER_FOLLOWS));
@@ -1008,7 +1010,7 @@ void Bot::DispatchFollowage(const Viewer::Local &viewer)
 		{"from_id",viewer.ID()},
 		{"to_id",security.AdministratorID()}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
@@ -1065,7 +1067,7 @@ void Bot::DispatchUptime(bool total)
 		}
 
 		const QJsonObject object=parsedJSON().object();
-		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
 		if (jsonFieldData == object.end())
 		{
 			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_STREAM_INFORMATION));
@@ -1100,7 +1102,7 @@ void Bot::DispatchUptime(bool total)
 	},{
 		{"user_login",security.Administrator()}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
@@ -1197,7 +1199,7 @@ void Bot::ToggleEmoteOnly()
 		}
 
 		const QJsonObject object=parsedJSON().object();
-		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
 		if (jsonFieldData == object.end())
 		{
 			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_EMOTE_ONLY));
@@ -1227,7 +1229,7 @@ void Bot::ToggleEmoteOnly()
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
 		{QUERY_PARAMETER_MODERATOR_ID,security.AdministratorID()}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});
@@ -1245,7 +1247,7 @@ void Bot::EmoteOnly(bool enable)
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
 		{QUERY_PARAMETER_MODERATOR_ID,security.AdministratorID()}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	},QJsonDocument(QJsonObject({{"emote_mode",enable}})).toJson(QJsonDocument::Compact));
@@ -1277,7 +1279,7 @@ void Bot::StreamTitle(const QString &title)
 	},{
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	},
@@ -1297,7 +1299,7 @@ void Bot::StreamCategory(const QString &category)
 		}
 
 		const QJsonObject object=parsedJSON().object();
-		auto jsonFieldData=object.find(JSON_KEY_DATA);
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
 		if (jsonFieldData == object.end())
 		{
 			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_STREAM_CATEGORY));
@@ -1330,7 +1332,7 @@ void Bot::StreamCategory(const QString &category)
 		},{
 			{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()}
 		},{
-			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 		},
@@ -1340,7 +1342,7 @@ void Bot::StreamCategory(const QString &category)
 	},{
 		{"name",category}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
 	});

@@ -1,6 +1,7 @@
 #include <QNetworkInterface>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QStringBuilder>
 #include <QUuid>
 #include "globals.h"
@@ -9,7 +10,7 @@
 const char *HEADER_SUBSCRIPTION_TYPE="Twitch-Eventsub-Subscription-Type";
 
 const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
-const char *TWITCH_API_OPERATION_SUBSCRIBE="subscribe to event";
+const char *TWITCH_API_ENDPOINT_EVENTSUB_SUBSCRIPTIONS="https://api.twitch.tv/helix/eventsub/subscriptions";
 
 const char *JSON_KEY_CHALLENGE="challenge";
 const char *JSON_KEY_EVENT="event";
@@ -49,6 +50,8 @@ void EventSub::Subscribe()
 
 void EventSub::Subscribe(const QString &type)
 {
+	static const char *TWITCH_API_OPERATION_SUBSCRIBE="subscribe to event";
+
 	QUrl callbackURL(security.CallbackURL());
 	callbackURL.setScheme("https");
 	emit Print(u"Requesting subscription to %1"_s.arg(type),TWITCH_API_OPERATION_SUBSCRIBE);
@@ -79,10 +82,10 @@ void EventSub::Subscribe(const QString &type)
 			emit RateLimitHit();
 			return;
 		}
-		emit SubscriptionFailed(type);
+		emit EventSubscriptionFailed(type);
 	},{},{
-		{"Authorization","Bearer "_ba.append(security.ServerToken())},
-		{"Client-ID",security.ClientID()},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.ServerToken())},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({
 		{u"type"_s,type},
@@ -113,11 +116,11 @@ void EventSub::NextSubscription()
 
 void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content)
 {
-	const char *PARSE_REQUEST="parse request";
+	static const char *OPERATION_PARSE_REQUEST="parse request";
 	auto headerSubscriptionType=headers.find(HEADER_SUBSCRIPTION_TYPE);
 	if (headerSubscriptionType == headers.end())
 	{
-		emit Print("Ignoring request with no subscription type",PARSE_REQUEST);
+		emit Print("Ignoring request with no subscription type",OPERATION_PARSE_REQUEST);
 		return;
 	}
 
@@ -127,7 +130,7 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 	const JSON::ParseResult parsedJSON=JSON::Parse(StringConvert::ByteArray(content.trimmed()));
 	if (!parsedJSON)
 	{
-		Print(QString("Invalid JSON: %1").arg(parsedJSON.error),PARSE_REQUEST);
+		Print(QString("Invalid JSON: %1").arg(parsedJSON.error),OPERATION_PARSE_REQUEST);
 		return;
 	}
 
@@ -163,10 +166,83 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 		emit Raid(eventObject.value("from_broadcaster_user_name").toString(),eventObject.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
 		break;
 	case SubscriptionType::CHANNEL_SUBSCRIPTION:
-		emit Subscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
+		emit ChannelSubscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
 		break;
 	}
 
 	emit Response(socketID);
 }
 
+void EventSub::RequestEventSubscriptionList()
+{
+	static const char *TWITCH_API_OPERATION_SUBSCRIPTION_LIST="list subscriptions";
+
+	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB_SUBSCRIPTIONS},Network::Method::GET,[this](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(u"The subscription request was malformatted"_s,TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
+			break;
+		case 401:
+			emit Print(u"Invalid OAuth token or authorization header was malformatted"_s,TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
+			return;
+		}
+
+		const QByteArray data=reply->readAll();
+		emit Print(StringConvert::Dump(data),TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
+
+		const JSON::ParseResult parsedJSON=JSON::Parse(StringConvert::ByteArray(data.trimmed()));
+		if (!parsedJSON)
+		{
+			Print(QString("Invalid JSON: %1").arg(parsedJSON.error),TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
+			return;
+		}
+
+		QJsonObject jsonObject=parsedJSON().object();
+		if (auto subscriptionList=jsonObject.find(JSON::Keys::DATA); subscriptionList != jsonObject.end())
+		{
+			for (const QJsonValue &eventSubscription : subscriptionList->toArray())
+			{
+				const QJsonObject entry=eventSubscription.toObject();
+				const QString id=entry.value("id").toString();
+				const QString type=entry.value("type").toString();
+				const QDateTime date=entry.value("created_at").toVariant().toDateTime();
+				const QString callbackURL=entry.value("transport").toObject().value("callback").toString();
+				if (id.isEmpty() || type.isEmpty() || callbackURL.isEmpty() || !date.isValid()) continue;
+				emit EventSubscription(id,type,date,callbackURL);
+			}
+		}
+	},{},{
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.ServerToken())},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
+	});
+}
+
+void EventSub::RemoveEventSubscription(const QString &id)
+{
+	static const char *TWITCH_API_OPERATION_SUBSCRIPTION_DELETE="delete subscription";
+
+	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB_SUBSCRIPTIONS},Network::Method::DELETE,[this,id](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 204:
+			emit Print(u"Removed event "_s.append(id),TWITCH_API_OPERATION_SUBSCRIPTION_DELETE);
+			emit EventSubscriptionRemoved(id);
+			break;
+		case 400:
+			emit Print(u"The subscription request was malformatted"_s,TWITCH_API_OPERATION_SUBSCRIPTION_DELETE);
+			break;
+		case 401:
+			emit Print(u"Invalid OAuth token or authorization header was malformatted"_s,TWITCH_API_OPERATION_SUBSCRIPTION_DELETE);
+			break;
+		case 404:
+			emit Print(u"Invalid subscription ID"_s,TWITCH_API_OPERATION_SUBSCRIPTION_DELETE);
+			break;
+		}
+	},{
+		{u"id"_s,id}
+	},{
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.ServerToken())},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
+	});
+}
