@@ -35,6 +35,7 @@ const char *JSON_KEY_COMMANDS="commands";
 const char *JSON_KEY_WELCOME="welcomed";
 const char *JSON_KEY_BOT="bot";
 const char *JSON_KEY_LIMIT_COMMANDS="limited";
+const char *JSON_KEY_SUBSCRIBED="subscribed";
 const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
@@ -374,7 +375,8 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 			Container::Resolve(attributes,JSON_KEY_COMMANDS,true).toBool(),
 			Container::Resolve(attributes,JSON_KEY_WELCOME,false).toBool(),
 			Container::Resolve(attributes,JSON_KEY_BOT,false).toBool(),
-			Container::Resolve(attributes,JSON_KEY_LIMIT_COMMANDS,false).toBool()
+			Container::Resolve(attributes,JSON_KEY_LIMIT_COMMANDS,false).toBool(),
+			Container::Resolve(attributes,JSON_KEY_SUBSCRIBED,false).toBool()
 		};
 	}
 
@@ -393,7 +395,8 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 			{JSON_KEY_COMMANDS,viewer.second.commands},
 			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.welcomed},
 			{JSON_KEY_BOT,viewer.second.bot},
-			{JSON_KEY_LIMIT_COMMANDS,viewer.second.limited}
+			{JSON_KEY_LIMIT_COMMANDS,viewer.second.limited},
+			{JSON_KEY_SUBSCRIBED,viewer.second.subscribed}
 		};
 		entries.insert(viewer.first,attributes);
 	}
