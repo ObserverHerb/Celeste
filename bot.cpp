@@ -13,6 +13,7 @@ const char *COMMAND_TYPE_AUDIO="announce";
 const char *COMMAND_TYPE_VIDEO="video";
 const char *COMMAND_TYPE_PULSAR="pulsar";
 const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
+const char *VIEWER_ATTRIBUTES_ERROR="Failed to add viewer to list of viewers";
 const char *VIBE_PLAYLIST_FILENAME="songs.json";
 const char *NETWORK_HEADER_AUTHORIZATION="Authorization";
 const char *NETWORK_HEADER_CLIENT_ID="Client-Id";
@@ -540,14 +541,27 @@ void Bot::Redemption(const QString &login,const QString &name,const QString &rew
 	emit AnnounceRedemption(name,rewardTitle,message);
 }
 
-void Bot::Subscription(const QString &viewer)
+void Bot::Subscription(const QString &login,const QString &displayName)
 {
+	if (auto viewer=viewers.find(login); viewer != viewers.end())
+	{
+		if (viewer->second.subscribed) return;
+	}
+	else
+	{
+		if (!viewers.insert({login,{}}).second)
+		{
+			emit Print(VIEWER_ATTRIBUTES_ERROR,u"announce subscription"_s);
+			return;
+		}
+	}
+
 	if (static_cast<QString>(settingSubscriptionSound).isEmpty())
 	{
 		emit Print("No audio path set for subscriptions","announce subscription");
 		return;
 	}
-	emit AnnounceSubscription(viewer,settingSubscriptionSound);
+	emit AnnounceSubscription(displayName,settingSubscriptionSound);
 }
 
 void Bot::Raid(const QString &viewer,const unsigned int viewers)
@@ -586,7 +600,11 @@ void Bot::DispatchArrival(const QString &login)
 	else
 	{
 		// we've never seen this person before, so add a new object to represent them
-		viewers.insert({login,{}});
+		if (!viewers.insert({login,{}}).second)
+		{
+			emit Print(VIEWER_ATTRIBUTES_ERROR,u"announce arrival"_s);
+			return;
+		}
 	}
 
 	// viewer (whether they've been seen before or not) hasn't been welcomed yet

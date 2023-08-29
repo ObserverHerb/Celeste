@@ -320,6 +320,7 @@ namespace Viewer
 		bool welcomed { false };
 		bool bot { false };
 		bool limited { false };
+		bool subscribed { false };
 		std::chrono::time_point<std::chrono::system_clock> commandTimestamp;
 	};
 }

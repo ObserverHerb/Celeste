@@ -49,7 +49,7 @@ signals:
 	void Redemption(const QString &login,const QString &viewer,const QString &rewardTitle,const QString &message);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void Raid(const QString &raider,const unsigned int viewers);
-	void Subscription(const QString &viewer);
+	void Subscription(const QString &login,const QString &displayName);
 public slots:
 	void ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content);
 };

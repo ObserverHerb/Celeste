@@ -163,7 +163,7 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 		emit Raid(eventObject.value("from_broadcaster_user_name").toString(),eventObject.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
 		break;
 	case SubscriptionType::CHANNEL_SUBSCRIPTION:
-		emit Subscription(eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
+		emit Subscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
 		break;
 	}
 

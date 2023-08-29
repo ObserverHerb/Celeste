@@ -158,7 +158,7 @@ signals:
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void Ping();
-	void Subscription(const QString &viewer);
+	void Subscription(const QString &login,const QString &displayName);
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);
 	void Raid(const QString &viewer,const unsigned int viewers);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
