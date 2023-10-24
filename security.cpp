@@ -45,6 +45,7 @@ const QStringList Security::SCOPES={
 	"moderator:manage:automod_settings",
 	"moderator:read:chat_settings",
 	"moderator:manage:chat_settings",
+	"moderator:manage:shoutouts",
 	"user:edit",
 	"user:edit:follows",
 	"user:manage:blocked_users",

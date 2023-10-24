@@ -44,12 +44,14 @@ const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix
 const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
 const char *TWITCH_API_ENDPOINT_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
+const char *TWITCH_API_ENDPOINT_SHOUTOUTS="https://api.twitch.tv/helix/chat/shoutouts";
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
 const char *TWITCH_API_OPERATION_STREAM_TITLE="stream title";
 const char *TWITCH_API_OPERATION_STREAM_CATEGORY="stream category";
 const char *TWITCH_API_OPERATION_LOAD_BADGES="badges";
+const char *TWITCH_API_OPERATION_SHOUTOUT="shoutout";
 const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 was incomplete";
 const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
 const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
@@ -1030,14 +1032,48 @@ void Bot::DispatchPanic(const QString &name)
 
 void Bot::DispatchShoutout(Command command)
 {
-	Viewer::Remote *viewer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
-	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
-		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
-			emit Shoutout(viewer.DisplayName(),viewer.Description(),profileImage);
+	Viewer::Remote *streamer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
+	connect(streamer,&Viewer::Remote::Recognized,streamer,[this](const Viewer::Local &streamer) {
+		// native Twitch shoutout
+		Network::Request({TWITCH_API_ENDPOINT_SHOUTOUTS},Network::Method::POST,[this,streamerID=streamer.ID()](QNetworkReply *reply) {
+			// 204 is successful
+			switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+			{
+			case 400:
+				emit Print(u"Invalid or missing information in request"_s,TWITCH_API_OPERATION_SHOUTOUT);
+				return;
+			case 401:
+				emit Print(TWITCH_API_ERROR_AUTH,TWITCH_API_OPERATION_SHOUTOUT);
+				return;
+			case 403:
+				emit Print(u"User attempting shoutout is not a moderator"_s,TWITCH_API_OPERATION_SHOUTOUT);
+				return;
+			case 429:
+				emit Print(u"Shoutout feature is still in cooldown"_s,TWITCH_API_OPERATION_SHOUTOUT);
+				return;
+			}
+
+			if (reply->error())
+			{
+				emit Print(u"Failed to perform shoutout for unknown reason"_s,TWITCH_API_OPERATION_SHOUTOUT);
+				return;
+			}
+		},{
+			{"from_broadcaster_id",security.AdministratorID()},
+			{"to_broadcaster_id",streamer.ID()},
+			{"moderator_id",security.AdministratorID()}
+		},{
+			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
+			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM} // Error code 400 can also be cause by missing content type
 		});
-	});
-	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
+		// bot shoutout
+		Viewer::ProfileImage::Remote *profileImage=streamer.ProfileImage();
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,displayName=streamer.DisplayName(),description=streamer.Description()](const QImage &profileImage) {
+			emit Shoutout(displayName,description,profileImage);
+		},Qt::QueuedConnection);
+	},Qt::QueuedConnection);
+	connect(streamer,&Viewer::Remote::Print,this,&Bot::Print);
 }
 
 void Bot::DispatchUptime(bool total)
