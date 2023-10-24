@@ -136,7 +136,6 @@ public:
 	AnnouncePane(const Lines &lines,QWidget *parent);
 	AnnouncePane(const QString &text,QWidget *parent);
 	void Duration(const int duration) { clock.setInterval(duration); }
-	QString BuildParagraph(int width);
 	ApplicationSetting& Font();
 	ApplicationSetting& FontSize();
 	ApplicationSetting& ForegroundColor();
@@ -155,6 +154,7 @@ protected:
 	ApplicationSetting settingAccentColor;
 	static const QString SETTINGS_CATEGORY;
 	virtual void Polish();
+	QString BuildParagraph(int width);
 	void SingleLine(const QString &text);
 	bool event(QEvent *event) override;
 	void showEvent(QShowEvent *event) override;

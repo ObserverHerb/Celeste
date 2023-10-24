@@ -360,7 +360,7 @@ QString AnnouncePane::BuildParagraph(int width)
 	for (const Line &line : lines)
 	{
 		font.setPointSizeF(output->font().pointSizeF()*line.second);
-		int pointSize=StringConvert::RestrictFontWidth(font,line.first,width-output->margin()*2);
+		int pointSize=line.first.contains(QChar{32}) ? font.pointSize() : StringConvert::RestrictFontWidth(font,line.first,width-output->margin()*2);
 		if (line.second == 1 && font.pointSizeF() == output->font().pointSizeF())
 			paragraph.append(QString("%1").arg(line.first));
 		else

@@ -110,8 +110,9 @@ namespace StringConvert
 		QRect bounds=metrics.boundingRect(text);
 		while (bounds.width() > maxPixels)
 		{
-			font.setPointSize(font.pointSize()-1);
-			if (font.pointSize() < 1) return originalPointSize;
+			int reducedPointSize=font.pointSize()-1;
+			if (reducedPointSize < 1) return originalPointSize;
+			font.setPointSize(reducedPointSize);
 			metrics=QFontMetrics{font};
 			bounds=metrics.boundingRect(text);
 		}
