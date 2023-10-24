@@ -23,6 +23,9 @@ const char *JSON_KEY_EVENT_USER_INPUT="user_input";
 const char *JSON_KEY_EVENT_VIEWERS="viewers";
 const char *JSON_KEY_EVENT_MESSAGE="message";
 const char *JSON_KEY_EVENT_CHEER_AMOUNT="bits";
+const char *JSON_KEY_EVENT_HYPE_TRAIN_LEVEL="level";
+const char *JSON_KEY_EVENT_HYPE_TRAIN_PROGRESS="progress";
+const char *JSON_KEY_EVENT_HYPE_TRAIN_TOTAL="goal";
 const char *JSON_KEY_SUBSCRIPTION="subscription";
 const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
@@ -36,6 +39,9 @@ EventSub::EventSub(Security &security,QObject *parent) : QObject(parent),
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RAID,SubscriptionType::CHANNEL_RAID});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_SUBSCRIPTION,SubscriptionType::CHANNEL_SUBSCRIPTION});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RESUBSCRIPTION,SubscriptionType::CHANNEL_SUBSCRIPTION});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_START,SubscriptionType::CHANNEL_HYPE_TRAIN});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS,SubscriptionType::CHANNEL_HYPE_TRAIN});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_END,SubscriptionType::CHANNEL_HYPE_TRAIN});
 }
 
 void EventSub::Subscribe()
@@ -45,6 +51,9 @@ void EventSub::Subscribe()
 	defaultTypes.push(SUBSCRIPTION_TYPE_SUBSCRIPTION);
 	defaultTypes.push(SUBSCRIPTION_TYPE_RESUBSCRIPTION);
 	defaultTypes.push(SUBSCRIPTION_TYPE_CHEER);
+	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_START);
+	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS);
+	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_END);
 	Subscribe(defaultTypes.front());
 }
 
@@ -167,6 +176,11 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 		break;
 	case SubscriptionType::CHANNEL_SUBSCRIPTION:
 		emit ChannelSubscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
+		break;
+	case SubscriptionType::CHANNEL_HYPE_TRAIN:
+		double goal=eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_TOTAL).toDouble();
+		if (goal > 0)
+			emit HypeTrain(eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_LEVEL).toInt(),eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_PROGRESS).toDouble()/goal);
 		break;
 	}
 

@@ -12,6 +12,9 @@ inline const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
 inline const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
 inline const char *SUBSCRIPTION_TYPE_SUBSCRIPTION="channel.subscribe";
 inline const char *SUBSCRIPTION_TYPE_RESUBSCRIPTION="channel.subscription.message";
+inline const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_START="channel.hype_train.begin";
+inline const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS="channel.hype_train.progress";
+inline const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_END="channel.hype_train.end";
 
 enum class SubscriptionType
 {
@@ -19,7 +22,8 @@ enum class SubscriptionType
 	CHANNEL_REDEMPTION,
 	CHANNEL_CHEER,
 	CHANNEL_RAID,
-	CHANNEL_SUBSCRIPTION
+	CHANNEL_SUBSCRIPTION,
+	CHANNEL_HYPE_TRAIN
 };
 
 class EventSub : public QObject
@@ -49,6 +53,7 @@ signals:
 	void Redemption(const QString &login,const QString &viewer,const QString &rewardTitle,const QString &message);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
 	void Raid(const QString &raider,const unsigned int viewers);
+	void HypeTrain(int level,double progress);
 	void ChannelSubscription(const QString &login,const QString &displayName);
 	void EventSubscription(const QString &id,const QString &type,const QDateTime &creationDate,const QString &callbackURL);
 	void EventSubscriptionRemoved(const QString &id);

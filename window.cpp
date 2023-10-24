@@ -145,6 +145,16 @@ void Window::AnnounceDeniedCommand(const QString &videoPath)
 	StageEphemeralPane(pane);
 }
 
+void Window::AnnounceHypeTrainProgress(int level,double progress)
+{
+	AnnouncePane *pane=new AnnouncePane({
+		{u"Hype Train!"_s,0.5},
+		{u"Level %1"_s.arg(level),2},
+		{u"%1% of the way to level "_s.arg(progress*100,0,'f',2)+StringConvert::Integer(level+1),1}
+	},this);
+	StageEphemeralPane(pane);
+}
+
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);

@@ -289,6 +289,7 @@ int main(int argc,char *argv[])
 					eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
 					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
+					eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
 					eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[eventSub](const QString &type) {
 						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
