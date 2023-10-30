@@ -204,7 +204,7 @@ int main(int argc,char *argv[])
 		if (callbackURL.isEmpty()) return NOT_CONFIGURED;
 		security.CallbackURL().Set(callbackURL);
 	}
-	if (!security.Scope() || static_cast<QStringList>(security.Scope()).isEmpty())
+	if (!security.Scope() || static_cast<QString>(security.Scope()).isEmpty()) // just test against QString since we're just looking to see if something is there (not worth the conversion overhead of splitting)
 	{
 		UI::Security::Scopes scopes(nullptr);
 		if (scopes.exec()) security.Scope().Set(scopes().join(" "));
@@ -228,9 +228,6 @@ int main(int argc,char *argv[])
 		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
 			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
 			application.exit(AUTHENTICATION_ERROR);
-		});
-		security.connect(&security,&Security::TokenRefreshFailed,[&log]() {
-			log.Write("Attempt to refresh OAuth token failed","refresh auth token",SUBSYSTEM_AUTHORIZATION);
 		});
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
@@ -314,18 +311,19 @@ int main(int argc,char *argv[])
 			}
 			security.ObtainAdministratorProfile();
 		});
-		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
 		QMetaObject::Connection reauthorize;
 		channel->connect(channel,&Channel::Denied,[&reauthorize,&security,&server]() {
 			if (MessageBox(u"Authentication Failed"_s,u"Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			reauthorize=server.connect(&server,&Server::Dispatch,[&reauthorize,&security,&server](qintptr socketID,const QUrlQuery& query) {
 				server.disconnect(reauthorize); // break any connection with security's slots so we don't conflict with EventSub later
 				server.SocketWrite(socketID,QStringLiteral(R"(<html><body><h1>Authorization Successful!</h1><br><b>Token:</b> %1<br><b>Scope:</b> %2</body></html>)").arg(QString(query.queryItemValue(QUERY_PARAMETER_CODE).size(),'*'),query.queryItemValue(QUERY_PARAMETER_SCOPE).replace('+',", ")),Network::CONTENT_TYPE_HTML);
-				security.RequestToken(query.queryItemValue(QUERY_PARAMETER_CODE),query.queryItemValue(QUERY_PARAMETER_SCOPE));
 			});
 			security.AuthorizeUser();
 		});
 		server.connect(&server,&Server::Print,&log,&Log::Write);
+		security.connect(&security,&Security::TokensInitialized,&security,[channel]() {
+			channel->Connect();
+		});
 		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel]() {
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
@@ -356,7 +354,7 @@ int main(int argc,char *argv[])
 		if (!server.Listen()) MessageBox(u"Error Starting Web Server"_s,u"Unable to start local server. Events will not be received from Twitch."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
 		pulsar.LoadTriggers();
 		window.show();
-		channel->Connect();
+		security.Listen();
 
 		return application.exec();
 	}

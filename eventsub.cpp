@@ -31,7 +31,7 @@ const char *JSON_KEY_SUBSCRIPTION_TYPE="type";
 
 EventSub::EventSub(Security &security,QObject *parent) : QObject(parent),
 	security(security),
-	secret(QUuid::createUuid().toString())
+	secret(QUuid::createUuid().toString(QUuid::WithoutBraces))
 {
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
 	subscriptionTypes.insert({SUBSCRIPTION_TYPE_REDEMPTION,SubscriptionType::CHANNEL_REDEMPTION});

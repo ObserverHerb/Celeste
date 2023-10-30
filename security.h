@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
+#include <QMqttClient>
 #include "settings.h"
 
 inline const char *QUERY_PARAMETER_CODE="code";
@@ -36,10 +37,10 @@ public:
 	PrivateSetting& Scope() { return settingScope; }
 	const QString& AdministratorID() const;
 	QByteArray Bearer(const QByteArray &token);
-	void AuthorizeUser();
+	void ValidateToken();
 	void AuthorizeServer();
-	void RequestToken(const QString &code,const QString &scopes);
 	void ObtainAdministratorProfile();
+	void Listen();
 	static const QStringList SCOPES;
 private:
 	PrivateSetting settingAdministrator;
@@ -50,14 +51,25 @@ private:
 	PrivateSetting settingServerToken;
 	PrivateSetting settingCallbackURL;
 	PrivateSetting settingScope;
+	ApplicationSetting settingRewireHost;
+	ApplicationSetting settingRewirePort;
+	ApplicationSetting settingRewireSession;
 	QString administratorID;
-	static QTimer tokenTimer;
+	QMqttClient *rewire;
+	QMqttSubscription *rewireChannel;
+	bool tokensInitialized;
+	QTimer tokenValidationTimer;
 signals:
 	void TokenRequestFailed();
-	void TokenRefreshFailed();
 	void AdministratorProfileObtained();
+	void Listening();
+	void Disconnected();
+	void TokensInitialized();
 public slots:
-	void StartClocks();
+	void AuthorizeUser();
 private slots:
-	void RefreshToken();
+	void RewireConnected();
+	void RewireError(QMqttClient::ClientError error);
+	void RewireMessage(QMqttMessage messasge);
+	void InitializeTokens();
 };
