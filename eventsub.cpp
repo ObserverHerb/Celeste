@@ -370,9 +370,17 @@ void EventSub::RequestEventSubscriptionList()
 				const QString id=entry.value("id").toString();
 				const QString type=entry.value("type").toString();
 				const QDateTime date=entry.value("created_at").toVariant().toDateTime();
-				const QString callbackURL=entry.value("transport").toObject().value("callback").toString();
-				if (id.isEmpty() || type.isEmpty() || callbackURL.isEmpty() || !date.isValid()) continue;
-				emit EventSubscription(id,type,date,callbackURL);
+
+				if (auto transport=entry.find("transport"); transport != entry.end())
+				{
+					QJsonObject transportObject=transport->toObject();
+					auto disconnectTime=transportObject.find("disconnected_at");
+					if (disconnectTime == transportObject.end()) continue;
+					if (disconnectTime->toVariant().toDateTime().toLocalTime() < QDateTime::currentDateTime()) continue; // FIXME: Not sure what's happening here, but the expiration date on EVERY subscription is older than the current date
+				}
+				if (id.isEmpty() || type.isEmpty() || !date.isValid()) continue;
+
+				emit EventSubscription(id,type,date,QString());
 			}
 		}
 	},{},{
