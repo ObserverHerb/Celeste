@@ -24,8 +24,6 @@ add_executable(Celeste
 	security.cpp
 	channel.h
 	channel.cpp
-	server.h
-	server.cpp
 	widgets.h
 	widgets.cpp
 	entities.h

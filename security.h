@@ -30,15 +30,12 @@ public:
 	Security();
 	PrivateSetting& Administrator() { return settingAdministrator; }
 	PrivateSetting& OAuthToken() { return settingOAuthToken; }
-	PrivateSetting& ServerToken() { return settingServerToken; }
 	PrivateSetting& ClientID() { return settingClientID; }
 	PrivateSetting& ClientSecret() { return settingClientSecret; }
 	PrivateSetting& CallbackURL() { return settingCallbackURL; }
 	PrivateSetting& Scope() { return settingScope; }
 	const QString& AdministratorID() const;
 	QByteArray Bearer(const QByteArray &token);
-	void ValidateToken();
-	void AuthorizeServer();
 	void Listen();
 	static const QStringList SCOPES;
 private:
@@ -47,7 +44,6 @@ private:
 	PrivateSetting settingClientSecret;
 	PrivateSetting settingOAuthToken;
 	PrivateSetting settingRefreshToken;
-	PrivateSetting settingServerToken;
 	PrivateSetting settingCallbackURL;
 	PrivateSetting settingScope;
 	PrivateSetting settingRewireSession;
@@ -67,6 +63,7 @@ signals:
 public slots:
 	void AuthorizeUser();
 private slots:
+	void ValidateToken();
 	void ObtainAdministratorProfile();
 	void RewireConnected();
 	void RewireError(QMqttClient::ClientError error);

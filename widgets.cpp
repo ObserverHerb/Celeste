@@ -1723,8 +1723,6 @@ namespace UI
 				clientSecret.setEchoMode(QLineEdit::Password);
 				token.setText(settings.OAuthToken());
 				token.setEchoMode(QLineEdit::Password);
-				serverToken.setText(settings.ServerToken());
-				serverToken.setEchoMode(QLineEdit::Password);
 				callbackURL.setText(settings.CallbackURL());
 				permissions.setText(settings.Scope());
 
@@ -1735,7 +1733,6 @@ namespace UI
 					{Label(QStringLiteral("Client ID")),&clientID},
 					{Label(QStringLiteral("Client Secret")),&clientSecret},
 					{Label(QStringLiteral("OAuth Token")),&token},
-					{Label(QStringLiteral("Server Token")),&serverToken},
 					{Label(QStringLiteral("Callback URL")),&callbackURL},
 					{Label(QStringLiteral("Permissions")),&permissions,&selectPermissions}
 				});
@@ -1749,7 +1746,6 @@ namespace UI
 					if (object == &clientID) emit Help(QStringLiteral("Client ID from Twitch developer console."));
 					if (object == &clientSecret) emit Help(QStringLiteral("Client Secret from Twitch developer console."));
 					if (object == &token) emit Help(QStringLiteral(R"(OAuth token obtained from Twitch authorization process (usually automatic, but can be manually obtained and entered). This is for "Authorization code grant flow" for Celeste's main API calls.)"));
-					if (object == &serverToken) emit Help(QStringLiteral(R"(Server token obtained from Twitch authorization process. This is for "Client credentials grant flow" for Celete's EventSub web hook support.)"));
 					if (object == &callbackURL) emit Help(QStringLiteral("The URL Twitch will contact with an OAuth token (or error message)."));
 					if (object == &permissions || object == &selectPermissions) emit Help(QStringLiteral(R"(The list of permissions (Twitch refers to as "scopes") the bot will require.)"));
 				}
@@ -1770,7 +1766,6 @@ namespace UI
 				settings.ClientID().Set(clientID.text());
 				settings.ClientSecret().Set(clientSecret.text());
 				settings.OAuthToken().Set(token.text());
-				settings.ServerToken().Set(serverToken.text());
 				settings.CallbackURL().Set(callbackURL.text());
 				settings.Scope().Set(permissions.text());
 			}

@@ -62,7 +62,6 @@ protected:
 	const QString BuildResponse(const QString &data=QString()) const;
 signals:
 	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub")) const;
-	void Response(qintptr socketID,const QString &content=QString("Acknowledged: %1").arg(QDateTime::currentDateTime().toString()));
 	void EventSubscriptionFailed(const QString &type);
 	void Unauthorized();
 	void RateLimitHit();

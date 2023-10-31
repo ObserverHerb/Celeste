@@ -376,7 +376,7 @@ void EventSub::RequestEventSubscriptionList()
 			}
 		}
 	},{},{
-		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.ServerToken())},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
 	});
 }
@@ -405,7 +405,7 @@ void EventSub::RemoveEventSubscription(const QString &id)
 	},{
 		{u"id"_s,id}
 	},{
-		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.ServerToken())},
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
 	});
 }

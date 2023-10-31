@@ -16,7 +16,6 @@
 #include "bot.h"
 #include "log.h"
 #include "eventsub.h"
-#include "server.h"
 #include "globals.h"
 #include "security.h"
 #include "pulsar.h"
@@ -216,7 +215,6 @@ int main(int argc,char *argv[])
 		Log log;
 		IRCSocket socket;
 		Channel *channel=new Channel(security,&socket);
-		Server server;
 		Music::Player musicPlayer(true,0);
 		Bot celeste(musicPlayer,security);
 		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
@@ -272,14 +270,13 @@ int main(int argc,char *argv[])
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&server,&celeste,&log]() {
+		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log]() {
 			static EventSub *eventSub=nullptr;
 
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
 			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
-			eventSub->connect(eventSub,&EventSub::Response,&server,QOverload<qintptr,const QString&>::of(&Server::SocketWrite));
 			eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
 			eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
 			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
@@ -300,7 +297,6 @@ int main(int argc,char *argv[])
 			});
 		});
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
-		server.connect(&server,&Server::Print,&log,&Log::Write);
 		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);
 		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel]() {
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
@@ -329,7 +325,6 @@ int main(int argc,char *argv[])
 		});
 
 		if (!log.Open()) MessageBox(u"Error Opening Log"_s,u"Failed to open log file. Log messages will not be saved to filesystem"_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
-		if (!server.Listen()) MessageBox(u"Error Starting Web Server"_s,u"Unable to start local server. Events will not be received from Twitch."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
 		pulsar.LoadTriggers();
 		window.show();
 		security.Listen();
