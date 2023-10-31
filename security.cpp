@@ -103,6 +103,7 @@ void Security::RewireConnected()
 {
 	if (rewireChannel) rewireChannel->deleteLater();
 	if (!settingRewireSession) settingRewireSession.Set(QUuid::createUuid().toString(QUuid::WithoutBraces));
+	rewire->setClientId(settingRewireSession);
 
 	rewireChannel=rewire->subscribe({u"twitch/"_s+static_cast<QString>(settingRewireSession)});
 	if (!rewireChannel)
