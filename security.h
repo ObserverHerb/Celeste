@@ -39,7 +39,6 @@ public:
 	QByteArray Bearer(const QByteArray &token);
 	void ValidateToken();
 	void AuthorizeServer();
-	void ObtainAdministratorProfile();
 	void Listen();
 	static const QStringList SCOPES;
 private:
@@ -51,25 +50,26 @@ private:
 	PrivateSetting settingServerToken;
 	PrivateSetting settingCallbackURL;
 	PrivateSetting settingScope;
+	PrivateSetting settingRewireSession;
 	ApplicationSetting settingRewireHost;
 	ApplicationSetting settingRewirePort;
-	ApplicationSetting settingRewireSession;
 	QString administratorID;
 	QMqttClient *rewire;
 	QMqttSubscription *rewireChannel;
 	bool tokensInitialized;
 	QTimer tokenValidationTimer;
+	bool authorizing;
 signals:
 	void TokenRequestFailed();
-	void AdministratorProfileObtained();
 	void Listening();
 	void Disconnected();
-	void TokensInitialized();
+	void Initialized();
 public slots:
 	void AuthorizeUser();
 private slots:
+	void ObtainAdministratorProfile();
 	void RewireConnected();
 	void RewireError(QMqttClient::ClientError error);
 	void RewireMessage(QMqttMessage messasge);
-	void InitializeTokens();
+	void Initialize();
 };

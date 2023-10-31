@@ -69,12 +69,13 @@ Security::Security() : settingAdministrator("Administrator"),
 	settingServerToken("ServerToken"),
 	settingCallbackURL("CallbackURL"),
 	settingScope("Permissions"),
+	settingRewireSession("Session"),
 	settingRewireHost(SETTINGS_CATEGORY_REWIRE,"Host","twitch.hlmjr.com"),
 	settingRewirePort(SETTINGS_CATEGORY_REWIRE,"Port","1883"),
-	settingRewireSession(SETTINGS_CATEGORY_REWIRE,"Session"),
 	rewire(nullptr),
 	rewireChannel(nullptr),
-	tokensInitialized(false)
+	tokensInitialized(false),
+	authorizing(false)
 {
 	if (!tokenValidationTimer.isActive()) tokenValidationTimer.setInterval(3600000); // 1 hour
 	tokenValidationTimer.connect(&tokenValidationTimer,&QTimer::timeout,this,&Security::AuthorizeUser,Qt::QueuedConnection);
@@ -146,13 +147,14 @@ void Security::RewireMessage(QMqttMessage message)
 	settingOAuthToken.Set(jsonFieldAccessToken->toString());
 	settingRefreshToken.Set(jsonFieldRefreshToken->toString());
 
-	InitializeTokens();
+	authorizing=false;
+	ObtainAdministratorProfile();
 	tokenValidationTimer.start();
 }
 
 void Security::ValidateToken()
 {
-	Network::Request({settingCallbackURL},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request(settingCallbackURL,Network::Method::GET,[this](QNetworkReply *reply) {
 		if (!reply->error() && reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 400)
 		{
 			const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
@@ -185,7 +187,7 @@ void Security::ValidateToken()
 
 									if (hoursRemaining > std::chrono::hours(1) && scopesNeeded.isEmpty())
 									{
-										InitializeTokens();
+										ObtainAdministratorProfile();
 										return;
 									}
 								}
@@ -209,15 +211,19 @@ void Security::ValidateToken()
 
 void Security::AuthorizeUser()
 {
-	QUrl request("https://id.twitch.tv/oauth2/authorize");
-	request.setQuery(QUrlQuery({
-		{QUERY_PARAMETER_CLIENT_ID,settingClientID},
-		{QUERY_PARAMETER_REDIRECT_URI,settingCallbackURL},
-		{"response_type","code"}, // code must be used instead of token because implicit flow reports token via the URL fragment, which can't be read by server-side code (only client-side code like Javascript)
-		{QUERY_PARAMETER_SCOPE,settingScope},
-		{QUERY_PARAMETER_SESSION_ID,settingRewireSession}
-	 }));
-	QDesktopServices::openUrl(request);
+	if (!authorizing)
+	{
+		authorizing=true;
+		QUrl request("https://id.twitch.tv/oauth2/authorize");
+		request.setQuery(QUrlQuery({
+			{QUERY_PARAMETER_CLIENT_ID,settingClientID},
+			{QUERY_PARAMETER_REDIRECT_URI,settingCallbackURL},
+			{"response_type","code"}, // code must be used instead of token because implicit flow reports token via the URL fragment, which can't be read by server-side code (only client-side code like Javascript)
+			{QUERY_PARAMETER_SCOPE,settingScope},
+			{QUERY_PARAMETER_SESSION_ID,settingRewireSession}
+		 }));
+		QDesktopServices::openUrl(request);
+	}
 }
 
 void Security::AuthorizeServer()
@@ -247,7 +253,10 @@ void Security::ObtainAdministratorProfile()
 	Viewer::Remote *profile=new Viewer::Remote(*this,settingAdministrator);
 	connect(profile,&Viewer::Remote::Recognized,profile,[this](Viewer::Local profile) {
 		administratorID=profile.ID();
-		emit AdministratorProfileObtained();
+		emit Initialize();
+	});
+	connect(profile,&Viewer::Remote::Unrecognized,this,[this]() {
+		AuthorizeUser();
 	});
 }
 
@@ -257,12 +266,12 @@ const QString& Security::AdministratorID() const
 	return administratorID;
 }
 
-void Security::InitializeTokens()
+void Security::Initialize()
 {
 	if (!tokensInitialized)
 	{
-		emit TokensInitialized();
 		tokensInitialized=true;
+		emit Initialized();
 	}
 }
 
