@@ -31,7 +31,6 @@ public:
 	PrivateSetting& Administrator() { return settingAdministrator; }
 	PrivateSetting& OAuthToken() { return settingOAuthToken; }
 	PrivateSetting& ClientID() { return settingClientID; }
-	PrivateSetting& ClientSecret() { return settingClientSecret; }
 	PrivateSetting& CallbackURL() { return settingCallbackURL; }
 	PrivateSetting& Scope() { return settingScope; }
 	const QString& AdministratorID() const;
@@ -41,7 +40,6 @@ public:
 private:
 	PrivateSetting settingAdministrator;
 	PrivateSetting settingClientID;
-	PrivateSetting settingClientSecret;
 	PrivateSetting settingOAuthToken;
 	PrivateSetting settingRefreshToken;
 	PrivateSetting settingCallbackURL;

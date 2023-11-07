@@ -63,7 +63,6 @@ const QStringList Security::SCOPES={
 
 Security::Security() : settingAdministrator("Administrator"),
 	settingClientID("ClientID"),
-	settingClientSecret("ClientSecret"),
 	settingOAuthToken("Token"),
 	settingRefreshToken("RefreshToken"),
 	settingCallbackURL("CallbackURL"),

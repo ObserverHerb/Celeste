@@ -191,12 +191,6 @@ int main(int argc,char *argv[])
 		if (clientID.isEmpty()) return NOT_CONFIGURED;
 		security.ClientID().Set(clientID);
 	}
-	if (!security.ClientSecret() || static_cast<QString>(security.ClientSecret()).isEmpty())
-	{
-		QString secret=QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret from the Twitch developer console.",QLineEdit::Password);
-		if (secret.isEmpty()) return NOT_CONFIGURED;
-		security.ClientSecret().Set(secret);
-	}
 	if (!security.CallbackURL() || static_cast<QString>(security.CallbackURL()).isEmpty())
 	{
 		QString callbackURL=QInputDialog::getText(nullptr,"Callback URL","OAuth and EventSub require the URL at which your bot's server can be reached. Please provide a callback URL.");
