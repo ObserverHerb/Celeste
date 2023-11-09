@@ -139,6 +139,7 @@ signals:
 	void Pulse(const QString &trigger);
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
+	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);
 	void ShowTimezone(const QString &timezone);
 	void ShowTotalTime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);

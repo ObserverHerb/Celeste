@@ -232,7 +232,8 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::AnnounceDeniedCommand,&window,&Window::AnnounceDeniedCommand);
 		celeste.connect(&celeste,&Bot::SetAgenda,&window,&Window::SetAgenda);
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
-		celeste.connect(&celeste,&Bot::ShowCurrentSong,&window,&Window::ShowCurrentSong);
+		celeste.connect(&celeste,QOverload<const QString&,const QString&,const QString&,const QImage>::of(&Bot::ShowCurrentSong),&window,QOverload<const QString&,const QString&,const QString&,const QImage>::of(&Window::ShowCurrentSong));
+		celeste.connect(&celeste,QOverload<const QString&,const QString&,const QImage>::of(&Bot::ShowCurrentSong),&window,QOverload<const QString&,const QString&,const QImage>::of(&Window::ShowCurrentSong));
 		celeste.connect(&celeste,&Bot::ShowCommand,&window,&Window::ShowCommand);
 		celeste.connect(&celeste,&Bot::ShowCommandList,&window,&Window::ShowCommandList);
 		celeste.connect(&celeste,&Bot::ShowFollowage,&window,&Window::ShowFollowage);

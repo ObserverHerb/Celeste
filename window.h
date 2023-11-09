@@ -57,6 +57,7 @@ public slots:
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
+	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);
 	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void ShowPanicText(const QString &text);

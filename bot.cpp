@@ -832,7 +832,13 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 				DispatchShoutout(command);
 				break;
 			case NativeCommandFlag::SONG:
-				emit ShowCurrentSong(vibeKeeper.SongTitle(),vibeKeeper.AlbumTitle(),vibeKeeper.AlbumArtist(),vibeKeeper.AlbumCoverArt());
+				if (Music::Metadata metadata=vibeKeeper.Metadata(); !metadata.title.isEmpty() && !metadata.artist.isEmpty() && !metadata.cover.isNull())
+				{
+					if (metadata.album.isEmpty())
+						emit ShowCurrentSong(metadata.title,metadata.artist,metadata.cover);
+					else
+						emit ShowCurrentSong(metadata.title,metadata.album,metadata.artist,metadata.cover);
+				}
 				break;
 			case NativeCommandFlag::TIMEZONE:
 				emit ShowTimezone(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));

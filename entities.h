@@ -84,6 +84,15 @@ namespace Music
 {
 	const QString SETTINGS_CATEGORY_VOLUME="Volume";
 
+	struct Metadata
+	{
+		QString title;
+		QString album;
+		QString artist;
+		QImage cover;
+		bool valid=false;
+	};
+
 	class Player : public QObject
 	{
 		Q_OBJECT
@@ -94,10 +103,7 @@ namespace Music
 		void Volume(int targetVolume,std::chrono::seconds duration);
 		void Stop();
 		bool Playing() const;
-		QString SongTitle() const;
-		QString AlbumTitle() const;
-		QString AlbumArtist() const;
-		QImage AlbumCoverArt() const;
+		struct Metadata Metadata() const;
 		QString Filename() const;
 		void Sources(const File::List &sources);
 		const File::List& Sources();
@@ -246,13 +252,14 @@ namespace Music
 
 		class Tag
 		{
+			template<typename T> using Candidate=std::optional<std::reference_wrapper<T>>;
 		public:
 			Tag(const QString &filename);
 			~Tag();
-			const QImage& AlbumCoverFront() const;
-			const QString& Title() const;
-			const QString& AlbumTitle() const;
-			const QString& Artist() const;
+			Candidate<const QImage> AlbumCoverFront() const;
+			Candidate<const QString> Title() const;
+			Candidate<const QString> AlbumTitle() const;
+			Candidate<const QString> Artist() const;
 		protected:
 			QFile file;
 			std::unique_ptr<Frame::APIC> APIC;

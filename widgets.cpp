@@ -1909,15 +1909,16 @@ namespace UI
 
 		void Dialog::Add(const QString &path)
 		{
-			Music::ID3::Tag tag=Music::ID3::Tag{path};			
-			QString artist=tag.Artist();
-			QString album=tag.AlbumTitle();
-			QString title=tag.Title();
+			Music::ID3::Tag tag=Music::ID3::Tag{path};
+			auto artist=tag.Artist();
+			auto title=tag.Title();
+			if (!title || !artist) return;
+			auto album=tag.AlbumTitle();
 			list.insertRow(list.rowCount());
 			int row=list.rowCount()-1;
-			list.setItem(row,0,ReadOnlyItem(artist));
-			list.setItem(row,1,ReadOnlyItem(album));
-			list.setItem(row,2,ReadOnlyItem(title));
+			list.setItem(row,0,ReadOnlyItem(*artist));
+			list.setItem(row,1,ReadOnlyItem(album ? *album : QString{}));
+			list.setItem(row,2,ReadOnlyItem(*title));
 			list.setItem(row,3,ReadOnlyItem(path));
 		}
 
