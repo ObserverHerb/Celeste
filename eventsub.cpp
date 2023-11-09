@@ -79,7 +79,7 @@ void EventSub::Subscribe(const QString &type)
 		}
 		emit SubscriptionFailed(type);
 	},{},{
-		{"Authorization","Bearer "_ba.append(security.ServerToken())},
+		{"Authorization","Bearer "_ba.append(static_cast<QByteArray>(security.ServerToken()))},
 		{"Client-ID",security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({
