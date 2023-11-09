@@ -73,9 +73,9 @@ if (WITH_PULSAR)
 			include(FetchContent)
 			FetchContent_Declare(
 				obs-studio
-				GIT_REPOSITORY https://github.com/obsproject/obs-studio.git
-				GIT_TAG        origin/master
-				SOURCE_DIR     ${OBS_SOURCE_DIR}
+				GIT_REPOSITORY	https://github.com/obsproject/obs-studio.git
+				GIT_TAG			origin/master
+				SOURCE_DIR		${OBS_SOURCE_DIR}
 			)
 			FetchContent_Populate(obs-studio)
 		endif()
