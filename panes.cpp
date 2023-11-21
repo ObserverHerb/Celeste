@@ -150,9 +150,9 @@ void ChatPane::Message(const Chat::Message &message) const
 	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=QStringView{message.text}.mid(position,message.text.size()-position);
 
 	if (message.action)
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.displayName,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
 	else
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message.displayName,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
 }
 
 void ChatPane::Print(const QString &text)

@@ -616,7 +616,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		if (!value) continue; // I'll rely on "missing" to represent an empty value
 		tags[*key]=*value;
 	}
-	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.sender=displayName->second.toString();
+	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
 	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
 
 	// badges
@@ -683,13 +683,12 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	// determine if this is a command, and if so, process it as such
 	// and if it's valid, we're done
 	window=message;
-	if (StringViewTakeResult command=StringView::Take(*window,' '); command)
+	std::optional<QString> command=ParseCommand(*window);
+	if (command)
 	{
-		if (command->size() > 0 && command->at(0) == '!')
-		{
-			chatMessage.text=window->toString().trimmed();
-			if (DispatchCommand(command->mid(1).toString(),chatMessage,login.toString())) return;
-		}
+		chatMessage.text=window->toString().trimmed();
+		DispatchCommand(*command,chatMessage,login.toString());
+		return;
 	}
 
 	if (!chatMessage.broadcaster) DispatchArrival(login.toString());
@@ -759,7 +758,37 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 	}
 }
 
-bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login)
+std::optional<QString> Bot::ParseCommand(QStringView &message)
+{
+	QStringView command=message.left(message.indexOf(' '));
+	if (command.isEmpty() || command.at(0) != '!') return std::nullopt;
+	message=message.mid(command.size()+1);
+	return {command.trimmed().mid(1).toString()};
+}
+
+void Bot::DispatchCommand(JSON::SignalPayload *response,const QString &name,const QString &login)
+{
+	const QString message=response->context.toString();
+	if (!message.isNull())
+	{
+		QStringView window{message};
+		std::optional<QString> command=ParseCommand(window);
+		if (command)
+		{
+			// NOTE: there is chat/color for chat color and moderation/moderators for privileged commands if I ever want to implement this
+			Chat::Message message{
+				.displayName=name,
+				.text=window.toString()
+			};
+			DispatchCommand(*command,message,login,false);
+			response->context.setValue(message);
+		}
+	}
+
+	response->Dispatch();
+}
+
+bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login,bool html)
 {
 	auto candidate=commands.find(name);
 	if (candidate == commands.end()) return false;
@@ -772,10 +801,10 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 		return false;
 	}
 
-	if (command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
+	if (html && command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
 	{
 		emit ChatMessage({
-			.sender=chatMessage.sender,
+			.displayName=chatMessage.displayName,
 			.text=chatMessage.text,
 			.color=chatMessage.color,
 			.badges=chatMessage.badges,

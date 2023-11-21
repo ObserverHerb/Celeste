@@ -111,7 +111,8 @@ protected:
 	std::optional<CommandType> ValidCommandType(const QString &type);
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
-	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
+	std::optional<QString> ParseCommand(QStringView &message);
+	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login,bool html=true);
 	void DispatchCommand(const Command &command,const QString &login);
 	void DispatchArrival(const QString &login);
 	void DispatchVideo(Command command);
@@ -154,6 +155,7 @@ signals:
 	void Welcomed(const QString &user);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
+	void DispatchCommand(JSON::SignalPayload *response,const QString &name,const QString &login);
 	void Ping();
 	void Subscription(const QString &viewer);
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);

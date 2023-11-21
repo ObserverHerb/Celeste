@@ -8,6 +8,7 @@
 #include <QAudioOutput>
 #include <QPropertyAnimation>
 #include <QFile>
+#include <QJsonObject>
 #include <memory>
 #include "settings.h"
 #include "security.h"
@@ -341,7 +342,7 @@ namespace Chat
 
 	struct Message
 	{
-		QString sender;
+		QString displayName;
 		QString text;
 		QColor color;
 		QStringList badges;
@@ -350,5 +351,20 @@ namespace Chat
 		bool broadcaster { false };
 		bool moderator { false };
 		bool Privileged() const { return broadcaster || moderator; }
+	};
+}
+
+namespace JSON
+{
+	class SignalPayload : public QObject
+	{
+		Q_OBJECT
+	public:
+		SignalPayload(const QJsonObject &payload) : QObject(nullptr), payload(payload) { }
+		void Dispatch();
+		QJsonObject payload;
+		QVariant context;
+	signals:
+		void Deliver(const QJsonObject &payload);
 	};
 }

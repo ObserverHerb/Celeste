@@ -277,6 +277,7 @@ int main(int argc,char *argv[])
 					eventSub->connect(eventSub,&EventSub::Subscription,&celeste,&Bot::Subscription);
 					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
+					eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
 					eventSub->connect(eventSub,&EventSub::SubscriptionFailed,eventSub,[eventSub](const QString &type) {
 						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);

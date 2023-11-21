@@ -1,7 +1,6 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QJsonDocument>
-#include <QJsonObject>
 #include <QJsonArray>
 #include <algorithm>
 #include <cstring>
@@ -721,4 +720,13 @@ namespace Viewer
 			{"Client-ID",security.ClientID()}
 		});
 	};
+}
+
+namespace JSON
+{
+	void SignalPayload::Dispatch()
+	{
+		emit Deliver(payload);
+		deleteLater();
+	}
 }
