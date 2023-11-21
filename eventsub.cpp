@@ -160,29 +160,33 @@ void EventSub::ParseRequest(qintptr socketID,const QUrlQuery &query,const std::u
 	}
 
 	QJsonObject eventObject=event->toObject();
-	switch (subscriptionType->second)
-	{
-	case SubscriptionType::CHANNEL_FOLLOW:
-		emit Follow();
-		break;
-	case SubscriptionType::CHANNEL_REDEMPTION:
-		emit Redemption(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString(),eventObject.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),eventObject.value(JSON_KEY_EVENT_USER_INPUT).toString());
-		break;
-	case SubscriptionType::CHANNEL_CHEER:
-		emit Cheer(eventObject.value(JSON_KEY_EVENT_USER_NAME).toString(),eventObject.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),eventObject.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
-		break;
-	case SubscriptionType::CHANNEL_RAID:
-		emit Raid(eventObject.value("from_broadcaster_user_name").toString(),eventObject.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
-		break;
-	case SubscriptionType::CHANNEL_SUBSCRIPTION:
-		emit ChannelSubscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
-		break;
-	case SubscriptionType::CHANNEL_HYPE_TRAIN:
-		double goal=eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_TOTAL).toDouble();
-		if (goal > 0)
-			emit HypeTrain(eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_LEVEL).toInt(),eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_PROGRESS).toDouble()/goal);
-		break;
-	}
+	JSON::SignalPayload *payload=new JSON::SignalPayload(event->toObject());
+	if (std::optional<QString> prompt=ExtractPrompt(subscriptionType->second,eventObject); prompt) payload->context=*prompt;
+	const QString name=eventObject.value(JSON_KEY_EVENT_USER_NAME).toString();
+	const QString login=eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString();
+	connect(payload,&JSON::SignalPayload::Deliver,this,[subscriptionType=subscriptionType->second,name,login,payload,this](const QJsonObject &eventObject) {
+		switch (subscriptionType)
+		{
+		case SubscriptionType::CHANNEL_FOLLOW:
+			emit Follow();
+			break;
+		case SubscriptionType::CHANNEL_REDEMPTION:
+			emit Redemption(login,name,eventObject.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),payload->context.toString());
+			break;
+		case SubscriptionType::CHANNEL_CHEER:
+			emit Cheer(name,eventObject.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),eventObject.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
+			break;
+		case SubscriptionType::CHANNEL_SUBSCRIPTION:
+			emit ChannelSubscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
+			break;
+		case SubscriptionType::CHANNEL_HYPE_TRAIN:
+			double goal=eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_TOTAL).toDouble();
+			if (goal > 0)
+				emit HypeTrain(eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_LEVEL).toInt(),eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_PROGRESS).toDouble()/goal);
+			break;
+		}
+	});
+	emit ParseCommand(payload,name,login);
 
 	emit Response(socketID);
 }
@@ -259,4 +263,14 @@ void EventSub::RemoveEventSubscription(const QString &id)
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.ServerToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()}
 	});
+}
+
+std::optional<QString> EventSub::ExtractPrompt(SubscriptionType type,const QJsonObject &event) const
+{
+	switch (type)
+	{
+	case SubscriptionType::CHANNEL_CHEER:
+		return "!uptime "+event.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1);
+	}
+	return std::nullopt;
 }

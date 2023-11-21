@@ -150,9 +150,9 @@ void ChatPane::Message(const Chat::Message &message) const
 	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=QStringView{message.text}.mid(position,message.text.size()-position);
 
 	if (message.action)
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.displayName,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
 	else
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message.sender,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message.displayName,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
 }
 
 void ChatPane::Print(const QString &text)
@@ -360,7 +360,7 @@ QString AnnouncePane::BuildParagraph(int width)
 	for (const Line &line : lines)
 	{
 		font.setPointSizeF(output->font().pointSizeF()*line.second);
-		int pointSize=StringConvert::RestrictFontWidth(font,line.first,width-output->margin()*2);
+		int pointSize=line.first.contains(QChar{32}) ? font.pointSize() : StringConvert::RestrictFontWidth(font,line.first,width-output->margin()*2);
 		if (line.second == 1 && font.pointSizeF() == output->font().pointSizeF())
 			paragraph.append(QString("%1").arg(line.first));
 		else

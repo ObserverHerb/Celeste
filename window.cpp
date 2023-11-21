@@ -307,6 +307,19 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 	StageEphemeralPane(pane);
 }
 
+void Window::ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt)
+{
+	ImageAnnouncePane *pane=new ImageAnnouncePane({
+		{QString("Now playing"),0.5},
+		{QString("%1").arg(song),1.0},
+		{"by",0.5},
+		{QString("%2").arg(artist),0.75}
+	},coverArt,this);
+	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	pane->LowerPriority();
+	StageEphemeralPane(pane);
+}
+
 void Window::StageEphemeralPane(EphemeralPane *pane)
 {
 	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);

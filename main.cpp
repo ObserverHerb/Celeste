@@ -245,7 +245,8 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::AnnounceDeniedCommand,&window,&Window::AnnounceDeniedCommand);
 		celeste.connect(&celeste,&Bot::SetAgenda,&window,&Window::SetAgenda);
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
-		celeste.connect(&celeste,&Bot::ShowCurrentSong,&window,&Window::ShowCurrentSong);
+		celeste.connect(&celeste,QOverload<const QString&,const QString&,const QString&,const QImage>::of(&Bot::ShowCurrentSong),&window,QOverload<const QString&,const QString&,const QString&,const QImage>::of(&Window::ShowCurrentSong));
+		celeste.connect(&celeste,QOverload<const QString&,const QString&,const QImage>::of(&Bot::ShowCurrentSong),&window,QOverload<const QString&,const QString&,const QImage>::of(&Window::ShowCurrentSong));
 		celeste.connect(&celeste,&Bot::ShowCommand,&window,&Window::ShowCommand);
 		celeste.connect(&celeste,&Bot::ShowCommandList,&window,&Window::ShowCommandList);
 		celeste.connect(&celeste,&Bot::ShowFollowage,&window,&Window::ShowFollowage);
@@ -290,6 +291,7 @@ int main(int argc,char *argv[])
 					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
 					eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
+					eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
 					eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[eventSub](const QString &type) {
 						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);

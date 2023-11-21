@@ -114,7 +114,8 @@ protected:
 	std::optional<CommandType> ValidCommandType(const QString &type);
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
-	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login);
+	std::optional<QString> ParseCommand(QStringView &message);
+	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login,bool html=true);
 	void DispatchCommand(const Command &command,const QString &login);
 	void DispatchArrival(const QString &login);
 	void DispatchVideo(Command command);
@@ -143,6 +144,7 @@ signals:
 	void Pulse(const QString &trigger);
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
+	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);
 	void ShowTimezone(const QString &timezone);
 	void ShowTotalTime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
@@ -157,6 +159,7 @@ signals:
 	void Welcomed(const QString &user);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
+	void DispatchCommand(JSON::SignalPayload *response,const QString &name,const QString &login);
 	void Ping();
 	void Subscription(const QString &login,const QString &displayName);
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);

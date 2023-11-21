@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.11)
 
 project(Celeste LANGUAGES CXX)
 
@@ -66,9 +66,22 @@ endif()
 if (WITH_PULSAR)
 	add_library(Pulsar MODULE pulsar/pulsar.cpp)
 	if (WIN32)
-		execute_process(COMMAND powershell ${CMAKE_SOURCE_DIR}/pulsar-bootstrap.ps1)
 		set(OBS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/obs-studio)
-		set(OBS_LIB_DIR ${CMAKE_SOURCE_DIR}/obs-studio/build64)
+		set(OBS_LIB_DIR ${OBS_SOURCE_DIR}/build_x64)
+		if(NOT EXISTS ${OBS_SOURCE_DIR})
+			include(FetchContent)
+			FetchContent_Declare(
+				obs-studio
+				GIT_REPOSITORY	https://github.com/obsproject/obs-studio.git
+				GIT_TAG			origin/master
+				SOURCE_DIR		${OBS_SOURCE_DIR}
+			)
+			FetchContent_Populate(obs-studio)
+		endif()
+		if(NOT EXISTS ${OBS_LIB_DIR})
+			execute_process(COMMAND cmake -DENABLE_BROWSER=OFF --preset windows-x64 WORKING_DIRECTORY ${OBS_SOURCE_DIR})
+			execute_process(COMMAND cmake --build --preset windows-x64 WORKING_DIRECTORY ${OBS_SOURCE_DIR})
+		endif()
 
 		include_directories(${OBS_SOURCE_DIR}/libobs)
 		include_directories(${OBS_SOURCE_DIR}/UI/obs-frontend-api/)
@@ -90,7 +103,7 @@ if (WITH_PULSAR)
 			${OBS_LIB_DIR}/UI/obs-frontend-api/*/
 		)
 	else()
-		find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
+		find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
 		include(FindPkgConfig)
 		pkg_search_module(OBS REQUIRED libobs)
 		find_path(OBS_INCLUDE_DIR obs-module.h HINTS ${OBS_INCLUDEDIR} ${OBS_INCLUDE_DIRS} ${OBS_INCLUDE_DIRS}/obs)

@@ -43,6 +43,7 @@ protected:
 	void NextSubscription();
 	const QByteArray ProcessRequest(const SubscriptionType type,const QString &data);
 	const QString BuildResponse(const QString &data=QString()) const;
+	std::optional<QString> ExtractPrompt(SubscriptionType type,const QJsonObject &event) const;
 signals:
 	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub")) const;
 	void Response(qintptr socketID,const QString &content=QString("Acknowledged: %1").arg(QDateTime::currentDateTime().toString()));
@@ -57,6 +58,7 @@ signals:
 	void ChannelSubscription(const QString &login,const QString &displayName);
 	void EventSubscription(const QString &id,const QString &type,const QDateTime &creationDate,const QString &callbackURL);
 	void EventSubscriptionRemoved(const QString &id);
+	void ParseCommand(JSON::SignalPayload *payload,const QString &name,const QString &login);
 public slots:
 	void ParseRequest(qintptr socketID,const QUrlQuery &query,const std::unordered_map<QString,QString> &headers,const QString &content);
 	void RequestEventSubscriptionList();

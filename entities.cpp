@@ -1,7 +1,6 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QJsonDocument>
-#include <QJsonObject>
 #include <QJsonArray>
 #include <algorithm>
 #include <cstring>
@@ -199,39 +198,27 @@ namespace Music
 		}
 	}
 
-	QString Player::SongTitle() const
+	Metadata Player::Metadata() const
 	{
-		return player.metaData().stringValue(QMediaMetaData::Title);
-	}
-
-	QString Player::AlbumTitle() const
-	{
-		return player.metaData().stringValue(QMediaMetaData::AlbumTitle);
-	}
-
-	QString Player::AlbumArtist() const
-	{
-		return player.metaData().stringValue(QMediaMetaData::AlbumArtist);
-	}
-
-	QImage Player::AlbumCoverArt() const
-	{
-		const char *OPERATION_ALBUM_ART="album art";
-		const QString errorMessage("Failed to capture album art (%1)");
-
 		try
 		{
-			return ID3::Tag(Filename()).AlbumCoverFront();
-		}
-
-		catch (const std::out_of_range &exception)
-		{
-			emit Print(errorMessage.arg(exception.what()),OPERATION_ALBUM_ART);
+			ID3::Tag tag(Filename());
+			auto title=tag.Title();
+			auto album=tag.AlbumTitle();
+			auto artist=tag.Artist();
+			auto cover=tag.AlbumCoverFront();
+			return {
+				.title=title ? *title : QString{},
+				.album=album ? *album : QString{},
+				.artist=artist ? *artist : QString{},
+				.cover=cover ? *cover : QImage{},
+				.valid=true
+			};
 		}
 
 		catch (const std::runtime_error &exception)
 		{
-			emit Print(errorMessage.arg(exception.what()),OPERATION_ALBUM_ART);
+			emit Print(exception.what());
 		}
 
 		return {};
@@ -259,7 +246,23 @@ namespace Music
 		switch (state)
 		{
 		case QMediaPlayer::PlayingState:
-			emit Print(QString("Now playing %1 by %2").arg(player.metaData().stringValue(QMediaMetaData::Title),player.metaData().stringValue(QMediaMetaData::AlbumArtist)));
+			try
+			{
+				ID3::Tag tag(Filename());
+				auto title=tag.Title();
+				if (!title) break;
+				auto album=tag.AlbumTitle();
+				QString song{"Now playing "};
+				song.append(*title);
+				if (album) song.append(" by ").append(*album);
+				emit Print(song);
+			}
+
+			catch (const std::runtime_error &exception)
+			{
+				emit Print(exception.what());
+			}
+
 			break;
 		case QMediaPlayer::StoppedState:
 			disconnect(autoPlay);
@@ -402,24 +405,36 @@ namespace Music
 			file.close();
 		}
 
-		const QImage& Tag::AlbumCoverFront() const
+		Tag::Candidate<const QImage> Tag::AlbumCoverFront() const
 		{
-			return APIC ? APIC->Picture() : throw std::runtime_error("No image data in mp3 file");
+			if (APIC)
+				return APIC->Picture();
+			else
+				return std::nullopt;
 		}
 
-		const QString& Tag::Title() const
+		Tag::Candidate<const QString> Tag::Title() const
 		{
-			return TIT2 ? TIT2->Title() : throw std::runtime_error("No song title in mp3 file");
+			if (TIT2)
+				return TIT2->Title();
+			else
+				return std::nullopt;
 		}
 
-		const QString& Tag::AlbumTitle() const
+		Tag::Candidate<const QString> Tag::AlbumTitle() const
 		{
-			return TALB ? TALB->Title() : throw std::runtime_error("No album title in mp3 file");
+			if (TALB)
+				return TALB->Title();
+			else
+				return std::nullopt;
 		}
 
-		const QString& Tag::Artist() const
+		Tag::Candidate<const QString> Tag::Artist() const
 		{
-			return TPE1 ? TPE1->Title() : throw std::runtime_error("No artist in mp3 file");
+			if (TPE1)
+				return TPE1->Title();
+			else
+				return std::nullopt;
 		}
 		
 		Header::Header(QFile &file) : file(file)
@@ -705,4 +720,13 @@ namespace Viewer
 			{"Client-ID",security.ClientID()}
 		});
 	};
+}
+
+namespace JSON
+{
+	void SignalPayload::Dispatch()
+	{
+		emit Deliver(payload);
+		deleteLater();
+	}
 }
