@@ -267,6 +267,7 @@ namespace UI
 			commandProtect(-1),
 			commandRandom(-1),
 			commandDuplicates(-1),
+			commandType(UI::Commands::Type::INVALID),
 			layout(this),
 			details(nullptr),
 			detailsLayout(nullptr),

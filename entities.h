@@ -27,7 +27,7 @@ namespace File
 	class List
 	{
 	public:
-		List() { }
+		List() : currentIndex(0) { }
 		List(const QString &path,const QStringList &filter={});
 		List(const QStringList &files);
 		const QString File(const int index) const;
