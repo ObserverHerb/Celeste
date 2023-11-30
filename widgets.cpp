@@ -916,6 +916,7 @@ namespace UI
 				layout.addWidget(&header);
 
 				details=new QFrame(this);
+				details->setLayout(&detailsLayout);
 				layout.addWidget(details);
 
 				connect(&header,&QPushButton::clicked,this,&Category::ToggleDetails);
