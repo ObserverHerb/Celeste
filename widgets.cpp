@@ -1020,6 +1020,10 @@ namespace UI
 			{
 				settings.name.Set(name.text());
 				settings.protection.Set(protection.isChecked());
+
+				// only need to do this on one of the settings for all of the categories, because it
+				// is all the same QSettings object under the hood, so it's saving all of the settings
+				settings.name.Save();
 			}
 
 			Window::Window(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Main Window")),
