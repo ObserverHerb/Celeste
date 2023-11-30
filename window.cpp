@@ -254,7 +254,7 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 
 void Window::ShowTimezone(const QString &timezone)
 {
-	emit Print(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
+	emit Print(timezone);
 }
 
 void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds)

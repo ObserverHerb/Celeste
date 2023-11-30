@@ -47,6 +47,11 @@ add_executable(Celeste
 	resources/resources.qrc
 )
 
+target_compile_options(Celeste PRIVATE
+	$<$<CXX_COMPILER_ID:MSVC>:/W4>
+	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
+)
+
 if (WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 	set_property(TARGET Celeste PROPERTY WIN32_EXECUTABLE true)

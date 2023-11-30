@@ -337,6 +337,7 @@ std::optional<Hostmask> Channel::ParseSource(const QString &source)
 
 void Channel::SocketError(QAbstractSocket::SocketError error)
 {
+	Q_UNUSED(error)
 	emit Print(QString("Failed to connect to server (%1)").arg(ircSocket->errorString()),OPERATION_CONNECTION);
 }
 

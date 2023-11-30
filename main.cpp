@@ -8,7 +8,6 @@
 #include <QListWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <string>
 #include <exception>
 #include "window.h"
 #include "widgets.h"

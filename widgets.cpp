@@ -799,7 +799,7 @@ namespace UI
 				entries[entry->Name()]=entry;
 				scrollLayout.addWidget(entry);
 			}
-			for (const std::pair<QString,QStringList> &pair : aliases) entries.at(pair.first)->Aliases(pair.second);
+			for (const std::pair<const QString,QStringList> &pair : aliases) entries.at(pair.first)->Aliases(pair.second);
 			entriesFrame.setUpdatesEnabled(true);
 		}
 
@@ -867,11 +867,12 @@ namespace UI
 		{
 			Command::Lookup commands;
 
-			for (const std::pair<QString,Entry*> &pair : entries)
+			for (const std::pair<const QString,Entry*> &pair : entries)
 			{
 				Entry *entry=pair.second;
 
-				Command command={
+				QString name=entry->Name();
+				commands.try_emplace(name,Command{
 					entry->Name(),
 					entry->Description(),
 					entry->Type(),
@@ -881,15 +882,14 @@ namespace UI
 					entry->Filters(),
 					entry->Message(),
 					entry->Protected()
-				};
-				commands[command.Name()]=command;
+				});
 
 				for (const QString &alias : entry->Aliases())
 				{
-					commands[alias]={
+					commands.try_emplace(alias,Command{
 						alias,
-						&commands.at(command.Name())
-					};
+						&commands.at(name)
+					});
 				}
 			}
 

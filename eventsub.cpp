@@ -181,6 +181,7 @@ std::optional<QString> EventSub::ExtractPrompt(SubscriptionType type,const QJson
 	{
 	case SubscriptionType::CHANNEL_CHEER:
 		return "!uptime "+event.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1);
+	default:
+		return std::nullopt;
 	}
-	return std::nullopt;
 }

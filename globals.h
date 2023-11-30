@@ -16,7 +16,6 @@
 #include <random>
 #include <functional>
 #include <queue>
-#include <concepts>
 #include <stdexcept>
 
 using namespace Qt::Literals::StringLiterals;
@@ -99,6 +98,7 @@ namespace StringConvert
 		for (QString &line : lines) line.prepend("> ");
 		return lines.join("\n");
 #else
+		Q_UNUSED(data)
 		return QString("> (data)");
 #endif
 	}
@@ -273,7 +273,6 @@ namespace Network
 				QNetworkReply *reply=networkManager.get(request);
 				networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback,Qt::QueuedConnection);
 				reply->connect(reply,&QNetworkReply::finished,reply,[]() {
-					int size=queue.size();
 					queue.pop();
 					if (queue.size() > 0) queue.front().first();
 				},Qt::QueuedConnection);
