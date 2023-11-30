@@ -551,6 +551,7 @@ namespace UI
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void SelectPermissions();
+				void ValidateURL(const QString &text);
 			};
 		}
 

@@ -1688,10 +1688,13 @@ namespace UI
 				token.setEchoMode(QLineEdit::Password);
 				serverToken.setText(settings.ServerToken());
 				serverToken.setEchoMode(QLineEdit::Password);
-				callbackURL.setText(settings.CallbackURL());
 				permissions.setText(settings.Scope());
 
+				callbackURL.setText(settings.CallbackURL());
+				callbackURL.setInputMethodHints(Qt::ImhUrlCharactersOnly);
+
 				connect(&selectPermissions,&QPushButton::clicked,this,&Security::SelectPermissions);
+				connect(&callbackURL,&QLineEdit::textChanged,this,&Security::ValidateURL);
 
 				Rows({
 					{Label(QStringLiteral("Administrator (Broascaster)")),&administrator},
@@ -1736,6 +1739,11 @@ namespace UI
 				settings.ServerToken().Set(serverToken.text());
 				settings.CallbackURL().Set(callbackURL.text());
 				settings.Scope().Set(permissions.text());
+			}
+
+			void Security::ValidateURL(const QString &text)
+			{
+				Valid(&callbackURL,QUrl(text).isValid());
 			}
 		}
 
