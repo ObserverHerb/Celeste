@@ -149,7 +149,6 @@ QJsonDocument Bot::LoadDynamicCommands()
 	}
 	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()).toStdString());
 
-	QJsonParseError jsonError;
 	QByteArray data=commandListFile.readAll();
 	if (data.isEmpty()) data=JSON_ARRAY_EMPTY;
 	const JSON::ParseResult parsedJSON=JSON::Parse(data);
