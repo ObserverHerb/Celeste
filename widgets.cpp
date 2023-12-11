@@ -262,6 +262,7 @@ namespace UI
 		void Aliases::hideEvent(QHideEvent *event)
 		{
 			emit Finished();
+			QDialog::hideEvent(event);
 		}
 
 		Entry::Entry(QWidget *parent) : QWidget(parent),
