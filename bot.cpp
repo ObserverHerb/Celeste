@@ -376,12 +376,11 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 	QJsonObject entries;
 	for (const std::pair<const QString,Viewer::Attributes> &viewer : viewers)
 	{
-		QJsonObject attributes={
+		entries.insert(viewer.first,QJsonObject{
 			{JSON_KEY_COMMANDS,viewer.second.commands},
 			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.welcomed},
 			{JSON_KEY_BOT,viewer.second.bot}
-		};
-		entries.insert(viewer.first,attributes);
+		});
 	}
 
 	viewerAttributesFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
