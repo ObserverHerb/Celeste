@@ -109,7 +109,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
 	configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
-	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int finished) {
+	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int result) {
+		Q_UNUSED(result)
 		configureOptions->deleteLater();
 	});
 
@@ -127,7 +128,8 @@ void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &comm
 			log.Write(ERROR_COMMANDS_LIST_FILE,u"save dynamic commands"_s,SUBSYSTEM_DIALOG);
 		}
 	});
-	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int finished) {
+	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int result) {
+		Q_UNUSED(result)
 		configureCommands->deleteLater();
 	});
 
@@ -145,7 +147,8 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 			log.Write(ERROR_VIBE_PLAYLIST_FILE,u"save playlist"_s,SUBSYSTEM_DIALOG);
 		}
 	});
-	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int finished) {
+	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
+		Q_UNUSED(result)
 		configurePlaylist->deleteLater();
 	});
 

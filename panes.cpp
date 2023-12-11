@@ -407,6 +407,7 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
+		Q_UNUSED(error)
 		emit Print(QString("Failed to play audio: %1").arg(errorString));
 		emit Finished();
 	});

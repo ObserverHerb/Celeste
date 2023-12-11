@@ -594,6 +594,12 @@ void Bot::DispatchArrival(const QString &login)
 
 void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message)
 {
+	// As of right now, Twitch doesn't use parameters in front of the chat message
+	// so it's always the final parameter, and the final paramater is always the
+	// only parameter. This may change in the future, so passing it in and marking it
+	// unused to shut the compiler up for now.
+	Q_UNUSED(parameters)
+
 	using StringViewLookup=std::unordered_map<QStringView,QStringView>;
 	using StringViewTakeResult=std::optional<QStringView>;
 

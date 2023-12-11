@@ -56,6 +56,7 @@ void PinnedTextEdit::contextMenuEvent(QContextMenuEvent *event)
 
 void PinnedTextEdit::Scroll(int minimum,int maximum)
 {
+	Q_UNUSED(minimum)
 	scrollTransition.setDuration((maximum-verticalScrollBar()->value())*10); // distance remaining * ms/step (10ms/1step)
 	scrollTransition.setStartValue(verticalScrollBar()->value());
 	scrollTransition.setEndValue(maximum);
