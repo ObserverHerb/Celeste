@@ -280,7 +280,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 	// catch the aliases that were for native commands,
 	// which normally aren't listed in the commands file
-	for (const std::pair<QString,QStringList> &pair : aliases)
+	for (const std::pair<const QString,QStringList> &pair : aliases)
 	{
 		QJsonArray names;
 		for (const QString &name : pair.second) names.append(name);
@@ -375,7 +375,7 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 	if (!viewerAttributesFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
 
 	QJsonObject entries;
-	for (const std::pair<QString,Viewer::Attributes> &viewer : viewers)
+	for (const std::pair<const QString,Viewer::Attributes> &viewer : viewers)
 	{
 		QJsonObject attributes={
 			{JSON_KEY_COMMANDS,viewer.second.commands},
