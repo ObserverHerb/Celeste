@@ -860,6 +860,9 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 			case NativeCommandFlag::FOLLOWAGE:
 				DispatchFollowage(viewer);
 				break;
+			case NativeCommandFlag::HTML:
+				emit Print("HTML was processed as a command rather than a chat message. This shouldn't happen!");
+				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());
 				break;

@@ -319,14 +319,15 @@ namespace UI
 
 			switch (command.Type())
 			{
+			case CommandType::BLANK:
+				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(commandName).toStdString());
 			case CommandType::NATIVE:
 				commandType=Type::NATIVE;
 				break;
 			case CommandType::VIDEO:
-			{
 				commandType=Type::VIDEO;
+				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(commandName).toStdString());
 				break;
-			}
 			case CommandType::AUDIO:
 				commandType=Type::AUDIO;
 				break;
@@ -402,8 +403,8 @@ namespace UI
 				return CommandType::PULSAR;
 			case Type::NATIVE:
 				return CommandType::NATIVE;
-			default:
-				throw std::logic_error("Unrecognized command type selected");
+			case Type::INVALID:
+				throw std::logic_error(u"Fatal: An unrecognized type was selected for command !%1."_s.arg(commandName).toStdString());
 			}
 		}
 
@@ -811,7 +812,7 @@ namespace UI
 			Entry *entry=new Entry({
 				name,
 				{},
-				CommandType::VIDEO,
+				CommandType::VIDEO, // has a type, so no need to catch possible exception here
 				false,
 				true,
 				{},
