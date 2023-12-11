@@ -954,10 +954,10 @@ namespace UI
 				int maxColumns=2;
 				for (const std::vector<QWidget*> &row : widgets)
 				{
-					if (row.size() > maxColumns) maxColumns=row.size();
+					if (std::ssize(row) > maxColumns) maxColumns=row.size();
 				}
 
-				for (int rowIndex=0; rowIndex < widgets.size(); rowIndex++)
+				for (int rowIndex=0; rowIndex < std::ssize(widgets); rowIndex++)
 				{
 					int columns=widgets[rowIndex].size();
 					if (columns < 2) continue;
