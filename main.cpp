@@ -120,7 +120,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands,Log &log)
 {
 	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
-	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log,configureCommands](const Command::Lookup& commands) {
+	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log](const Command::Lookup& commands) {
 		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
@@ -283,7 +283,7 @@ int main(int argc,char *argv[])
 					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
 					eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::SubscriptionFailed,eventSub,[eventSub](const QString &type) {
+					eventSub->connect(eventSub,&EventSub::SubscriptionFailed,eventSub,[](const QString &type) {
 						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
 					eventSub->connect(eventSub,&EventSub::Unauthorized,eventSub,[eventSub,&events,&security,&server,channel]() {
@@ -295,7 +295,7 @@ int main(int argc,char *argv[])
 							channel->Disconnect();
 						}
 					},Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[eventSub]() {
+					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
 						MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
 					eventSub->Subscribe();
