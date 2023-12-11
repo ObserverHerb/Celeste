@@ -796,7 +796,7 @@ namespace UI
 
 				if (command.Parent())
 				{
-					aliases[command.Parent()->Name()].push_back(command.Name());
+					aliases.at(command.Parent()->Name()).push_back(command.Name());
 					continue;
 				}
 
@@ -804,7 +804,7 @@ namespace UI
 				{
 					Entry *entry=new Entry(command,&entriesFrame);
 					connect(entry,&Entry::Help,&help,&QTextEdit::setText);
-					entries[entry->Name()]=entry;
+					entries.try_emplace(entry->Name(),entry);
 					scrollLayout.addWidget(entry);
 				}
 
@@ -836,7 +836,7 @@ namespace UI
 				{},
 				false
 			},this);
-			entries[entry->Name()]=entry;
+			entries.try_emplace(entry->Name(),entry);
 			scrollLayout.addWidget(entry);
 		}
 

@@ -479,7 +479,7 @@ void Bot::LoadBadgeIconURLs()
 				auto jsonFieldID=objectImageVersions.find(JSON_KEY_ID);
 				auto jsonFieldVersionURL=objectImageVersions.find(JSON_KEY_IMAGE_URL);
 				if (jsonFieldID == objectImageVersions.end() || jsonFieldVersionURL == objectImageVersions.end()) return;
-				badgeIconURLs[jsonFieldSetID->toString()][jsonFieldID->toString()]=jsonFieldVersionURL->toString();
+				badgeIconURLs[jsonFieldSetID->toString()][jsonFieldID->toString()]=jsonFieldVersionURL->toString(); // NOTE: I'm not sure how to construct in place here
 			}
 		}
 	},{},{
@@ -618,7 +618,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		if (!key) continue; // same as above
 		StringViewTakeResult value=StringView::Last(*pair,'=');
 		if (!value) continue; // I'll rely on "missing" to represent an empty value
-		tags[*key]=*value;
+		tags.try_emplace(*key,*value);
 	}
 	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
 	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();

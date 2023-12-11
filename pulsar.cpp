@@ -47,7 +47,7 @@ bool Pulsar::LoadTriggers()
 			return false;
 		}
 
-		triggers[jsonFieldTrigger->toString()]=jsonFieldSources->toArray();
+		triggers.try_emplace(jsonFieldTrigger->toString(),jsonFieldSources->toArray());
 	}
 
 	return true;
