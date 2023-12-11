@@ -759,12 +759,14 @@ namespace UI
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
 			rightPane->setLayout(rightLayout);
 			rightLayout->addWidget(&help,0,0,1,2);
-			labelFilter.setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
-			rightLayout->addWidget(&labelFilter,1,0);
+			statusBar.setSizeGripEnabled(false);
+			rightLayout->addWidget(&statusBar,1,0,1,2);
+			labelFilter.setSizePolicy({QSizePolicy::Fixed,QSizePolicy::Fixed});
+			rightLayout->addWidget(&labelFilter,2,0);
 			filter.addItems({"All","Native","Dynamic","Pulsar"});
 			filter.setCurrentIndex(0);
 			connect(&filter,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Dialog::FilterChanged);
-			rightLayout->addWidget(&filter,1,1);
+			rightLayout->addWidget(&filter,2,1);
 			upperLayout->addWidget(rightPane);
 
 			QWidget *lowerContent=new QWidget(this);
@@ -798,12 +800,24 @@ namespace UI
 					continue;
 				}
 
-				Entry *entry=new Entry(command,&entriesFrame);
-				connect(entry,&Entry::Help,&help,&QTextEdit::setText);
-				entries[entry->Name()]=entry;
-				scrollLayout.addWidget(entry);
+				try
+				{
+					Entry *entry=new Entry(command,&entriesFrame);
+					connect(entry,&Entry::Help,&help,&QTextEdit::setText);
+					entries[entry->Name()]=entry;
+					scrollLayout.addWidget(entry);
+				}
+
+				catch (const std::logic_error &exception)
+				{
+					statusBar.showMessage(exception.what());
+				}
 			}
-			for (const std::pair<const QString,QStringList> &pair : aliases) entries.at(pair.first)->Aliases(pair.second);
+			for (const std::pair<const QString,QStringList> &pair : aliases)
+			{
+				auto entry=entries.find(pair.first);
+				if (entry != entries.end()) entry->second->Aliases(pair.second);
+			}
 			entriesFrame.setUpdatesEnabled(true);
 		}
 
@@ -906,23 +920,23 @@ namespace UI
 		namespace Categories
 		{
 			Category::Category(QWidget *parent,const QString &name) : QFrame(parent),
-				layout(this),
+				verticalLayout(this),
 				header(this),
 				details(nullptr),
 				detailsLayout(nullptr)
 			{
-				setLayout(&layout);
+				setLayout(&verticalLayout);
 				setFrameShape(QFrame::Box);
 
 				header.setStyleSheet(QString("font-size: %1pt; font-weight: bold; text-align: left;").arg(header.font().pointSizeF()*1.25));
 				header.setCursor(Qt::PointingHandCursor);
 				header.setFlat(true);
 				header.setText(name);
-				layout.addWidget(&header);
+				verticalLayout.addWidget(&header);
 
 				details=new QFrame(this);
 				details->setLayout(&detailsLayout);
-				layout.addWidget(details);
+				verticalLayout.addWidget(details);
 
 				connect(&header,&QPushButton::clicked,this,&Category::ToggleDetails);
 			}

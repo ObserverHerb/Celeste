@@ -17,6 +17,7 @@
 #include <QScrollArea>
 #include <QColorDialog>
 #include <QDialogButtonBox>
+#include <QStatusBar>
 #include <QSizeGrip>
 #include <QDialog>
 #include <QDir>
@@ -191,8 +192,8 @@ namespace UI
 			UI::Commands::Type commandType;
 			QStringList commandAliases;
 			QGridLayout layout;
-			QGridLayout detailsLayout;
 			QFrame *details;
+			QGridLayout detailsLayout;
 			QPushButton header;
 			QLineEdit *name;
 			QLineEdit *description;
@@ -239,6 +240,7 @@ namespace UI
 			QPushButton discard;
 			QPushButton save;
 			QPushButton newEntry;
+			QStatusBar statusBar;
 			std::unordered_map<QString,Entry*> entries;
 			void PopulateEntries(const Command::Lookup &commands);
 			void Add();
@@ -261,14 +263,13 @@ namespace UI
 				Category(QWidget *parent,const QString &name);
 				virtual void Save()=0;
 			protected:
+				QVBoxLayout verticalLayout;
 				QPushButton header;
 				QFrame *details;
 				QGridLayout detailsLayout;
 				QLabel* Label(const QString &text);
 				void Rows(std::vector<std::vector<QWidget*>> widgets);
 				virtual bool eventFilter(QObject *object,QEvent *event) override=0;
-			private:
-				QVBoxLayout layout;
 			signals:
 				void Help(const QString &text);
 			protected slots:
