@@ -728,7 +728,8 @@ namespace UI
 			buttons(this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
-			newEntry("&New",this)
+			newEntry("&New",this),
+			statusBar(this)
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#commands { background-color: palette(base); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
 
@@ -1429,10 +1430,10 @@ namespace UI
 				previewRaidSound(Text::PREVIEW,this),
 				inactivityCooldown(this),
 				helpCooldown(this),
-				textWallThreshold(this),
 				textWallSound(this),
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
+				textWallThreshold(this),
 				settings(settings)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
