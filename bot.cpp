@@ -338,9 +338,11 @@ const Command::Lookup& Bot::Commands() const
 bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather than return a bool
 {
 	QFile commandListFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
-	if (!commandListFile.open(QIODevice::ReadWrite))
+	if (!commandListFile.exists()) return true; // a non-existent attributes file is valid if this is a first run
+
+	if (!commandListFile.open(QIODevice::ReadOnly))
 	{
-		emit Print(QString("Failed to open user attributes file: %1").arg(commandListFile.fileName()));
+		emit Print(QString("Failed to open viewer attributes file: %1").arg(commandListFile.fileName()));
 		return false;
 	}
 
@@ -371,7 +373,7 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 void Bot::SaveViewerAttributes(bool resetWelcomes)
 {
 	QFile viewerAttributesFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
-	if (!viewerAttributesFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
+	if (!viewerAttributesFile.open(QIODevice::WriteOnly)) return; // FIXME: how can we report the error here while closing?
 
 	QJsonObject entries;
 	for (const std::pair<const QString,Viewer::Attributes> &viewer : viewers)
