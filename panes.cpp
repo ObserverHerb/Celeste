@@ -407,6 +407,7 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
+		Q_UNUSED(error)
 		emit Print(QString("Failed to play audio: %1").arg(errorString));
 		emit Finished();
 	});
@@ -510,10 +511,12 @@ void MultimediaAnnouncePane::showEvent(QShowEvent *event)
 {
 	audioPane->show();
 	imagePane->show();
+	QWidget::showEvent(event); // don't call AnnouncePane's show event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
 }
 
 void MultimediaAnnouncePane::hideEvent(QHideEvent *event)
 {
 	audioPane->hide();
 	imagePane->hide();
+	QWidget::hideEvent(event);  // don't call AnnouncePane's hide event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
 }

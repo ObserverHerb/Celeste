@@ -223,10 +223,10 @@ void Channel::ParseCapabilities(const QStringList &parameters,const QString &cap
 		return;
 	}
 
-	DispatchCapabilities(parameters.at(0),parameters.at(1),capabilities.split(' '));
+	DispatchCapabilities(parameters.at(1),capabilities.split(' ')); // parameters.at(0) is client identifier, which I don't need right now
 }
 
-void Channel::DispatchCapabilities(const QString &clientIdentifier,const QString &subCommand,const QStringList &capabilities)
+void Channel::DispatchCapabilities(const QString &subCommand,const QStringList &capabilities)
 {
 	int code=-1;
 	if (auto capabilitiesSubcommand=capabilitiesSubcommands.find(subCommand); capabilitiesSubcommand != capabilitiesSubcommands.end()) code=static_cast<int>(capabilitiesSubcommand->second);

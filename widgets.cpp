@@ -56,6 +56,7 @@ void PinnedTextEdit::contextMenuEvent(QContextMenuEvent *event)
 
 void PinnedTextEdit::Scroll(int minimum,int maximum)
 {
+	Q_UNUSED(minimum)
 	scrollTransition.setDuration((maximum-verticalScrollBar()->value())*10); // distance remaining * ms/step (10ms/1step)
 	scrollTransition.setStartValue(verticalScrollBar()->value());
 	scrollTransition.setEndValue(maximum);
@@ -261,6 +262,7 @@ namespace UI
 		void Aliases::hideEvent(QHideEvent *event)
 		{
 			emit Finished();
+			QDialog::hideEvent(event);
 		}
 
 		Entry::Entry(QWidget *parent) : QWidget(parent),
@@ -318,14 +320,15 @@ namespace UI
 
 			switch (command.Type())
 			{
+			case CommandType::BLANK:
+				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(commandName).toStdString());
 			case CommandType::NATIVE:
 				commandType=Type::NATIVE;
 				break;
 			case CommandType::VIDEO:
-			{
 				commandType=Type::VIDEO;
+				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(commandName).toStdString());
 				break;
-			}
 			case CommandType::AUDIO:
 				commandType=Type::AUDIO;
 				break;
@@ -401,8 +404,8 @@ namespace UI
 				return CommandType::PULSAR;
 			case Type::NATIVE:
 				return CommandType::NATIVE;
-			default:
-				throw std::logic_error("Unrecognized command type selected");
+			case Type::INVALID:
+				throw std::logic_error(u"Fatal: An unrecognized type was selected for command !%1."_s.arg(commandName).toStdString());
 			}
 		}
 
@@ -725,7 +728,8 @@ namespace UI
 			buttons(this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
-			newEntry("&New",this)
+			newEntry("&New",this),
+			statusBar(this)
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#commands { background-color: palette(base); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
 
@@ -755,12 +759,14 @@ namespace UI
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
 			rightPane->setLayout(rightLayout);
 			rightLayout->addWidget(&help,0,0,1,2);
-			labelFilter.setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
-			rightLayout->addWidget(&labelFilter,1,0);
+			statusBar.setSizeGripEnabled(false);
+			rightLayout->addWidget(&statusBar,1,0,1,2);
+			labelFilter.setSizePolicy({QSizePolicy::Fixed,QSizePolicy::Fixed});
+			rightLayout->addWidget(&labelFilter,2,0);
 			filter.addItems({"All","Native","Dynamic","Pulsar"});
 			filter.setCurrentIndex(0);
 			connect(&filter,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Dialog::FilterChanged);
-			rightLayout->addWidget(&filter,1,1);
+			rightLayout->addWidget(&filter,2,1);
 			upperLayout->addWidget(rightPane);
 
 			QWidget *lowerContent=new QWidget(this);
@@ -790,16 +796,28 @@ namespace UI
 
 				if (command.Parent())
 				{
-					aliases[command.Parent()->Name()].push_back(command.Name());
+					aliases.at(command.Parent()->Name()).push_back(command.Name());
 					continue;
 				}
 
-				Entry *entry=new Entry(command,&entriesFrame);
-				connect(entry,&Entry::Help,&help,&QTextEdit::setText);
-				entries[entry->Name()]=entry;
-				scrollLayout.addWidget(entry);
+				try
+				{
+					Entry *entry=new Entry(command,&entriesFrame);
+					connect(entry,&Entry::Help,&help,&QTextEdit::setText);
+					entries.try_emplace(entry->Name(),entry);
+					scrollLayout.addWidget(entry);
+				}
+
+				catch (const std::logic_error &exception)
+				{
+					statusBar.showMessage(exception.what());
+				}
 			}
-			for (const std::pair<const QString,QStringList> &pair : aliases) entries.at(pair.first)->Aliases(pair.second);
+			for (const std::pair<const QString,QStringList> &pair : aliases)
+			{
+				auto entry=entries.find(pair.first);
+				if (entry != entries.end()) entry->second->Aliases(pair.second);
+			}
 			entriesFrame.setUpdatesEnabled(true);
 		}
 
@@ -810,7 +828,7 @@ namespace UI
 			Entry *entry=new Entry({
 				name,
 				{},
-				CommandType::VIDEO,
+				CommandType::VIDEO, // has a type, so no need to catch possible exception here
 				false,
 				true,
 				{},
@@ -818,7 +836,7 @@ namespace UI
 				{},
 				false
 			},this);
-			entries[entry->Name()]=entry;
+			entries.try_emplace(entry->Name(),entry);
 			scrollLayout.addWidget(entry);
 		}
 
@@ -902,23 +920,23 @@ namespace UI
 		namespace Categories
 		{
 			Category::Category(QWidget *parent,const QString &name) : QFrame(parent),
-				layout(this),
+				verticalLayout(this),
 				header(this),
 				details(nullptr),
 				detailsLayout(nullptr)
 			{
-				setLayout(&layout);
+				setLayout(&verticalLayout);
 				setFrameShape(QFrame::Box);
 
 				header.setStyleSheet(QString("font-size: %1pt; font-weight: bold; text-align: left;").arg(header.font().pointSizeF()*1.25));
 				header.setCursor(Qt::PointingHandCursor);
 				header.setFlat(true);
 				header.setText(name);
-				layout.addWidget(&header);
+				verticalLayout.addWidget(&header);
 
 				details=new QFrame(this);
 				details->setLayout(&detailsLayout);
-				layout.addWidget(details);
+				verticalLayout.addWidget(details);
 
 				connect(&header,&QPushButton::clicked,this,&Category::ToggleDetails);
 			}
@@ -936,10 +954,10 @@ namespace UI
 				int maxColumns=2;
 				for (const std::vector<QWidget*> &row : widgets)
 				{
-					if (row.size() > maxColumns) maxColumns=row.size();
+					if (std::ssize(row) > maxColumns) maxColumns=row.size();
 				}
 
-				for (int rowIndex=0; rowIndex < widgets.size(); rowIndex++)
+				for (int rowIndex=0; rowIndex < std::ssize(widgets); rowIndex++)
 				{
 					int columns=widgets[rowIndex].size();
 					if (columns < 2) continue;
@@ -1426,10 +1444,10 @@ namespace UI
 				previewRaidSound(Text::PREVIEW,this),
 				inactivityCooldown(this),
 				helpCooldown(this),
-				textWallThreshold(this),
 				textWallSound(this),
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
+				textWallThreshold(this),
 				settings(settings)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);

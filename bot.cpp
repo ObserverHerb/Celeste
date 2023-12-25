@@ -149,7 +149,6 @@ QJsonDocument Bot::LoadDynamicCommands()
 	}
 	if (!commandListFile.open(QIODevice::ReadOnly)) throw std::runtime_error(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()).toStdString());
 
-	QJsonParseError jsonError;
 	QByteArray data=commandListFile.readAll();
 	if (data.isEmpty()) data=JSON_ARRAY_EMPTY;
 	const JSON::ParseResult parsedJSON=JSON::Parse(data);
@@ -280,7 +279,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 	// catch the aliases that were for native commands,
 	// which normally aren't listed in the commands file
-	for (const std::pair<QString,QStringList> &pair : aliases)
+	for (const std::pair<const QString,QStringList> &pair : aliases)
 	{
 		QJsonArray names;
 		for (const QString &name : pair.second) names.append(name);
@@ -318,7 +317,7 @@ void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObje
 	std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
 	if (!type) return;
 
-	redemptions[name]={
+	redemptions.try_emplace(name,Command{
 		name,
 		jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
 		*type,
@@ -328,7 +327,7 @@ void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObje
 		Command::FileListFilters(*type),
 		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
 		false
-	};
+	});
 }
 
 const Command::Lookup& Bot::Commands() const
@@ -375,14 +374,13 @@ void Bot::SaveViewerAttributes(bool resetWelcomes)
 	if (!viewerAttributesFile.open(QIODevice::ReadWrite)) return; // FIXME: how can we report the error here while closing?
 
 	QJsonObject entries;
-	for (const std::pair<QString,Viewer::Attributes> &viewer : viewers)
+	for (const std::pair<const QString,Viewer::Attributes> &viewer : viewers)
 	{
-		QJsonObject attributes={
+		entries.insert(viewer.first,QJsonObject{
 			{JSON_KEY_COMMANDS,viewer.second.commands},
 			{JSON_KEY_WELCOME,resetWelcomes ? false : viewer.second.welcomed},
 			{JSON_KEY_BOT,viewer.second.bot}
-		};
-		entries.insert(viewer.first,attributes);
+		});
 	}
 
 	viewerAttributesFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
@@ -481,7 +479,7 @@ void Bot::LoadBadgeIconURLs()
 				auto jsonFieldID=objectImageVersions.find(JSON_KEY_ID);
 				auto jsonFieldVersionURL=objectImageVersions.find(JSON_KEY_IMAGE_URL);
 				if (jsonFieldID == objectImageVersions.end() || jsonFieldVersionURL == objectImageVersions.end()) return;
-				badgeIconURLs[jsonFieldSetID->toString()][jsonFieldID->toString()]=jsonFieldVersionURL->toString();
+				badgeIconURLs[jsonFieldSetID->toString()][jsonFieldID->toString()]=jsonFieldVersionURL->toString(); // NOTE: I'm not sure how to construct in place here
 			}
 		}
 	},{},{
@@ -594,6 +592,12 @@ void Bot::DispatchArrival(const QString &login)
 
 void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message)
 {
+	// As of right now, Twitch doesn't use parameters in front of the chat message
+	// so it's always the final parameter, and the final paramater is always the
+	// only parameter. This may change in the future, so passing it in and marking it
+	// unused to shut the compiler up for now.
+	Q_UNUSED(parameters)
+
 	using StringViewLookup=std::unordered_map<QStringView,QStringView>;
 	using StringViewTakeResult=std::optional<QStringView>;
 
@@ -614,7 +618,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		if (!key) continue; // same as above
 		StringViewTakeResult value=StringView::Last(*pair,'=');
 		if (!value) continue; // I'll rely on "missing" to represent an empty value
-		tags[*key]=*value;
+		tags.try_emplace(*key,*value);
 	}
 	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
 	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
@@ -853,6 +857,9 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 				break;
 			case NativeCommandFlag::FOLLOWAGE:
 				DispatchFollowage(viewer);
+				break;
+			case NativeCommandFlag::HTML:
+				emit Print("HTML was processed as a command rather than a chat message. This shouldn't happen!");
 				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());
