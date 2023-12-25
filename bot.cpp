@@ -337,17 +337,17 @@ const Command::Lookup& Bot::Commands() const
 
 bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather than return a bool
 {
-	QFile commandListFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
-	if (!commandListFile.exists()) return true; // a non-existent attributes file is valid if this is a first run
+	QFile viewerAttributesFile(Filesystem::DataPath().filePath(VIEWER_ATTRIBUTES_FILENAME));
+	if (!viewerAttributesFile.exists()) return true; // a non-existent attributes file is valid if this is a first run
 
-	if (!commandListFile.open(QIODevice::ReadOnly))
+	if (!viewerAttributesFile.open(QIODevice::ReadOnly))
 	{
-		emit Print(QString("Failed to open viewer attributes file: %1").arg(commandListFile.fileName()));
+		emit Print(QString("Failed to open viewer attributes file: %1").arg(viewerAttributesFile.fileName()));
 		return false;
 	}
 
 	QJsonParseError jsonError;
-	QByteArray data=commandListFile.readAll();
+	QByteArray data=viewerAttributesFile.readAll();
 	if (data.isEmpty()) data="{}";
 	QJsonDocument json=QJsonDocument::fromJson(data,&jsonError);
 	if (json.isNull())
