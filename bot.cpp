@@ -800,7 +800,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 
 	if (command.Protected() && !chatMessage.Privileged())
 	{
-		emit AnnounceDeniedCommand(File::List(settingDeniedCommandVideo).Random());
+		if (const QString file=File::List(settingDeniedCommandVideo).Random(); !QFile(file).exists()) emit AnnounceDeniedCommand(file);
 		emit Print(QString(R"(The command "!%1" is protected but requester is not authorized")").arg(command.Name()));
 		return false;
 	}
