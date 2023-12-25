@@ -225,8 +225,9 @@ void EphemeralPane::Expire()
 	deleteLater();
 }
 
-VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
+VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
 {
+	if (!QFile(path).exists()) throw std::runtime_error(QString{"File doesn't exist ("+path+")"}.toStdString());
 	videoPlayer->setVideoOutput(viewport);
 	videoPlayer->setSource(QUrl::fromLocalFile(path));
 	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
