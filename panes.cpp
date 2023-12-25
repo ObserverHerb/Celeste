@@ -225,8 +225,9 @@ void EphemeralPane::Expire()
 	deleteLater();
 }
 
-VideoPane::VideoPane(const QString &path,QWidget *parent) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
+VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
 {
+	if (!QFile(path).exists()) throw std::runtime_error(QString{"File doesn't exist ("+path+")"}.toStdString());
 	videoPlayer->setVideoOutput(viewport);
 	videoPlayer->setSource(QUrl::fromLocalFile(path));
 	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
@@ -407,6 +408,7 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
+		Q_UNUSED(error)
 		emit Print(QString("Failed to play audio: %1").arg(errorString));
 		emit Finished();
 	});
@@ -510,10 +512,12 @@ void MultimediaAnnouncePane::showEvent(QShowEvent *event)
 {
 	audioPane->show();
 	imagePane->show();
+	QWidget::showEvent(event); // don't call AnnouncePane's show event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
 }
 
 void MultimediaAnnouncePane::hideEvent(QHideEvent *event)
 {
 	audioPane->hide();
 	imagePane->hide();
+	QWidget::hideEvent(event);  // don't call AnnouncePane's hide event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
 }

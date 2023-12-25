@@ -119,14 +119,22 @@ void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const Q
 
 void Window::AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath)
 {
-	VideoPane *pane=new VideoPane(videoPath,this);
-	connect(pane,&VideoPane::Print,this,&Window::Print);
-	StageEphemeralPane(pane);
-	StageEphemeralPane(new AnnouncePane({
-		{QString("%1 has cheered").arg(name),0.5},
-		{QString("%1").arg(message),1.5},
-		{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
-	},this));
+	try
+	{
+		VideoPane *pane=new VideoPane(videoPath,this);
+		connect(pane,&VideoPane::Print,this,&Window::Print);
+		StageEphemeralPane(pane);
+		StageEphemeralPane(new AnnouncePane({
+			{QString("%1 has cheered").arg(name),0.5},
+			{QString("%1").arg(message),1.5},
+			{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
+		},this));
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		ReportVideoFailed(exception.what());
+	}
 }
 
 void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
@@ -140,9 +148,17 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 
 void Window::AnnounceDeniedCommand(const QString &videoPath)
 {
-	VideoPane *pane=new VideoPane(videoPath,this);
-	connect(pane,&VideoPane::Print,this,&Window::Print);
-	StageEphemeralPane(pane);
+	try
+	{
+		VideoPane *pane=new VideoPane(videoPath,this);
+		connect(pane,&VideoPane::Print,this,&Window::Print);
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		ReportVideoFailed(exception.what());
+	}
 }
 
 void Window::AnnounceHypeTrainProgress(int level,double progress)
@@ -168,9 +184,17 @@ void Window::ShowChat()
 
 void Window::PlayVideo(const QString &path)
 {
-	VideoPane *pane=new VideoPane(path,this);
-	connect(pane,&VideoPane::Print,this,&Window::Print);
-	StageEphemeralPane(pane);
+	try
+	{
+		VideoPane *pane=new VideoPane(path,this);
+		connect(pane,&VideoPane::Print,this,&Window::Print);
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		ReportVideoFailed(exception.what());
+	}
 }
 
 void Window::PlayAudio(const QString &viewer,const QString &message,const QString &path)
@@ -185,10 +209,18 @@ void Window::PlayAudio(const QString &viewer,const QString &message,const QStrin
 
 void Window::ShowPortraitVideo(const QString &path)
 {
-	VideoPane *pane=new VideoPane(path,this);
-	connect(pane,&VideoPane::Print,this,&Window::Print);
-	pane->LowerPriority();
-	StageEphemeralPane(pane);
+	try
+	{
+		VideoPane *pane=new VideoPane(path,this);
+		connect(pane,&VideoPane::Print,this,&Window::Print);
+		pane->LowerPriority();
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		ReportVideoFailed(exception.what());
+	}
 }
 
 void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions)
@@ -266,7 +298,7 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 
 void Window::ShowTimezone(const QString &timezone)
 {
-	emit Print(QDateTime::currentDateTime().timeZone().displayName(QDateTime::currentDateTime().timeZone().isDaylightTime(QDateTime::currentDateTime()) ? QTimeZone::DaylightTime : QTimeZone::StandardTime,QTimeZone::LongName));
+	emit Print(timezone);
 }
 
 void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds)
@@ -403,6 +435,11 @@ ApplicationSetting& Window::BackgroundColor()
 ApplicationSetting& Window::Dimensions()
 {
 	return settingWindowSize;
+}
+
+void Window::ReportVideoFailed(const QString &reason)
+{
+	emit Print("Failed to show video: "+reason);
 }
 
 void Window::contextMenuEvent(QContextMenuEvent *event)

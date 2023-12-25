@@ -107,7 +107,7 @@ class VideoPane : public EphemeralPane
 {
 	Q_OBJECT
 public:
-	VideoPane(const QString &path,QWidget *parent);
+	VideoPane(const QString &path,QWidget *parent) noexcept(false);
 protected:
 	QMediaPlayer *videoPlayer;
 	QVideoWidget *viewport;

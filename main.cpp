@@ -8,7 +8,6 @@
 #include <QListWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <string>
 #include <exception>
 #include "window.h"
 #include "widgets.h"
@@ -110,7 +109,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlaySubscriptionSound),&window,&Window::AnnounceSubscription);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
 	configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
-	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int finished) {
+	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int result) {
+		Q_UNUSED(result)
 		configureOptions->deleteLater();
 	});
 
@@ -120,7 +120,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands,Log &log)
 {
 	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
-	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log,configureCommands](const Command::Lookup& commands) {
+	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log](const Command::Lookup& commands) {
 		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
@@ -128,7 +128,8 @@ void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &comm
 			log.Write(ERROR_COMMANDS_LIST_FILE,u"save dynamic commands"_s,SUBSYSTEM_DIALOG);
 		}
 	});
-	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int finished) {
+	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int result) {
+		Q_UNUSED(result)
 		configureCommands->deleteLater();
 	});
 
@@ -159,7 +160,8 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 			log.Write(ERROR_VIBE_PLAYLIST_FILE,u"save playlist"_s,SUBSYSTEM_DIALOG);
 		}
 	});
-	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int finished) {
+	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
+		Q_UNUSED(result)
 		configurePlaylist->deleteLater();
 	});
 
@@ -256,9 +258,12 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::Shoutout,&window,&Window::Shoutout);
 		celeste.connect(&celeste,&Bot::PlayVideo,&window,&Window::PlayVideo);
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
-		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
 		celeste.connect(&celeste,&Bot::Pulse,&pulsar,&Pulsar::Pulse);
 		celeste.connect(&celeste,&Bot::Welcomed,&metrics,&UI::Metrics::Dialog::Acknowledged);
+		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
+		celeste.connect(&celeste,&Bot::Panic,&celeste,[&celeste]() {
+			celeste.disconnect();
+		});
 		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
@@ -292,7 +297,7 @@ int main(int argc,char *argv[])
 					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
 					eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
 					eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[eventSub](const QString &type) {
+					eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[](const QString &type) {
 						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
 					eventSub->connect(eventSub,&EventSub::Unauthorized,eventSub,[eventSub,&events,&security,&server,channel]() {
@@ -304,7 +309,7 @@ int main(int argc,char *argv[])
 							channel->Disconnect();
 						}
 					},Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[eventSub]() {
+					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
 						MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 					},Qt::QueuedConnection);
 					window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {

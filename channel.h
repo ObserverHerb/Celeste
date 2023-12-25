@@ -52,7 +52,7 @@ protected:
 	void DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParamter);
 	void SendMessage(QString prefix,QString command,QStringList parameters,QString finalParamter);
 	void ParseCapabilities(const QStringList &parameters,const QString &capabilities);
-	void DispatchCapabilities(const QString &clientIdentifier,const QString &subCommand,const QStringList &capabilities);
+	void DispatchCapabilities(const QString &subCommand,const QStringList &capabilities);
 	void ParseNotice(const QString &message);
 	void ParseUserNotice(const QString &prefix,const QString &message);
 	void Authenticate();

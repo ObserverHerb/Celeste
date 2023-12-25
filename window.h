@@ -31,6 +31,7 @@ protected:
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
+	void ReportVideoFailed(const QString &reason);
 	void contextMenuEvent(QContextMenuEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
 signals:

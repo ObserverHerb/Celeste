@@ -9,7 +9,7 @@
 
 Q_DECLARE_METATYPE(std::chrono::milliseconds)
 
-Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), duplicates(parent->duplicates), path(parent->path), files(parent->files), message(parent->message), protect(parent->protect), parent(parent)
+Command::Command(const QString &name,Command* const parent) : name(name), description(parent->description), type(parent->type), random(parent->random), duplicates(parent->duplicates), protect(parent->protect), path(parent->path), files(parent->files), message(parent->message), parent(parent)
 {
 	parent->children.push_back(this);
 }
@@ -114,7 +114,8 @@ namespace Music
 	const char *Player::ERROR_LOADING="Failed to load vibe playlist";
 	const char *Player::OPERATION_LOADING="load vibe playlist";
 
-	Player::Player(bool loop,int initialVolume,QObject *parent) : player(this),
+	Player::Player(bool loop,int initialVolume,QObject *parent) : QObject(parent),
+		player(this),
 		output(this),
 		loop(loop),
 		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10),
@@ -267,6 +268,8 @@ namespace Music
 		case QMediaPlayer::StoppedState:
 			disconnect(autoPlay);
 			break;
+		case QMediaPlayer::PausedState:
+			break;
 		}
 	}
 
@@ -285,6 +288,7 @@ namespace Music
 
 	void Player::MediaError(QMediaPlayer::Error error,const QString &errorString)
 	{
+		Q_UNUSED(error)
 		disconnect(autoPlay);
 		emit Print(QString{"Failed to start: %1"}.arg(errorString));
 	}

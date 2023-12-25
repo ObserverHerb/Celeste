@@ -21,6 +21,7 @@ public:
 		if (text == "false") Set(false);
 	}
 	const QString Name() const { return name; }
+	void Save() { source->sync(); }
 	const QVariant Value() const { return source->value(name,defaultValue); }
 	void Set(const QVariant &value) { source->setValue(name,value); }
 	void Unset() { source->remove(name); }
