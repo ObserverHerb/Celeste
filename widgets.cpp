@@ -836,7 +836,7 @@ namespace UI
 
 				if (command.Parent())
 				{
-					aliases.at(command.Parent()->Name()).push_back(command.Name());
+					aliases[command.Parent()->Name()].push_back(command.Name()); // NOTE: This is an assignment, not just a lookup
 					continue;
 				}
 
