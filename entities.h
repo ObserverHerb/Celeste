@@ -320,6 +320,7 @@ namespace Viewer
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("viewer retrieval"));
 		void Recognized(const Viewer::Local &viewer);
+		void Unrecognized();
 	};
 
 	struct Attributes

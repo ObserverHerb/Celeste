@@ -12,9 +12,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (WIN32)
-	find_package(Qt6 COMPONENTS Widgets Network Multimedia MultimediaWidgets REQUIRED)
+	find_package(Qt6 COMPONENTS Widgets Network Mqtt Multimedia MultimediaWidgets WebSockets REQUIRED)
 else()
-	find_package(Qt6 COMPONENTS Widgets Network Multimedia MultimediaWidgets REQUIRED)
+	find_package(Qt6 COMPONENTS Widgets Network Mqtt Multimedia MultimediaWidgets WebSockets REQUIRED)
 endif()
 
 add_executable(Celeste
@@ -24,8 +24,6 @@ add_executable(Celeste
 	security.cpp
 	channel.h
 	channel.cpp
-	server.h
-	server.cpp
 	widgets.h
 	widgets.cpp
 	entities.h
@@ -57,7 +55,7 @@ if (WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 	set_property(TARGET Celeste PROPERTY WIN32_EXECUTABLE true)
 	target_sources(Celeste PRIVATE win32.cpp resources/resources.rc)
-	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Multimedia Qt::MultimediaWidgets)
+	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Mqtt Qt::Multimedia Qt::MultimediaWidgets Qt::WebSockets)
 	target_compile_definitions(Celeste PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 else()
 	include(CheckIPOSupported)
@@ -67,7 +65,7 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_sources(Celeste PRIVATE unix.cpp)
-	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Multimedia Qt::MultimediaWidgets)
+	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Mqtt Qt::Multimedia Qt::MultimediaWidgets Qt::Websockets)
 endif()
 
 if (WITH_PULSAR)

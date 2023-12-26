@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
+#include <QMqttClient>
 #include "settings.h"
 
 inline const char *QUERY_PARAMETER_CODE="code";
@@ -29,35 +30,41 @@ public:
 	Security();
 	PrivateSetting& Administrator() { return settingAdministrator; }
 	PrivateSetting& OAuthToken() { return settingOAuthToken; }
-	PrivateSetting& ServerToken() { return settingServerToken; }
 	PrivateSetting& ClientID() { return settingClientID; }
-	PrivateSetting& ClientSecret() { return settingClientSecret; }
 	PrivateSetting& CallbackURL() { return settingCallbackURL; }
 	PrivateSetting& Scope() { return settingScope; }
 	const QString& AdministratorID() const;
 	QByteArray Bearer(const QByteArray &token);
-	void AuthorizeUser();
-	void AuthorizeServer();
-	void RequestToken(const QString &code,const QString &scopes);
-	void ObtainAdministratorProfile();
+	void Listen();
 	static const QStringList SCOPES;
 private:
 	PrivateSetting settingAdministrator;
 	PrivateSetting settingClientID;
-	PrivateSetting settingClientSecret;
 	PrivateSetting settingOAuthToken;
 	PrivateSetting settingRefreshToken;
-	PrivateSetting settingServerToken;
 	PrivateSetting settingCallbackURL;
 	PrivateSetting settingScope;
+	PrivateSetting settingRewireSession;
+	ApplicationSetting settingRewireHost;
+	ApplicationSetting settingRewirePort;
 	QString administratorID;
-	static QTimer tokenTimer;
+	QMqttClient *rewire;
+	QMqttSubscription *rewireChannel;
+	bool tokensInitialized;
+	QTimer tokenValidationTimer;
+	bool authorizing;
 signals:
 	void TokenRequestFailed();
-	void TokenRefreshFailed();
-	void AdministratorProfileObtained();
+	void Listening();
+	void Disconnected();
+	void Initialized();
 public slots:
-	void StartClocks();
+	void AuthorizeUser();
 private slots:
-	void RefreshToken();
+	void ValidateToken();
+	void ObtainAdministratorProfile();
+	void RewireConnected();
+	void RewireError(QMqttClient::ClientError error);
+	void RewireMessage(QMqttMessage messasge);
+	void Initialize();
 };

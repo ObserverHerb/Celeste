@@ -15,7 +15,6 @@
 #include "bot.h"
 #include "log.h"
 #include "eventsub.h"
-#include "server.h"
 #include "globals.h"
 #include "security.h"
 #include "pulsar.h"
@@ -194,19 +193,13 @@ int main(int argc,char *argv[])
 		if (clientID.isEmpty()) return NOT_CONFIGURED;
 		security.ClientID().Set(clientID);
 	}
-	if (!security.ClientSecret() || static_cast<QString>(security.ClientSecret()).isEmpty())
-	{
-		QString secret=QInputDialog::getText(nullptr,"Client Secret","A client secret has not yet been set. Please provide your bot's client secret from the Twitch developer console.",QLineEdit::Password);
-		if (secret.isEmpty()) return NOT_CONFIGURED;
-		security.ClientSecret().Set(secret);
-	}
 	if (!security.CallbackURL() || static_cast<QString>(security.CallbackURL()).isEmpty())
 	{
 		QString callbackURL=QInputDialog::getText(nullptr,"Callback URL","OAuth and EventSub require the URL at which your bot's server can be reached. Please provide a callback URL.");
 		if (callbackURL.isEmpty()) return NOT_CONFIGURED;
 		security.CallbackURL().Set(callbackURL);
 	}
-	if (!security.Scope() || static_cast<QStringList>(security.Scope()).isEmpty())
+	if (!security.Scope() || static_cast<QString>(security.Scope()).isEmpty()) // just test against QString since we're just looking to see if something is there (not worth the conversion overhead of splitting)
 	{
 		UI::Security::Scopes scopes(nullptr);
 		if (scopes.exec()) security.Scope().Set(scopes().join(" "));
@@ -218,7 +211,6 @@ int main(int argc,char *argv[])
 		Log log;
 		IRCSocket socket;
 		Channel *channel=new Channel(security,&socket);
-		Server server;
 		Music::Player musicPlayer(true,0);
 		Bot celeste(musicPlayer,security);
 		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
@@ -230,9 +222,6 @@ int main(int argc,char *argv[])
 		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
 			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
 			application.exit(AUTHENTICATION_ERROR);
-		});
-		security.connect(&security,&Security::TokenRefreshFailed,[&log]() {
-			log.Write("Attempt to refresh OAuth token failed","refresh auth token",SUBSYSTEM_AUTHORIZATION);
 		});
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
@@ -281,58 +270,35 @@ int main(int argc,char *argv[])
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		QMetaObject::Connection events;
-		QMetaObject::Connection administratorProfile; // have to do it this way because Qt::UniqueConnection doesn't work with lambdas (https://bugreports.qt.io/browse/QTBUG-52438)
-		channel->connect(channel,&Channel::Connected,[&events,&administratorProfile,&security,&window,channel,&server,&celeste,&log]() {
-			if (!administratorProfile)
-			{
-				administratorProfile=security.connect(&security,&Security::AdministratorProfileObtained,&security,[&events,&security,&window,channel,&log,&server,&celeste]() mutable {
-					EventSub *eventSub=new EventSub(security);
-					events=server.connect(&server,&Server::Dispatch,eventSub,&EventSub::ParseRequest);
-					eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
-					eventSub->connect(eventSub,&EventSub::Response,&server,QOverload<qintptr,const QString&>::of(&Server::SocketWrite));
-					eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
-					eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
-					eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
-					eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
-					eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
-					eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[](const QString &type) {
-						MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
-					},Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::Unauthorized,eventSub,[eventSub,&events,&security,&server,channel]() {
-						if (MessageBox(u"EventSub Authorization Failed"_s,u"There was a problem with authorization while subscribing to an event. Would you like to attempt to renew the server token?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes)
-						{
-							server.disconnect(events);
-							security.AuthorizeServer();
-							eventSub->deleteLater();
-							channel->Disconnect();
-						}
-					},Qt::QueuedConnection);
-					eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
-						MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
-					},Qt::QueuedConnection);
-					window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
-						ShowEventSubscriptions(window,eventSub);
-					});
+		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log]() {
+			static EventSub *eventSub=nullptr;
 
-					eventSub->Subscribe();
-				});
-			}
-			security.ObtainAdministratorProfile();
-		});
-		channel->connect(channel,&Channel::Connected,&security,&Security::StartClocks);
-		QMetaObject::Connection reauthorize;
-		channel->connect(channel,&Channel::Denied,[&reauthorize,&security,&server]() {
-			if (MessageBox(u"Authentication Failed"_s,u"Twitch did not accept Celeste's credentials. Would you like to obtain a new OAuth token and retry?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
-			reauthorize=server.connect(&server,&Server::Dispatch,[&reauthorize,&security,&server](qintptr socketID,const QUrlQuery& query) {
-				server.disconnect(reauthorize); // break any connection with security's slots so we don't conflict with EventSub later
-				server.SocketWrite(socketID,QStringLiteral(R"(<html><body><h1>Authorization Successful!</h1><br><b>Token:</b> %1<br><b>Scope:</b> %2</body></html>)").arg(QString(query.queryItemValue(QUERY_PARAMETER_CODE).size(),'*'),query.queryItemValue(QUERY_PARAMETER_SCOPE).replace('+',", ")),Network::CONTENT_TYPE_HTML);
-				security.RequestToken(query.queryItemValue(QUERY_PARAMETER_CODE),query.queryItemValue(QUERY_PARAMETER_SCOPE));
+			if (eventSub) eventSub->deleteLater();
+			eventSub=new EventSub(security);
+
+			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
+			eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
+			eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
+			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
+			eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
+			eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
+			eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[](const QString &type) {
+				MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
+			},Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::Unauthorized,&security,&Security::AuthorizeUser,Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
+				MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
+			},Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::Connected,eventSub,[]() {
+				eventSub->Subscribe();
+			},Qt::QueuedConnection);
+			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window]() {
+				ShowEventSubscriptions(window,eventSub);
 			});
-			security.AuthorizeUser();
 		});
-		server.connect(&server,&Server::Print,&log,&Log::Write);
+		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
+		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);
 		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel]() {
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
@@ -360,10 +326,9 @@ int main(int argc,char *argv[])
 		});
 
 		if (!log.Open()) MessageBox(u"Error Opening Log"_s,u"Failed to open log file. Log messages will not be saved to filesystem"_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
-		if (!server.Listen()) MessageBox(u"Error Starting Web Server"_s,u"Unable to start local server. Events will not be received from Twitch."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
 		pulsar.LoadTriggers();
 		window.show();
-		channel->Connect();
+		security.Listen();
 
 		return application.exec();
 	}

@@ -686,36 +686,34 @@ namespace Viewer
 	{
 		Network::Request({TWITCH_API_ENDPOINT_USERS},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
-			switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+
+			try
 			{
-			case 400:
-				emit Print(QStringLiteral("Invalid or missing ID or login parameter"),OPERATION);
-				return;
-			case 401:
-				emit Print("Authentication failed",OPERATION);
-				return;
+				QString message;
+				switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+				{
+				case 400:
+					throw std::runtime_error("Invalid or missing ID or login parameter");
+				case 401:
+					throw std::runtime_error("Authentication failed");
+				}
+
+				if (reply->error()) throw std::runtime_error("Unknown error obtaining viewer information");
+
+				const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+				if (!parsedJSON) throw std::runtime_error(std::string("Failed: "+parsedJSON.error.toStdString()));
+				QJsonArray data=parsedJSON().object().value("data").toArray();
+				if (data.size() < 1) throw std::runtime_error("Invalid user");
+				QJsonObject details=data.at(0).toObject();
+				emit Recognized({details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),details.value("profile_image_url").toString(),details.value("description").toString()});
 			}
 
-			if (reply->error())
+			catch (const std::runtime_error &exception)
 			{
-				emit Print(QStringLiteral("Unknown error obtaining viewer information"),OPERATION);
-				return;
-			}		
+				emit Print(exception.what(),OPERATION);
+				emit Unrecognized();
+			}
 
-			const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
-			if (!parsedJSON)
-			{
-				emit Print(QString("Failed: %1").arg(parsedJSON.error),OPERATION);
-				return;
-			}
-			QJsonArray data=parsedJSON().object().value("data").toArray();
-			if (data.size() < 1)
-			{
-				emit Print("Invalid user",OPERATION);
-				return;
-			}
-			QJsonObject details=data.at(0).toObject();
-			emit Recognized({details.value("login").toString(),details.value("id").toString(),details.value("display_name").toString(),details.value("profile_image_url").toString(),details.value("description").toString()});
 			this->deleteLater();
 		},{
 			{"login",username}

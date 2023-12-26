@@ -43,6 +43,7 @@ public:
 	operator QColor() const { return source->value(name,defaultValue).value<QColor>(); }
 	operator QSize() const { return source->value(name,defaultValue).toSize(); }
 	operator QByteArray() const { return Value().toString().toLocal8Bit(); }
+	operator QUrl() const { return Value().toUrl(); }
 protected:
 	QString name;
 	QVariant defaultValue;
