@@ -547,9 +547,7 @@ namespace UI
 			protected:
 				QLineEdit administrator;
 				QLineEdit clientID;
-				QLineEdit clientSecret;
 				QLineEdit token;
-				QLineEdit serverToken;
 				QLineEdit callbackURL;
 				QLineEdit permissions;
 				QPushButton selectPermissions;
