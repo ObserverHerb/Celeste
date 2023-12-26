@@ -348,7 +348,6 @@ namespace UI
 				break;
 			case CommandType::VIDEO:
 				commandType=Type::VIDEO;
-				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(commandName).toStdString());
 				break;
 			case CommandType::AUDIO:
 				commandType=Type::AUDIO;
