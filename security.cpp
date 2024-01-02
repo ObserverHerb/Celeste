@@ -62,11 +62,11 @@ const QStringList Security::SCOPES={
 };
 
 Security::Security() : settingAdministrator("Administrator"),
-	settingClientID("ClientID"),
+	settingClientID("ClientID","vtoskvydu1rb5oyemum3et0nbiazvb"),
 	settingOAuthToken("Token"),
 	settingRefreshToken("RefreshToken"),
-	settingCallbackURL("CallbackURL"),
-	settingScope("Permissions"),
+	settingCallbackURL("CallbackURL","https://twitch.hlmjr.com/celeste.php"),
+	settingScope("Permissions","chat:read bits:read channel:read:redemptions channel:manage:broadcast channel:manage:redemptions channel:read:subscriptions moderator:manage:chat_settings moderator:read:chatters moderator:manage:shoutouts channel:read:hype_train"),
 	settingRewireSession("Session"),
 	settingRewireHost(SETTINGS_CATEGORY_REWIRE,"Host","twitch.hlmjr.com"),
 	settingRewirePort(SETTINGS_CATEGORY_REWIRE,"Port","1883"),
