@@ -1,5 +1,5 @@
 #define MyAppName "Celeste"
-#define MyAppVersion "1.00"
+#define MyAppVersion "2.00"
 #define MyAppPublisher "The Engineering Deck"
 #define MyAppURL "https://github.com/EngineeringDeck/Celeste"
 #define MyAppExeName "Celeste.exe"
@@ -28,24 +28,28 @@ SetupIconFile="..\resources\celeste.ico"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "C:\src\Celeste\packaging\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Pulsar.dll"; DestDir: "{code:OBSLocation}"; Flags: ignoreversion; Components: pulsar
-Source: "C:\src\Celeste\packaging\libcrypto-1_1-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\libssl-1_1-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6Core.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6Gui.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6Multimedia.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6MultimediaWidgets.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6Network.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6Svg.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\Qt6Widgets.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\src\Celeste\packaging\iconengines\*"; DestDir: "{app}\iconengines"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\tls\*"; DestDir: "{app}\tls"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\src\Celeste\packaging\translations\*"; DestDir: "{app}\translations"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Pulsar.dll"; DestDir: "{code:OBSLocation}"; Flags: ignoreversion; Components: pulsar
+Source: "libcrypto-3-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "libssl-3-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Core.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Gui.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Mqtt.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Multimedia.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6MultimediaWidgets.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Network.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Svg.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6WebSockets.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Qt6Widgets.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "generic\*"; DestDir: "{app}\generic"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "iconengines\*"; DestDir: "{app}\iconengines"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "multimedia\*"; DestDir: "{app}\multimedia"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "tls\*"; DestDir: "{app}\tls"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "translations\*"; DestDir: "{app}\translations"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
