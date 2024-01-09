@@ -20,7 +20,7 @@ const char *SETTINGS_CATEGORY_WINDOW="Window";
 Window::Window() : QMainWindow(nullptr),
 	background(new QWidget(this)),
 	livePersistentPane(nullptr),
-	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size"),
+	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size",ScreenThird()),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	configureOptions("Options",this),
 	configureCommands("Commands",this),
@@ -29,10 +29,7 @@ Window::Window() : QMainWindow(nullptr),
 	vibePlaylist("Vibe Playlist",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
-	if (settingWindowSize)
-		setFixedSize(settingWindowSize);
-	else
-		setFixedSize(ScreenThird());
+	setFixedSize(settingWindowSize);
 
 	layout()->setContentsMargins(0,0,0,0);
 	background->setLayout(new QGridLayout(background)); // for translucency to work, there has to be a widget covering the window, otherwise the entire thing is clear
