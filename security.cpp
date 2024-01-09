@@ -195,7 +195,7 @@ void Security::ValidateToken()
 						AuthorizeUser();
 					},{},{
 						{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM},
-						{NETWORK_HEADER_AUTHORIZATION,"OAuth "_ba+settingOAuthToken}
+						{NETWORK_HEADER_AUTHORIZATION,"OAuth "_ba+static_cast<QByteArray>(settingOAuthToken)}
 					});
 
 					return;

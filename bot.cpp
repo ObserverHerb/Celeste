@@ -888,7 +888,7 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 	if (auto viewerCandidate=viewers.find(login); viewerCandidate != viewers.end())
 	{
 		Viewer::Attributes &viewer=viewerCandidate->second;
-		if (viewer.limited && std::chrono::duration_cast<std::chrono::minutes>(std::chrono::system_clock::now()-viewer.commandTimestamp) < std::chrono::minutes(settingCommandCooldown) && !chatMessage.Privileged())
+		if (viewer.limited && std::chrono::duration_cast<std::chrono::minutes>(std::chrono::system_clock::now()-viewer.commandTimestamp) < std::chrono::minutes(static_cast<qint64>(settingCommandCooldown)) && !chatMessage.Privileged())
 		{
 			emit AnnounceDeniedCommand(File::List(settingDeniedCommandVideo).Random());
 			return false;
