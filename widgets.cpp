@@ -285,9 +285,9 @@ namespace UI
 		}
 
 		Entry::Entry(QWidget *parent) : QWidget(parent),
-			commandProtect(-1),
-			commandRandom(-1),
-			commandDuplicates(-1),
+			commandProtect(false),
+			commandRandom(false),
+			commandDuplicates(false),
 			commandType(UI::Commands::Type::INVALID),
 			layout(this),
 			details(nullptr),
@@ -332,10 +332,10 @@ namespace UI
 		{
 			commandName=command.Name();
 			commandDescription=command.Description();
-			commandProtect=command.Protected() ? 1 : 0;
+			commandProtect=command.Protected();
 			commandPath=command.Path();
-			commandRandom=command.Random() ? 1 : 0;
-			commandDuplicates=command.Duplicates() ? 1 : 0;
+			commandRandom=command.Random();
+			commandDuplicates=command.Duplicates();
 			commandMessage=command.Message();
 			commandTriggers=command.Viewers();
 
@@ -362,51 +362,60 @@ namespace UI
 
 		QString Entry::Name() const
 		{
-			if (commandName.isNull())
-				return name->text();
-			else
-				return commandName;
+			return commandName;
+		}
+
+		void Entry::UpdateName(const QString &text)
+		{
+			commandName=text;
 		}
 
 		QString Entry::Description() const
 		{
-			if (commandDescription.isNull())
-				return description->text();
-			else
-				return commandDescription;
+			return commandDescription;
+		}
+
+		void Entry::UpdateDescription(const QString &text)
+		{
+			commandDescription=text;
 		}
 
 		QStringList Entry::Aliases() const
 		{
-			if (aliases)
-				return (*aliases)();
-			else
-				return commandAliases;
+			return commandAliases;
 		}
 
 		void Entry::Aliases(const QStringList &names)
 		{
-			if (aliases)
-				aliases->Populate(names);
-			else
-				commandAliases=names;
+			commandAliases=names;
+			if (aliases) aliases->Populate(names);
+			UpdateHeader();
+		}
+
+		void Entry::UpdateAliases()
+		{
+			commandAliases=(*aliases)();
 			UpdateHeader();
 		}
 
 		QStringList Entry::Triggers() const
 		{
-			if (triggers)
-				return (*triggers)();
-			else
-				return commandTriggers;
+			return commandTriggers;
+		}
+
+		void Entry::UpdateTriggers()
+		{
+			commandTriggers=(*triggers)();
 		}
 
 		QString Entry::Path() const
 		{
-			if (commandPath.isNull())
-				return path->text();
-			else
-				return commandPath;
+			return commandPath;
+		}
+
+		void Entry::UpdatePath(const QString &text)
+		{
+			commandPath=text;
 		}
 
 		QStringList Entry::Filters() const
@@ -439,34 +448,42 @@ namespace UI
 
 		bool Entry::Random() const
 		{
-			if (commandRandom < 0)
-				return random->isChecked();
-			else
-				return commandRandom > 0;
+			return commandRandom;
+		}
+
+		void Entry::UpdateRandom(int state)
+		{
+			commandRandom=state == Qt::Checked;
 		}
 
 		bool Entry::Duplicates() const
 		{
-			if (commandDuplicates < 0)
-				return duplicates->isChecked();
-			else
-				return commandDuplicates > 0;
+			return commandDuplicates;
+		}
+
+		void Entry::UpdateDuplicates(int state)
+		{
+			commandDuplicates=state == Qt::Checked;
 		}
 
 		QString Entry::Message() const
 		{
-			if (commandMessage.isNull())
-				return message->toPlainText();
-			else
-				return commandMessage;
+			return commandMessage;
+		}
+
+		void Entry::UpdateMessage()
+		{
+			commandMessage=message->toPlainText();
 		}
 
 		bool Entry::Protected() const
 		{
-			if (commandProtect < 0)
-				return protect->isChecked();
-			else
-				return commandProtect > 0;
+			return commandProtect;
+		}
+
+		void Entry::UpdateProtect(int state)
+		{
+			commandProtect=state == Qt::Checked;
 		}
 
 		void Entry::UpdateHeader()
@@ -490,121 +507,125 @@ namespace UI
 			}
 			else
 			{
-				if (!name)
-				{
-					name=new QLineEdit(details);
-					name->setPlaceholderText(u"Command Name"_s);
-					name->setText(commandName);
-					commandName.clear();
-					connect(name,&QLineEdit::textChanged,this,&Entry::ValidateName);
-					connect(name,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::UpdateHeader));
-					name->installEventFilter(this);
-					detailsLayout.addWidget(name,0,0);
-				}
-
-				if (!openAliases)
-				{
-					aliases=new UI::Commands::NamesList(u"Command Aliases"_s,u"Alias"_s,this);
-					aliases->Populate(commandAliases);
-					commandAliases.clear();
-					connect(aliases,&UI::Commands::NamesList::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
-					aliases->installEventFilter(this);
-					openAliases=new QPushButton(u"Aliases"_s,details);
-					connect(openAliases,&QPushButton::clicked,aliases,&QDialog::show);
-					detailsLayout.addWidget(openAliases,0,1);
-				}
-
-				if (!openTriggers)
-				{
-					triggers=new UI::Commands::NamesList(u"Command Triggers"_s,u"Viewer Name"_s,this);
-					triggers->Populate(commandTriggers);
-					commandTriggers.clear();
-					triggers->installEventFilter(this);
-					openTriggers=new QPushButton(u"Triggers"_s,details);
-					connect(openTriggers,&QPushButton::clicked,triggers,&QDialog::show);
-					detailsLayout.addWidget(openTriggers,0,2);
-				}
-
-				if (!protect)
-				{
-					protect=new QCheckBox(u"Protect"_s,details);
-					protect->setChecked(commandProtect > 0 ? true : false);
-					commandProtect=-1;
-					detailsLayout.addWidget(protect,0,3);
-				}
-
-				if (!description)
-				{
-					description=new QLineEdit(details);
-					description->setPlaceholderText(u"Command Description"_s);
-					description->setText(commandDescription);
-					commandDescription.clear();
-					connect(description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
-					description->installEventFilter(this);
-					detailsLayout.addWidget(description,1,0,1,3);
-				}
-
-				if (!path)
-				{
-					path=new QLineEdit(details);
-					path->setText(commandPath);
-					commandPath.clear();
-					connect(path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
-					path->installEventFilter(this);
-					detailsLayout.addWidget(path,2,0,1,2);
-				}
-
-				if (!browse)
-				{
-					browse=new QPushButton(Text::BROWSE,details);
-					connect(browse,&QPushButton::clicked,this,&Entry::Browse);
-					browse->installEventFilter(this);
-					detailsLayout.addWidget(browse,2,2,1,1);
-				}
-
-				if (!type)
-				{
-					type=new QComboBox(details);
-					type->addItems({
-						u"Video"_s,
-						u"Announce"_s,
-						u"Pulsar"_s
-					});
-					type->setPlaceholderText(u"Native"_s);
-					type->setCurrentIndex(static_cast<int>(commandType));
-					commandType=UI::Commands::Type::INVALID;
-					connect(type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
-					type->installEventFilter(this);
-					detailsLayout.addWidget(type,3,0,1,1);
-				}
-
-				if (!random)
-				{
-					random=new QCheckBox(u"Random"_s,details);
-					random->setChecked(commandRandom > 0 ? true : false);
-					commandRandom=-1;
-					connect(random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
-					detailsLayout.addWidget(random,3,1,1,1);
-				}
-
-				if (!duplicates)
-				{
-					duplicates=new QCheckBox(u"Duplicates"_s,details);
-					duplicates->setChecked(commandDuplicates > 0 ? true : false);
-					commandDuplicates=-1;
-					detailsLayout.addWidget(duplicates,3,2,1,1);
-				}
-
-				if (!message)
-				{
-					message=new QTextEdit(details);
-					message->setText(commandMessage);
-					commandMessage.clear();
-					connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
-					detailsLayout.addWidget(message,4,0,1,3);
-				}
+				TryBuildUI();
+				details->setVisible(true);
 			}
-			details->setVisible(true);
+		}
+
+		void Entry::TryBuildUI()
+		{
+			if (!name)
+			{
+				name=new QLineEdit(details);
+				name->setPlaceholderText(u"Command Name"_s);
+				name->setText(commandName);
+				connect(name,&QLineEdit::textChanged,this,&Entry::ValidateName);
+				connect(name,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::UpdateHeader));
+				connect(name,&QLineEdit::textChanged,this,&Entry::UpdateName);
+				name->installEventFilter(this);
+				detailsLayout.addWidget(name,0,0);
+			}
+
+			if (!openAliases)
+			{
+				aliases=new UI::Commands::NamesList(u"Command Aliases"_s,u"Alias"_s,this);
+				aliases->Populate(commandAliases);
+				connect(aliases,&UI::Commands::NamesList::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
+				connect(aliases,&UI::Commands::NamesList::Finished,this,&Entry::UpdateAliases);
+				aliases->installEventFilter(this);
+				openAliases=new QPushButton(u"Aliases"_s,details);
+				connect(openAliases,&QPushButton::clicked,aliases,&QDialog::show);
+				detailsLayout.addWidget(openAliases,0,1);
+			}
+
+			if (!openTriggers)
+			{
+				triggers=new UI::Commands::NamesList(u"Command Triggers"_s,u"Viewer Name"_s,this);
+				triggers->Populate(commandTriggers);
+				connect(aliases,&UI::Commands::NamesList::Finished,this,&Entry::UpdateTriggers);
+				triggers->installEventFilter(this);
+				openTriggers=new QPushButton(u"Triggers"_s,details);
+				connect(openTriggers,&QPushButton::clicked,triggers,&QDialog::show);
+				detailsLayout.addWidget(openTriggers,0,2);
+			}
+
+			if (!protect)
+			{
+				protect=new QCheckBox(u"Protect"_s,details);
+				protect->setChecked(commandProtect);
+				connect(protect,&QCheckBox::stateChanged,this,&Entry::UpdateProtect);
+				detailsLayout.addWidget(protect,0,3);
+			}
+
+			if (!description)
+			{
+				description=new QLineEdit(details);
+				description->setPlaceholderText(u"Command Description"_s);
+				description->setText(commandDescription);
+				connect(description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
+				connect(description,&QLineEdit::textChanged,this,&Entry::UpdateDescription);
+				description->installEventFilter(this);
+				detailsLayout.addWidget(description,1,0,1,3);
+			}
+
+			if (!path)
+			{
+				path=new QLineEdit(details);
+				path->setText(commandPath);
+				connect(path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
+				connect(path,&QLineEdit::textChanged,this,&Entry::UpdatePath);
+				path->installEventFilter(this);
+				detailsLayout.addWidget(path,2,0,1,2);
+			}
+
+			if (!browse)
+			{
+				browse=new QPushButton(Text::BROWSE,details);
+				connect(browse,&QPushButton::clicked,this,&Entry::Browse);
+				browse->installEventFilter(this);
+				detailsLayout.addWidget(browse,2,2,1,1);
+			}
+
+			if (!type)
+			{
+				type=new QComboBox(details);
+				type->addItems({
+					u"Video"_s,
+					u"Announce"_s,
+					u"Pulsar"_s
+				});
+				type->setPlaceholderText(u"Native"_s);
+				type->setCurrentIndex(static_cast<int>(commandType));
+				connect(type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
+				type->installEventFilter(this);
+				detailsLayout.addWidget(type,3,0,1,1);
+			}
+
+			if (!random)
+			{
+				random=new QCheckBox(u"Random"_s,details);
+				random->setChecked(commandRandom);
+				connect(random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
+				connect(random,&QCheckBox::stateChanged,this,&Entry::UpdateRandom);
+				detailsLayout.addWidget(random,3,1,1,1);
+			}
+
+			if (!duplicates)
+			{
+				duplicates=new QCheckBox(u"Duplicates"_s,details);
+				duplicates->setChecked(commandDuplicates);
+				connect(duplicates,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
+				detailsLayout.addWidget(duplicates,3,2,1,1);
+			}
+
+			if (!message)
+			{
+				message=new QTextEdit(details);
+				message->setText(commandMessage);
+				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
+				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
+				detailsLayout.addWidget(message,4,0,1,3);
+			}
 		}
 
 		void Entry::ValidateName(const QString &text)
@@ -816,9 +837,8 @@ namespace UI
 			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
 			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
 			buttons.addButton(&newEntry,QDialogButtonBox::ActionRole);
-			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
 			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
-			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
+			connect(&buttons,&QDialogButtonBox::accepted,this,QOverload<>::of(&Dialog::Save));
 			connect(&newEntry,&QPushButton::clicked,this,&UI::Commands::Dialog::Add);
 			lowerLayout->addWidget(&buttons);
 
@@ -953,6 +973,7 @@ namespace UI
 			}
 
 			emit Save(commands);
+			accept();
 		}
 	}
 

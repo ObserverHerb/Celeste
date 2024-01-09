@@ -186,7 +186,7 @@ namespace UI
 		protected:
 			QString commandName;
 			QString commandDescription;
-			short commandProtect;
+			bool commandProtect;
 			QString commandPath;
 			short commandRandom;
 			short commandDuplicates;
@@ -211,11 +211,21 @@ namespace UI
 			QTextEdit *message;
 			UI::Commands::NamesList *aliases;
 			UI::Commands::NamesList *triggers;
+			void UpdateName(const QString &text);
+			void UpdateDescription(const QString &text);
+			void UpdateMessage();
+			void UpdatePath(const QString &text);
+			void UpdateProtect(int state);
+			void UpdateRandom(int state);
+			void UpdateDuplicates(int state);
+			void UpdateAliases();
+			void UpdateTriggers();
 			void Native();
 			void Pulsar();
 			void Browse();
 			void UpdateHeader();
 			void ToggleFold();
+			void TryBuildUI();
 			void ValidatePath(const QString &text,bool random,const enum Type type);
 			bool eventFilter(QObject *object,QEvent *event) override;
 		signals:
