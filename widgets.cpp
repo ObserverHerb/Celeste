@@ -1693,15 +1693,15 @@ namespace UI
 
 			void Bot::Save()
 			{
-				settings.arrivalSound.Set(arrivalSound.text());
-				settings.portraitVideo.Set(portraitVideo.text());
-				settings.cheerVideo.Set(cheerVideo.text());
-				settings.subscriptionSound.Set(subscriptionSound.text());
-				settings.raidSound.Set(raidSound.text());
+				if (QString text=arrivalSound.text(); !text.isEmpty()) settings.arrivalSound.Set(text);
+				if (QString text=portraitVideo.text(); !text.isEmpty()) settings.portraitVideo.Set(text);
+				if (QString text=cheerVideo.text(); !text.isEmpty()) settings.cheerVideo.Set(text);
+				if (QString text=subscriptionSound.text(); !text.isEmpty()) settings.subscriptionSound.Set(text);
+				if (QString text=raidSound.text(); !text.isEmpty()) settings.raidSound.Set(text);
 				settings.inactivityCooldown.Set(inactivityCooldown.value());
 				settings.helpCooldown.Set(helpCooldown.value());
 				settings.textWallThreshold.Set(textWallThreshold.value());
-				settings.textWallSound.Set(textWallSound.text());
+				if (QString text=textWallSound.text(); !text.isEmpty()) settings.textWallSound.Set(text);
 			}
 
 			Log::Log(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Logging")),

@@ -574,7 +574,7 @@ void Bot::Subscription(const QString &login,const QString &displayName)
 void Bot::Raid(const QString &viewer,const unsigned int viewers)
 {
 	lastRaid=QDateTime::currentDateTime();
-	emit AnnounceRaid(viewer,viewers,settingRaidSound);
+	if (settingRaidSound) emit AnnounceRaid(viewer,viewers,settingRaidSound);
 }
 
 void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &message)
@@ -787,7 +787,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		emote.name=name.toString();
 		DownloadEmote(emote); // once we know the emote name, we can determine the path, which means we can download it (download will set the path in the struct)
 	}
-	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold)) emit AnnounceTextWall(message,settingTextWallSound);
+	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold) && settingTextWallSound) emit AnnounceTextWall(message,settingTextWallSound);
 
 	chatMessage.text=remainingText.toString().toHtmlEscaped();
 	emit ChatMessage(chatMessage);
