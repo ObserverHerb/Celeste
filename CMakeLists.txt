@@ -65,7 +65,7 @@ else()
 	endif()
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe")
 	target_sources(Celeste PRIVATE unix.cpp)
-	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Mqtt Qt::Multimedia Qt::MultimediaWidgets Qt::Websockets)
+	target_link_libraries(Celeste PRIVATE Qt::Widgets Qt::Network Qt::Mqtt Qt::Multimedia Qt::MultimediaWidgets Qt::WebSockets)
 endif()
 
 if (WITH_PULSAR)
