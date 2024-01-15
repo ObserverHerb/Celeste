@@ -854,6 +854,14 @@ namespace UI
 			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);
+
+			// we have to create a dummy entry and unfold it to correctly
+			// calculate the initial size of the dialog because it's based
+			// on the width of the widgets within an entry
+			Entry ruler(this); // there seems to be no problem with putting this on the stack (atm)
+			ruler.ToggleFold();
+			scrollLayout.addWidget(&ruler);
+			adjustSize();
 		}
 
 		void Dialog::PopulateEntries(const Command::Lookup &commands)

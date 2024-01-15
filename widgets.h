@@ -183,6 +183,7 @@ namespace UI
 			bool Duplicates() const;
 			QString Message() const;
 			bool Protected() const;
+			void ToggleFold();
 		protected:
 			QString commandName;
 			QString commandDescription;
@@ -224,7 +225,6 @@ namespace UI
 			void Pulsar();
 			void Browse();
 			void UpdateHeader();
-			void ToggleFold();
 			void TryBuildUI();
 			void ValidatePath(const QString &text,bool random,const enum Type type);
 			bool eventFilter(QObject *object,QEvent *event) override;
