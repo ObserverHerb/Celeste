@@ -629,6 +629,7 @@ namespace UI
 				message->setText(commandMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
+				message->viewport()->installEventFilter(this);
 				detailsLayout.addWidget(message,4,0,1,4);
 			}
 		}
@@ -783,6 +784,7 @@ namespace UI
 				if (object == random) emit Help("When enabled, the media path must point to a folder instead of a file. An appropriate file will be selected from that path when the command is triggered.");
 				if (object == duplicates) emit Help("When choosing a random media file from a folder, sometimes the same file can be chosen back-to-back. Check this box to prevent that.");
 				if (object == type) emit Help("Determines what kind of action is taken in response to a command.\n\nValid values are:\nAnnounce - Displays text while playing an audio file\nVideo - Displays a video");
+				if (object == message->viewport()) emit Help("If the command will display text in conjunction with the media, this is the message that will be shown.");
 			}
 
 			return false;
