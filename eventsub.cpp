@@ -52,7 +52,7 @@ enum class TwitchCloseCode
 
 EventSub::EventSub(Security &security,QObject *parent) : QObject(parent),
 	security(security),
-	settingURL(SETTINGS_CATEGORY_EVENTS,"WebsocketURL","ws://127.0.0.1:8080/ws")
+	settingURL(SETTINGS_CATEGORY_EVENTS,"WebsocketURL","wss://eventsub.wss.twitch.tv/ws")
 {
 	messageTypes.insert({MESSAGE_TYPE_WELCOME,MessageType::WELCOME});
 	messageTypes.insert({MESSAGE_TYPE_NOTIFICATION,MessageType::NOTIFICATION});
