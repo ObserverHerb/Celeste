@@ -565,7 +565,7 @@ namespace UI
 				connect(description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
 				connect(description,&QLineEdit::textChanged,this,&Entry::UpdateDescription);
 				description->installEventFilter(this);
-				detailsLayout.addWidget(description,1,0,1,3);
+				detailsLayout.addWidget(description,1,0,1,4);
 			}
 
 			if (!path)
@@ -575,7 +575,7 @@ namespace UI
 				connect(path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 				connect(path,&QLineEdit::textChanged,this,&Entry::UpdatePath);
 				path->installEventFilter(this);
-				detailsLayout.addWidget(path,2,0,1,2);
+				detailsLayout.addWidget(path,2,0,1,3);
 			}
 
 			if (!browse)
@@ -583,7 +583,7 @@ namespace UI
 				browse=new QPushButton(Text::BROWSE,details);
 				connect(browse,&QPushButton::clicked,this,&Entry::Browse);
 				browse->installEventFilter(this);
-				detailsLayout.addWidget(browse,2,2,1,1);
+				detailsLayout.addWidget(browse,2,3,1,1);
 			}
 
 			if (!type)
@@ -598,7 +598,7 @@ namespace UI
 				type->setCurrentIndex(static_cast<int>(commandType));
 				connect(type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 				type->installEventFilter(this);
-				detailsLayout.addWidget(type,3,0,1,1);
+				detailsLayout.addWidget(type,3,0,1,2);
 			}
 
 			if (!random)
@@ -607,7 +607,7 @@ namespace UI
 				random->setChecked(commandRandom);
 				connect(random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
 				connect(random,&QCheckBox::stateChanged,this,&Entry::UpdateRandom);
-				detailsLayout.addWidget(random,3,1,1,1);
+				detailsLayout.addWidget(random,3,2,1,1);
 			}
 
 			if (!duplicates)
@@ -615,7 +615,7 @@ namespace UI
 				duplicates=new QCheckBox(u"Duplicates"_s,details);
 				duplicates->setChecked(commandDuplicates);
 				connect(duplicates,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
-				detailsLayout.addWidget(duplicates,3,2,1,1);
+				detailsLayout.addWidget(duplicates,3,3,1,1);
 			}
 
 			if (!message)
@@ -624,7 +624,7 @@ namespace UI
 				message->setText(commandMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
-				detailsLayout.addWidget(message,4,0,1,3);
+				detailsLayout.addWidget(message,4,0,1,4);
 			}
 		}
 
