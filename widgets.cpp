@@ -532,9 +532,9 @@ namespace UI
 				aliases->Populate(commandAliases);
 				connect(aliases,&UI::Commands::NamesList::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
 				connect(aliases,&UI::Commands::NamesList::Finished,this,&Entry::UpdateAliases);
-				aliases->installEventFilter(this);
 				openAliases=new QPushButton(u"Aliases"_s,details);
 				connect(openAliases,&QPushButton::clicked,aliases,&QDialog::show);
+				openAliases->installEventFilter(this);
 				detailsLayout.addWidget(openAliases,0,1);
 			}
 
@@ -543,9 +543,9 @@ namespace UI
 				triggers=new UI::Commands::NamesList(u"Command Triggers"_s,u"Viewer Name"_s,this);
 				triggers->Populate(commandTriggers);
 				connect(aliases,&UI::Commands::NamesList::Finished,this,&Entry::UpdateTriggers);
-				triggers->installEventFilter(this);
 				openTriggers=new QPushButton(u"Triggers"_s,details);
 				connect(openTriggers,&QPushButton::clicked,triggers,&QDialog::show);
+				openTriggers->installEventFilter(this);
 				detailsLayout.addWidget(openTriggers,0,2);
 			}
 
@@ -554,6 +554,7 @@ namespace UI
 				protect=new QCheckBox(u"Protect"_s,details);
 				protect->setChecked(commandProtect);
 				connect(protect,&QCheckBox::stateChanged,this,&Entry::UpdateProtect);
+				protect->installEventFilter(this);
 				detailsLayout.addWidget(protect,0,3);
 			}
 
@@ -571,6 +572,7 @@ namespace UI
 			if (!path)
 			{
 				path=new QLineEdit(details);
+				path->setPlaceholderText(u"Media Location"_s);
 				path->setText(commandPath);
 				connect(path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 				connect(path,&QLineEdit::textChanged,this,&Entry::UpdatePath);
@@ -607,6 +609,7 @@ namespace UI
 				random->setChecked(commandRandom);
 				connect(random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
 				connect(random,&QCheckBox::stateChanged,this,&Entry::UpdateRandom);
+				random->installEventFilter(this);
 				detailsLayout.addWidget(random,3,2,1,1);
 			}
 
@@ -615,12 +618,14 @@ namespace UI
 				duplicates=new QCheckBox(u"Duplicates"_s,details);
 				duplicates->setChecked(commandDuplicates);
 				connect(duplicates,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
+				duplicates->installEventFilter(this);
 				detailsLayout.addWidget(duplicates,3,3,1,1);
 			}
 
 			if (!message)
 			{
 				message=new QTextEdit(details);
+				message->setPlaceholderText("Message to display in content");
 				message->setText(commandMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
@@ -771,8 +776,12 @@ namespace UI
 			{
 				if (object == name) emit Help("Name of the command. This is the text that must appear after an exclamation mark (!).");
 				if (object == description) emit Help("Short description of the command that will appear in in list of commands and showcase rotation.");
-				if (object == aliases) emit Help("List of alternate command names.");
+				if (object == protect) emit Help("When enabled, only the broadcaster and moderators will be able to use this command.");
+				if (object == openAliases) emit Help("List of alternate command names.");
+				if (object == openTriggers) emit Help("List of viewers who's arrival will trigger this command. If multiple viewers are listed, all of them have to arrive before the command will be triggered.");
 				if (object == path || object == browse) emit Help("Location of the media that will be played for command types that use media, such as Video and Announce");
+				if (object == random) emit Help("When enabled, the media path must point to a folder instead of a file. An appropriate file will be selected from that path when the command is triggered.");
+				if (object == duplicates) emit Help("When choosing a random media file from a folder, sometimes the same file can be chosen back-to-back. Check this box to prevent that.");
 				if (object == type) emit Help("Determines what kind of action is taken in response to a command.\n\nValid values are:\nAnnounce - Displays text while playing an audio file\nVideo - Displays a video");
 			}
 
