@@ -767,7 +767,7 @@ namespace UI
 
 		bool Entry::eventFilter(QObject *object,QEvent *event)
 		{
-			if (event->type() == QEvent::HoverEnter)
+			if (event->type() == QEvent::Enter)
 			{
 				if (object == name) emit Help("Name of the command. This is the text that must appear after an exclamation mark (!).");
 				if (object == description) emit Help("Short description of the command that will appear in in list of commands and showcase rotation.");
