@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QJsonObject>
 #include <memory>
+#include <unordered_map>
 #include "settings.h"
 #include "security.h"
 
