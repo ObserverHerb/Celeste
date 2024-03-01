@@ -42,7 +42,7 @@ const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/
 const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
 const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
 const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
-const char *TWITCH_API_ENDPOINT_USER_FOLLOWS="https://api.twitch.tv/helix/users/follows";
+const char *TWITCH_API_ENDPOINT_USER_FOLLOWS="https://api.twitch.tv/helix/channels/followers";
 const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
 const char *TWITCH_API_ENDPOINT_SHOUTOUTS="https://api.twitch.tv/helix/chat/shoutouts";
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
@@ -1056,8 +1056,8 @@ void Bot::DispatchFollowage(const Viewer::Local &viewer)
 		std::chrono::days days=std::chrono::duration_cast<std::chrono::days>(duration-years-months);
 		emit ShowFollowage(viewer.DisplayName(),years,months,days);
 	},{
-		{"from_id",viewer.ID()},
-		{"to_id",security.AdministratorID()}
+		{"user_id",viewer.ID()},
+		{"broadcaster_id",security.AdministratorID()}
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
