@@ -643,11 +643,11 @@ namespace Viewer
 		Remote::Remote(const QUrl &profileImageURL)
 		{
 			Network::Request(profileImageURL,Network::Method::GET,[this](QNetworkReply *reply) {
-				this->deleteLater();
 				if (reply->error())
 					emit Print(QString("Failed: %1").arg(reply->errorString()),"profile image retrieval");
 				else
 					emit Retrieved(QImage::fromData(reply->readAll()));
+				this->deleteLater();
 			});
 		}
 
