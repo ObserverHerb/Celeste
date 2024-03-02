@@ -666,4 +666,41 @@ namespace UI
 			void Remove();
 		};
 	}
+
+	namespace Status
+	{
+		template <typename T> // TODO: tie this to a concept that says this had to be a derivative of QWidget
+		class Window
+		{
+		public:
+			Window(QWidget *parent) : dialog(new QDialog(parent))
+			{
+
+				pane=new T(&dialog);
+				pane->EnableScrollBar();
+				QGridLayout *gridLayout=new QGridLayout(&dialog);
+				gridLayout->setContentsMargins(0,0,0,0);
+				dialog.setLayout(gridLayout);
+				gridLayout->addWidget(pane);
+			}
+
+			QDialog& Dialog()
+			{
+				return &dialog;
+			}
+
+			T& Pane()
+			{
+				return *pane;
+			}
+
+			void Open()
+			{
+				dialog.open();
+			}
+		protected:
+			QDialog dialog;
+			T *pane;
+		};
+	}
 }

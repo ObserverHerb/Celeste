@@ -218,6 +218,7 @@ int main(int argc,char *argv[])
 		Pulsar pulsar;
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
+		UI::Status::Window<StatusPane> status(&window);
 
 		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
 			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
@@ -259,7 +260,10 @@ int main(int argc,char *argv[])
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Parted),&metrics,&UI::Metrics::Dialog::Parted);
-		channel->connect(channel,QOverload<>::of(&Channel::Joined),&window,&Window::ShowChat);
+		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&log,&status,&window]() {
+			log.connect(&log,&Log::Print,&status.Pane(),&StatusPane::Print);
+			window.ShowChat();
+		});
 		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&window]() {
 			log.disconnect(echo);
 			celeste.connect(&celeste,&Bot::Print,&window,&Window::Print);
@@ -323,6 +327,9 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&log]() {
 			ShowPlaylist(musicPlaylist,window,celeste,log);
+		});
+		window.connect(&window,&Window::ShowStatus,[&status]() {
+			status.Open();
 		});
 
 		if (!log.Open()) MessageBox(u"Error Opening Log"_s,u"Failed to open log file. Log messages will not be saved to filesystem"_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);

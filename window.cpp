@@ -26,7 +26,8 @@ Window::Window() : QMainWindow(nullptr),
 	configureCommands("Commands",this),
 	configureEventSubscriptions("Event Subscriptions",this),
 	metrics("Metrics",this),
-	vibePlaylist("Vibe Playlist",this)
+	vibePlaylist("Vibe Playlist",this),
+	status("Status",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(settingWindowSize);
@@ -54,6 +55,7 @@ Window::Window() : QMainWindow(nullptr),
 	connect(&configureEventSubscriptions,&QAction::triggered,this,&Window::ConfigureEventSubscriptions);
 	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
 	connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
+	connect(&status,&QAction::triggered,this,&Window::ShowStatus);
 
 	StatusPane *pane=new StatusPane(this);
 	connect(pane,&StatusPane::ContextMenu,this,&Window::contextMenuEvent);
@@ -444,9 +446,12 @@ void Window::contextMenuEvent(QContextMenuEvent *event)
 	QMenu menu(this);
 	menu.addAction(&configureOptions);
 	menu.addAction(&configureCommands);
+	menu.addAction(&vibePlaylist);
+	menu.addSeparator();
 	menu.addAction(&configureEventSubscriptions);
 	menu.addAction(&metrics);
-	menu.addAction(&vibePlaylist);
+	menu.addSeparator();
+	menu.addAction(&status);
 	menu.exec(event->globalPos());
 	event->accept();
 }

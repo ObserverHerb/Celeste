@@ -39,6 +39,7 @@ public:
 	ApplicationSetting& FontSize();
 	ApplicationSetting& ForegroundColor();
 	ApplicationSetting& BackgroundColor();
+	void EnableScrollBar();
 protected:
 	StaticTextEdit output;
 	ApplicationSetting settingFont;

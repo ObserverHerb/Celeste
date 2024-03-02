@@ -29,6 +29,11 @@ StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
 	layout()->addWidget(&output);
 }
 
+void StatusPane::EnableScrollBar()
+{
+	output.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+}
+
 void StatusPane::Print(const QString &text)
 {
 	output.insertPlainText(text);
