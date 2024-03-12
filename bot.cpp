@@ -927,7 +927,7 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 			DispatchVideo(command);
 			break;
 		case CommandType::AUDIO:
-			emit PlayAudio(viewer.DisplayName(),command.Message(),command.Path());
+			emit PlayAudio(viewer.DisplayName(),command.Message(),File::List(command.Path()).Random());
 			break;
 		case CommandType::PULSAR:
 			emit Pulse(command.Message());
