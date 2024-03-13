@@ -202,8 +202,8 @@ namespace UI
 			QString commandDescription;
 			bool commandProtect;
 			QString commandPath;
-			short commandRandom;
-			short commandDuplicates;
+			bool commandRandom;
+			bool commandDuplicates;
 			QString commandMessage;
 			UI::Commands::Type commandType;
 			QStringList commandAliases;

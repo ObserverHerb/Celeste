@@ -618,6 +618,7 @@ namespace UI
 			{
 				duplicates=new QCheckBox(u"Duplicates"_s,details);
 				duplicates->setChecked(commandDuplicates);
+				duplicates->setEnabled(commandRandom);
 				connect(duplicates,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
 				duplicates->installEventFilter(this);
 				detailsLayout.addWidget(duplicates,3,3,1,1);
