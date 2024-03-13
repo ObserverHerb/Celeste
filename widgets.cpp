@@ -598,6 +598,7 @@ namespace UI
 				});
 				type->setPlaceholderText(u"Native"_s);
 				type->setCurrentIndex(static_cast<int>(commandType));
+				type->setFocusPolicy(Qt::StrongFocus);
 				connect(type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 				type->installEventFilter(this);
 				detailsLayout.addWidget(type,3,0,1,2);
@@ -785,6 +786,16 @@ namespace UI
 				if (object == duplicates) emit Help("When choosing a random media file from a folder, sometimes the same file can be chosen back-to-back. Check this box to prevent that.");
 				if (object == type) emit Help("Determines what kind of action is taken in response to a command.\n\nValid values are:\nAnnounce - Displays text while playing an audio file\nVideo - Displays a video");
 				if (object == message->viewport()) emit Help("If the command will display text in conjunction with the media, this is the message that will be shown.");
+			}
+
+			if (event->type() == QEvent::Wheel)
+			{
+				QComboBox *combo=qobject_cast<QComboBox*>(object);
+				if (combo && !combo->hasFocus())
+				{
+					wheelEvent(static_cast<QWheelEvent*>(event));
+					return true;
+				}
 			}
 
 			return false;
