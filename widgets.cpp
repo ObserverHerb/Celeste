@@ -627,8 +627,9 @@ namespace UI
 			if (!message)
 			{
 				message=new QTextEdit(details);
-				message->setPlaceholderText("Message to display in content");
+				message->setPlaceholderText(u"Message to display in content"_s);
 				message->setText(commandMessage);
+				message->setEnabled(commandType == UI::Commands::Type::AUDIO);
 				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
 				message->viewport()->installEventFilter(this);
@@ -704,15 +705,15 @@ namespace UI
 
 		void Entry::TypeChanged(int index)
 		{
-			enum Type currentType=static_cast<enum Type>(index);
+			commandType=static_cast<UI::Commands::Type>(index);
 
-			if (currentType == Type::PULSAR)
+			if (commandType == Type::PULSAR)
 			{
 				Pulsar();
 				return;
 			}
 
-			if (currentType == Type::NATIVE)
+			if (commandType == Type::NATIVE)
 			{
 				Native();
 				return;
@@ -726,9 +727,9 @@ namespace UI
 			browse->setEnabled(true);
 			type->setEnabled(true);
 			random->setEnabled(true);
-			message->setEnabled(currentType == Type::VIDEO ? false : true);
+			message->setEnabled(commandType == Type::VIDEO ? false : true);
 
-			ValidatePath(Path(),Random(),currentType);
+			ValidatePath(Path(),Random(),commandType);
 		}
 
 		void Entry::Native()
