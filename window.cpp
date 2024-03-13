@@ -242,10 +242,10 @@ void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>
 void Window::ShowCommand(const QString &name,const QString &description)
 {
 	if (!highPriorityEphemeralPanes.empty()) return;
-	AnnouncePane *pane=new AnnouncePane(QString("<h2>!%1</h2><br>%2").arg(
-		name,
-		description
-	),this);
+	AnnouncePane *pane=new AnnouncePane({
+		{u"!"_s+name,1.5},
+		{description,1}
+	},this);
 	connect(pane,&AnnouncePane::Print,this,&Window::Print);
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
