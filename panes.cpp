@@ -14,7 +14,7 @@ StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
 	settingForegroundColor(SETTINGS_CATEGORY,"ForegroundColor","#ffffffff"),
 	settingBackgroundColor(SETTINGS_CATEGORY,"BackgroundColor","#ff000000")
 {
-	output.setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	output.setStyleSheet(StyleSheet::Colors<StaticTextEdit>(settingForegroundColor,settingBackgroundColor));
 	output.setFontFamily(settingFont);
 	output.setFontPointSize(settingFontSize);
 	output.document()->setDocumentMargin(16);
@@ -73,7 +73,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	layout()->setSpacing(0);
 
 	agenda=new QLabel(this);
-	agenda->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	agenda->setStyleSheet(StyleSheet::Colors<QLabel>(settingForegroundColor,settingBackgroundColor));
 	agenda->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*1.666,QFont::Bold));
 	agenda->setMargin(16);
 	agenda->setAlignment(Qt::AlignCenter);
@@ -119,12 +119,12 @@ void ChatPane::SetAgenda(const QString &text)
 
 void ChatPane::Format()
 {
-	chat->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	chat->setStyleSheet(StyleSheet::Colors<PinnedTextEdit>(settingForegroundColor,settingBackgroundColor));
 	chat->setFontFamily(settingFont);
 	chat->setFontPointSize(settingFontSize);
 	chat->document()->setDefaultStyleSheet(QString("div.user { font-family: '%1'; font-size: %2pt; } div.message, span.message { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)*1.333),StringConvert::Integer(static_cast<int>(settingFontSize))));
 	chat->document()->setDocumentMargin(static_cast<qreal>(settingFontSize)*1.333);
-	status->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	status->setStyleSheet(StyleSheet::Colors<QLabel>(settingForegroundColor,settingBackgroundColor));
 	status->setFont(QFont(settingFont,static_cast<qreal>(settingFontSize)*0.833)); // QLabel doesn't have setFontFamily()
 }
 
@@ -265,7 +265,7 @@ ScrollingPane::ScrollingPane(const QString &text,QWidget *parent) : EphemeralPan
 	gridLayout->setContentsMargins(0,0,0,0);
 	gridLayout->setSpacing(0);
 
-	commands->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	commands->setStyleSheet(StyleSheet::Colors<ScrollingTextEdit>(settingForegroundColor,settingBackgroundColor));
 	commands->setFontFamily(settingFont);
 	commands->setFontPointSize(settingFontSize);
 	commands->document()->setDefaultStyleSheet(QString("div.name { font-family: '%1'; font-size: %2pt; } span.description, span.aliases { font-family: '%1'; font-size: %3pt; }").arg(static_cast<QString>(settingFont),StringConvert::Integer(static_cast<int>(settingFontSize)),StringConvert::Integer(static_cast<int>(settingFontSize)*0.7)));
@@ -297,7 +297,7 @@ AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent) : EphemeralPane(p
 	verticalLayout->setContentsMargins(0,0,0,0);
 	verticalLayout->setSpacing(0);
 
-	output->setStyleSheet(StyleSheet::Colors(settingForegroundColor,settingBackgroundColor));
+	output->setStyleSheet(StyleSheet::Colors<QLabel>(settingForegroundColor,settingBackgroundColor));
 	output->setFont(QFont(settingFont,settingFontSize,QFont::Bold));
 	output->setMargin(16);
 	output->setAlignment(Qt::AlignCenter);

@@ -25,7 +25,20 @@
 
 namespace StyleSheet
 {
-	const QString Colors(const QColor &foreground,const QColor &background);
+	template<Concept::Widget T> const QString Colors(const QColor &foreground,const QColor &background)
+	{
+		return QString{"%9 { color: rgba(%1,%2,%3,%4); background-color: rgba(%5,%6,%7,%8); }"}.arg(
+			StringConvert::Integer(foreground.red()),
+			StringConvert::Integer(foreground.green()),
+			StringConvert::Integer(foreground.blue()),
+			StringConvert::Integer(foreground.alpha()),
+			StringConvert::Integer(background.red()),
+			StringConvert::Integer(background.green()),
+			StringConvert::Integer(background.blue()),
+			StringConvert::Integer(background.alpha()),
+			T::staticMetaObject.className()
+		);
+	}
 }
 
 class StaticTextEdit : public QTextEdit
