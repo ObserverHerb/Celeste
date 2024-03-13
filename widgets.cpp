@@ -629,7 +629,7 @@ namespace UI
 				message=new QTextEdit(details);
 				message->setPlaceholderText(u"Message to display in content"_s);
 				message->setText(commandMessage);
-				message->setEnabled(commandType == UI::Commands::Type::AUDIO);
+				message->setVisible(commandType == UI::Commands::Type::AUDIO);
 				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
 				message->viewport()->installEventFilter(this);
@@ -727,7 +727,7 @@ namespace UI
 			browse->setEnabled(true);
 			type->setEnabled(true);
 			random->setEnabled(true);
-			message->setEnabled(commandType == Type::VIDEO ? false : true);
+			message->setVisible(commandType == Type::VIDEO ? false : true);
 
 			ValidatePath(Path(),Random(),commandType);
 		}
@@ -742,7 +742,7 @@ namespace UI
 			browse->setEnabled(false);
 			type->setEnabled(false);
 			random->setEnabled(false);
-			message->setEnabled(false);
+			message->setVisible(false);
 		}
 
 		void Entry::Pulsar()
@@ -754,7 +754,7 @@ namespace UI
 			path->setEnabled(false);
 			browse->setEnabled(false);
 			random->setEnabled(false);
-			message->setEnabled(false);
+			message->setVisible(false);
 		}
 
 		void Entry::Browse()
