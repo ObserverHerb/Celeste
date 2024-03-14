@@ -300,19 +300,23 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 bool Bot::SaveDynamicCommands(const QJsonDocument &json)
 {
-	const char *OPERATION="save dynamic commands";
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
-	if (!commandListFile.open(QIODevice::WriteOnly))
+	bool result=true;
+
+	try
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()),OPERATION);
-		return false;
+		if (!commandListFile.open(QIODevice::WriteOnly)) throw std::runtime_error(FILE_OPERATION_OPEN);
+		if (commandListFile.write(json.toJson(QJsonDocument::Indented)) <= 0) throw std::runtime_error(FILE_OPERATION_WRITE);
 	}
-	if (commandListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+
+	catch (const std::runtime_error &exception)
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_WRITE,commandListFile.fileName()),OPERATION);
-		return false;
+		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(exception.what(),commandListFile.fileName()),"save dynamic commands");
+		result=false;
 	}
-	return true;
+
+	commandListFile.close();
+	return result;
 }
 
 void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject)
@@ -438,19 +442,23 @@ QJsonDocument Bot::SerializeVibePlaylist(const File::List &songs)
 
 bool Bot::SaveVibePlaylist(const QJsonDocument &json)
 {
-	static const char *OPERATION="save vibe playlist";
 	QFile songListFile(Filesystem::DataPath().filePath(VIBE_PLAYLIST_FILENAME));
-	if (!songListFile.open(QIODevice::WriteOnly))
+	bool result=true;
+
+	try
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_OPEN,songListFile.fileName()),OPERATION);
-		return false;
+		if (!songListFile.open(QIODevice::WriteOnly)) throw std::runtime_error(FILE_OPERATION_OPEN);
+		if (songListFile.write(json.toJson(QJsonDocument::Indented)) <= 0) throw std::runtime_error(FILE_OPERATION_WRITE);
 	}
-	if (songListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+
+	catch (const std::runtime_error &exception)
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_WRITE,songListFile.fileName()),OPERATION);
-		return false;
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(exception.what(),songListFile.fileName()),"save vibe playlist");
+		result=false;
 	}
-	return true;
+
+	songListFile.close();
+	return result;
 }
 
 void Bot::LoadRoasts()

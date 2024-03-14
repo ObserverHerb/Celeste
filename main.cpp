@@ -21,7 +21,6 @@
 
 const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
-const char *SUBSYSTEM_DIALOG="configuration dialog";
 const char *SUBSYSTEM_AUTHORIZATION="authorization";
 
 enum
@@ -120,11 +119,9 @@ void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &comm
 {
 	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
 	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log](const Command::Lookup& commands) {
-		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
-			MessageBox(u"Save dynamic commands Failed"_s,ERROR_COMMANDS_LIST_FILE,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
-			log.Write(ERROR_COMMANDS_LIST_FILE,u"save dynamic commands"_s,SUBSYSTEM_DIALOG);
+			MessageBox(u"Save dynamic commands Failed"_s,u"Something went wrong saving the commands list to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 		}
 	});
 	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int result) {
@@ -152,11 +149,9 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
 	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
-		static const char *ERROR_VIBE_PLAYLIST_FILE="Something went wrong saving the vibe playlist to a file";
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
-			MessageBox(u"Save vibe playlist Failed"_s,ERROR_VIBE_PLAYLIST_FILE,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
-			log.Write(ERROR_VIBE_PLAYLIST_FILE,u"save playlist"_s,SUBSYSTEM_DIALOG);
+			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 		}
 	});
 	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
@@ -226,7 +221,7 @@ int main(int argc,char *argv[])
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
-		celeste.connect(&celeste,&Bot::Print,&log,&Log::Write);
+		celeste.connect(&celeste,&Bot::Print,&log,&Log::Receive);
 		celeste.connect(&celeste,&Bot::AnnounceArrival,&window,&Window::AnnounceArrival);
 		celeste.connect(&celeste,&Bot::AnnounceRedemption,&window,&Window::AnnounceRedemption);
 		celeste.connect(&celeste,&Bot::AnnounceSubscription,&window,&Window::AnnounceSubscription);
@@ -253,8 +248,8 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::Panic,&celeste,[&celeste]() {
 			celeste.disconnect();
 		});
-		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
-		channel->connect(channel,&Channel::Print,&log,&Log::Write);
+		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Receive);
+		channel->connect(channel,&Channel::Print,&log,&Log::Receive);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
@@ -276,7 +271,7 @@ int main(int argc,char *argv[])
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
-			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
+			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Receive);
 			eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
 			eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
 			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
