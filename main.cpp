@@ -218,7 +218,7 @@ int main(int argc,char *argv[])
 			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
 			application.exit(AUTHENTICATION_ERROR);
 		});
-		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
+		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,QOverload<const QString&>::of(&Window::Print));
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
 		celeste.connect(&celeste,&Bot::Print,&log,&Log::Receive);
@@ -257,7 +257,9 @@ int main(int argc,char *argv[])
 		channel->connect(channel,QOverload<>::of(&Channel::Joined),&window,&Window::ShowChat);
 		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&window]() {
 			log.disconnect(echo);
-			celeste.connect(&celeste,&Bot::Print,&window,&Window::Print);
+			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&window,QOverload<const QString&>::of(&Window::Print));
+			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&log,&Log::Receive);
+			celeste.connect(&celeste,&Bot::Print,&window,QOverload<const QString&>::of(&Window::Print));
 		});
 		channel->connect(channel,&Channel::Disconnected,[channel,&window]() {
 			qApp->alert(&window);

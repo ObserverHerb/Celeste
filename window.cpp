@@ -17,6 +17,9 @@
 
 const char *SETTINGS_CATEGORY_WINDOW="Window";
 
+using PrintLog=QOverload<const QString&,const QString&,const QString&>;
+using PrintUI=QOverload<const QString&>;
+
 Window::Window() : QMainWindow(nullptr),
 	background(new QWidget(this)),
 	livePersistentPane(nullptr),
@@ -65,7 +68,7 @@ void Window::SwapPersistentPane(PersistentPane *pane)
 	if (livePersistentPane) livePersistentPane->deleteLater();
 	livePersistentPane=pane;
 	background->layout()->addWidget(livePersistentPane);
-	connect(this,&Window::Print,livePersistentPane,&PersistentPane::Print);
+	connect(this,PrintUI::of(&Window::Print),livePersistentPane,&PersistentPane::Print);
 }
 
 void Window::AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath)
@@ -75,7 +78,7 @@ void Window::AnnounceArrival(const QString &name,QImage profileImage,const QStri
 		{QString("%1").arg(name),1.5},
 		{"to the chat",1}
 	},profileImage,audioPath,this);
-	connect(pane,&MultimediaAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&MultimediaAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -87,7 +90,7 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 		{QString("%1").arg(rewardTitle),1.5},
 		{message,1}
 	},this);
-	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -98,7 +101,7 @@ void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 		{QString("%1").arg(name),1.5},
 		{"has subscribed!",1}
 	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -110,7 +113,7 @@ void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const Q
 		{QString("%1").arg(StringConvert::PositiveInteger(viewers)),1.5},
 		{"viewers",1}
 	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -119,7 +122,7 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 	try
 	{
 		VideoPane *pane=new VideoPane(videoPath,this);
-		connect(pane,&VideoPane::Print,this,&Window::Print);
+		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
 		StageEphemeralPane(pane);
 		StageEphemeralPane(new AnnouncePane({
 			{QString("%1 has cheered").arg(name),0.5},
@@ -130,7 +133,7 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 
 	catch (const std::runtime_error &exception)
 	{
-		ReportVideoFailed(exception.what());
+		emit Print(exception.what(),"announce bits cheered");
 	}
 }
 
@@ -139,7 +142,7 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 	AudioAnnouncePane *pane=new AudioAnnouncePane({
 		{message,0.5},
 	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -148,13 +151,13 @@ void Window::AnnounceDeniedCommand(const QString &videoPath)
 	try
 	{
 		VideoPane *pane=new VideoPane(videoPath,this);
-		connect(pane,&VideoPane::Print,this,&Window::Print);
+		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
 		StageEphemeralPane(pane);
 	}
 
 	catch (const std::runtime_error &exception)
 	{
-		ReportVideoFailed(exception.what());
+		emit Print(exception.what(),"play denial video");
 	}
 }
 
@@ -172,7 +175,6 @@ void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);
 	SwapPersistentPane(chatPane);
-	connect(this,&Window::Print,chatPane,&ChatPane::Print);
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
 	connect(this,&Window::SetAgenda,chatPane,&ChatPane::SetAgenda);
@@ -184,24 +186,32 @@ void Window::PlayVideo(const QString &path)
 	try
 	{
 		VideoPane *pane=new VideoPane(path,this);
-		connect(pane,&VideoPane::Print,this,&Window::Print);
+		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
 		StageEphemeralPane(pane);
 	}
 
 	catch (const std::runtime_error &exception)
 	{
-		ReportVideoFailed(exception.what());
+		emit Print(exception.what(),"play video");
 	}
 }
 
 void Window::PlayAudio(const QString &viewer,const QString &message,const QString &path)
 {
-	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{QString("%1").arg(viewer),1.5},
-		{message,1}
-	},path,this);
-	connect(pane,&AudioAnnouncePane::Print,this,&Window::Print);
-	StageEphemeralPane(pane);
+	try
+	{
+		AudioAnnouncePane *pane=new AudioAnnouncePane({
+			{QString("%1").arg(viewer),1.5},
+			{message,1}
+		},path,this);
+		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Print(exception.what(),"play audio");
+	}
 }
 
 void Window::ShowPortraitVideo(const QString &path)
@@ -209,14 +219,14 @@ void Window::ShowPortraitVideo(const QString &path)
 	try
 	{
 		VideoPane *pane=new VideoPane(path,this);
-		connect(pane,&VideoPane::Print,this,&Window::Print);
+		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
 		pane->LowerPriority();
 		StageEphemeralPane(pane);
 	}
 
 	catch (const std::runtime_error &exception)
 	{
-		ReportVideoFailed(exception.what());
+		emit Print(exception.what(),"show portrait video");
 	}
 }
 
@@ -235,7 +245,7 @@ void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>
 		text.append(QString("<span class='description'>%1</span><br></div>").arg(std::get<2>(command)));
 	}
 	ScrollingPane *pane=new ScrollingPane(text,this);
-	connect(pane,&ScrollingPane::Print,this,&Window::Print);
+	connect(pane,&ScrollingPane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -246,7 +256,7 @@ void Window::ShowCommand(const QString &name,const QString &description)
 		{u"!"_s+name,1.5},
 		{description,1}
 	},this);
-	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -264,7 +274,7 @@ void Window::Shoutout(const QString &name,const QString &description,const QImag
 		{QString("%1").arg(name),1.5},
 		{description,0.5}
 	},profileImage,this);
-	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->Duration(10000); // TODO: change from hardcoded to configurable duration
 	StageEphemeralPane(pane);
 }
@@ -289,7 +299,7 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 	}
 	if (!finalLine.isEmpty()) lines.push_back({finalLine,years.count() > 0 ? 1 : 1.5});
 	AnnouncePane *pane=new AnnouncePane(lines,this);
-	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -317,7 +327,7 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 	}
 	if (!finalLine.isEmpty()) lines.push_back({finalLine,hours.count() > 0 ? 1 : 1.5});
 	AnnouncePane *pane=new AnnouncePane(lines,this);
-	connect(pane,&AnnouncePane::Print,this,&Window::Print);
+	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
 
@@ -331,7 +341,7 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 		{"from the ablum",0.5},
 		{QString("%3").arg(album),0.75}
 	},coverArt,this);
-	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -344,7 +354,7 @@ void Window::ShowCurrentSong(const QString &song,const QString &artist,const QIm
 		{"by",0.5},
 		{QString("%2").arg(artist),0.75}
 	},coverArt,this);
-	connect(pane,&ImageAnnouncePane::Print,this,&Window::Print);
+	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->LowerPriority();
 	StageEphemeralPane(pane);
 }
@@ -432,11 +442,6 @@ ApplicationSetting& Window::BackgroundColor()
 ApplicationSetting& Window::Dimensions()
 {
 	return settingWindowSize;
-}
-
-void Window::ReportVideoFailed(const QString &reason)
-{
-	emit Print("Failed to show video: "+reason);
 }
 
 void Window::contextMenuEvent(QContextMenuEvent *event)

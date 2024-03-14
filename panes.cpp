@@ -227,7 +227,7 @@ void EphemeralPane::Expire()
 
 VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
 {
-	if (!QFile(path).exists()) throw std::runtime_error(QString{"File doesn't exist ("+path+")"}.toStdString());
+	if (!QFile(path).exists()) throw std::runtime_error(QString{"Video doesn't exist ("+path+")"}.toStdString());
 	videoPlayer->setVideoOutput(viewport);
 	videoPlayer->setSource(QUrl::fromLocalFile(path));
 	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
@@ -249,6 +249,11 @@ void VideoPane::hideEvent(QHideEvent *event)
 {
 	videoPlayer->pause();
 	QWidget::hideEvent(event);
+}
+
+QString VideoPane::Subsystem()
+{
+	return u"video pane"_s;
 }
 
 const QString ScrollingPane::SETTINGS_CATEGORY="ScrollingPane";
@@ -278,6 +283,11 @@ ScrollingPane::ScrollingPane(const QString &text,QWidget *parent) : EphemeralPan
 	gridLayout->addWidget(commands);
 
 	connect(commands,&ScrollingTextEdit::Finished,this,&ScrollingPane::Finished);
+}
+
+QString ScrollingPane::Subsystem()
+{
+	return u"scrolling pane"_s;
 }
 
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
@@ -401,15 +411,21 @@ ApplicationSetting& AnnouncePane::Duration()
 	return settingDuration;
 }
 
+QString AnnouncePane::Subsystem()
+{
+	return u"announce pane"_s;
+}
+
 AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AnnouncePane(lines,parent), audioPlayer(Multimedia::Player(this,1)), path(path)
 {
+	if (!QFile(path).exists()) throw std::runtime_error(QString{"Audio doesn't exist ("+path+")"}.toStdString());
 	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 	connect(audioPlayer,&QMediaPlayer::durationChanged,this,&AudioAnnouncePane::DurationAvailable);
 	connect(audioPlayer,&QMediaPlayer::errorOccurred,this,[this](QMediaPlayer::Error error,const QString &errorString) {
 		Q_UNUSED(error)
-		emit Print(QString("Failed to play audio: %1").arg(errorString));
+		emit Print(QString("Failed to play audio: %1").arg(errorString),"play audio",Subsystem());
 		emit Finished();
 	});
 }
@@ -430,7 +446,7 @@ void AudioAnnouncePane::showEvent(QShowEvent *event)
 		}
 		if (status == QMediaPlayer::InvalidMedia)
 		{
-			emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()));
+			emit Print(QString("Failed to load audio: %1").arg(audioPlayer->errorString()),"load audio",Subsystem());
 			emit Finished();
 		}
 		event->ignore();
@@ -442,6 +458,11 @@ void AudioAnnouncePane::hideEvent(QHideEvent *event)
 {
 	audioPlayer->pause();
 	QWidget::hideEvent(event);
+}
+
+QString AudioAnnouncePane::Subsystem()
+{
+	return u"audible announce pane"_s;
 }
 
 ImageAnnouncePane::ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent) : AnnouncePane(lines,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
@@ -485,6 +506,11 @@ void ImageAnnouncePane::Polish()
 	layout()->addWidget(stack);
 }
 
+QString ImageAnnouncePane::Subsystem()
+{
+	return u"visual announcement pane"_s;
+}
+
 MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane(Lines{},parent), imagePane(nullptr)
 {
 	audioPane=new AudioAnnouncePane(Lines{},path,this);
@@ -520,4 +546,9 @@ void MultimediaAnnouncePane::hideEvent(QHideEvent *event)
 	audioPane->hide();
 	imagePane->hide();
 	QWidget::hideEvent(event);  // don't call AnnouncePane's hide event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
+}
+
+QString MultimediaAnnouncePane::Subsystem()
+{
+	return u"audible and visual announcement pane"_s;
 }
