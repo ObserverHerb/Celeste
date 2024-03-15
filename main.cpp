@@ -286,15 +286,11 @@ int main(int argc,char *argv[])
 			eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
 				MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
-			eventSub->connect(eventSub,&EventSub::Connected,eventSub,[eventSub]() {
-				eventSub->Subscribe();
-			},Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::Connected,eventSub,QOverload<>::of(&EventSub::Subscribe),Qt::QueuedConnection);
 			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
 			});
-			application.connect(&application,&QApplication::aboutToQuit,[eventSub]() {
-				eventSub->deleteLater();
-			});
+			application.connect(&application,&QApplication::aboutToQuit,eventSub,&EventSub::deleteLater,Qt::DirectConnection);
 		});
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
 		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);
