@@ -290,6 +290,7 @@ int main(int argc,char *argv[])
 			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
 			});
+			celeste.connect(&celeste,&Bot::Panic,eventSub,&EventSub::deleteLater,Qt::QueuedConnection);
 			application.connect(&application,&QApplication::aboutToQuit,eventSub,&EventSub::deleteLater,Qt::DirectConnection);
 		});
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
