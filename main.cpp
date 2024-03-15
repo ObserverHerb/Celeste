@@ -211,6 +211,7 @@ int main(int argc,char *argv[])
 		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
 		const File::List &musicPlaylist=celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist());
 		Pulsar pulsar;
+		EventSub *eventSub=nullptr;
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
 
@@ -267,9 +268,7 @@ int main(int argc,char *argv[])
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log]() {
-			static EventSub *eventSub=nullptr;
-
+		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log,&application,eventSub]() mutable {
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
@@ -287,11 +286,14 @@ int main(int argc,char *argv[])
 			eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
 				MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
-			eventSub->connect(eventSub,&EventSub::Connected,eventSub,[]() {
+			eventSub->connect(eventSub,&EventSub::Connected,eventSub,[eventSub]() {
 				eventSub->Subscribe();
 			},Qt::QueuedConnection);
-			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window]() {
+			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
+			});
+			application.connect(&application,&QApplication::aboutToQuit,[eventSub]() {
+				eventSub->deleteLater();
 			});
 		});
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
