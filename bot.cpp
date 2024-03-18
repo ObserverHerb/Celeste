@@ -931,7 +931,7 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 			emit PlayAudio(viewer.DisplayName(),command.Message(),File::List(command.Path()).Random());
 			break;
 		case CommandType::PULSAR:
-			emit Pulse(command.Message());
+			emit Pulse(command.Message(),command.Name());
 			break;
 		case CommandType::NATIVE:
 			switch (nativeCommandFlags.at(command.Name()))

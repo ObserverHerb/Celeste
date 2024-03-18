@@ -243,12 +243,13 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::Shoutout,&window,&Window::Shoutout);
 		celeste.connect(&celeste,&Bot::PlayVideo,&window,&Window::PlayVideo);
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
-		celeste.connect(&celeste,&Bot::Pulse,&pulsar,&Pulsar::Pulse);
+		celeste.connect(&celeste,&Bot::Pulse,&pulsar,QOverload<const QString&,const QString&>::of(&Pulsar::Pulse));
 		celeste.connect(&celeste,&Bot::Welcomed,&metrics,&UI::Metrics::Dialog::Acknowledged);
 		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
 		celeste.connect(&celeste,&Bot::Panic,&celeste,[&celeste]() {
 			celeste.disconnect();
 		});
+		pulsar.connect(&pulsar,&Pulsar::Print,&window,QOverload<const QString&>::of(&Window::Print));
 		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Receive);
 		channel->connect(channel,&Channel::Print,&log,&Log::Receive);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
