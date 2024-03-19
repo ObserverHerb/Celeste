@@ -7,6 +7,7 @@
 
 const char *TRIGGER_LIST_FILENAME="pulsar.json";
 const char *JSON_KEY_TRIGGER="trigger";
+const char *JSON_KEY_COMMAND="command";
 const char *JSON_KEY_SOURCES="sources";
 const char *JSON_KEY_DIMENSIONS="size";
 const char *JSON_KEY_DIMENSIONS_X="width";
@@ -82,7 +83,12 @@ bool Pulsar::LoadTriggers()
 			return false;
 		}
 
-		triggers.try_emplace(jsonFieldTrigger->toString(),jsonFieldSources->toArray());
+		const QString name=jsonFieldTrigger->toString();
+		if (triggers.try_emplace(name,jsonFieldSources->toArray()).second)
+		{
+			auto jsonFieldCommand=jsonObjectTrigger.find(JSON_KEY_COMMAND);
+			if (jsonFieldCommand != jsonObjectTrigger.end()) commandCrossReference.try_emplace(name,jsonFieldCommand->toString());
+		}
 	}
 
 	return true;
@@ -141,6 +147,18 @@ void Pulsar::Data()
 	{
 		emit Print(exception.what(),OPERATION_READ);
 	}
+}
+
+void Pulsar::Pulse(const QString &trigger,const QString &command)
+{
+	auto candidate=commandCrossReference.find(trigger);
+	if (candidate != commandCrossReference.end() && candidate->second != command)
+	{
+		emit Print(uR"(Trigger "%1" is not attached to command "%2")"_s.arg(trigger,command));
+		return;
+	}
+
+	Pulse(trigger);
 }
 
 void Pulsar::Pulse(const QString &trigger)

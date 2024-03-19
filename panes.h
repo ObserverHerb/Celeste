@@ -98,10 +98,11 @@ protected:
 	bool expired;
 	bool highPriority;
 	void Expire();
+	virtual QString Subsystem()=0;
 signals:
 	void Finished();
 	void Expired();
-	void Print(const QString &text);
+	void Print(const QString &message,const QString &operation,const QString &subsystem);
 };
 
 class VideoPane : public EphemeralPane
@@ -114,6 +115,7 @@ protected:
 	QVideoWidget *viewport;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
+	QString Subsystem() override;
 };
 
 class ScrollingPane : public EphemeralPane
@@ -128,6 +130,7 @@ protected:
 	ApplicationSetting settingForegroundColor;
 	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
+	QString Subsystem() override;
 };
 
 class AnnouncePane : public EphemeralPane
@@ -161,6 +164,7 @@ protected:
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
+	QString Subsystem() override;
 signals:
 	void Resized(int width);
 protected slots:
@@ -178,6 +182,7 @@ protected:
 	QString path;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
+	QString Subsystem() override;
 signals:
 	void DurationAvailable(qint64 duration);
 };
@@ -197,6 +202,7 @@ protected:
 	QGraphicsPixmapItem *pixmap;
 	void Polish() override;
 	void resizeEvent(QResizeEvent *event) override;
+	QString Subsystem() override;
 };
 
 class MultimediaAnnouncePane : public AnnouncePane
@@ -212,4 +218,5 @@ protected:
 	void Polish() override;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
+	QString Subsystem() override;
 };

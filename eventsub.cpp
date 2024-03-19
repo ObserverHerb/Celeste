@@ -4,10 +4,8 @@
 #include <QStringBuilder>
 #include <QUuid>
 #include "globals.h"
+#include "twitch.h"
 #include "eventsub.h"
-
-const char *TWITCH_API_ENDPOINT_EVENTSUB="https://api.twitch.tv/helix/eventsub/subscriptions";
-const char *TWITCH_API_ENDPOINT_EVENTSUB_SUBSCRIPTIONS="https://api.twitch.tv/helix/eventsub/subscriptions";
 
 const char *JSON_KEY_METADATA="metadata";
 const char *JSON_KEY_METADATA_TYPE="message_type";
@@ -141,7 +139,7 @@ void EventSub::Subscribe(const QString &type)
 	static const char *TWITCH_API_OPERATION_SUBSCRIBE="subscribe to event";
 
 	emit Print(u"Requesting subscription to %1"_s.arg(type),TWITCH_API_OPERATION_SUBSCRIBE);
-	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB},Network::Method::POST,[this,type](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_EVENTSUB)},Network::Method::POST,[this,type](QNetworkReply *reply) {
 		emit Print(StringConvert::Dump(reply->readAll()),TWITCH_API_OPERATION_SUBSCRIBE);
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
@@ -347,7 +345,7 @@ void EventSub::RequestEventSubscriptionList()
 {
 	static const char *TWITCH_API_OPERATION_SUBSCRIPTION_LIST="list subscriptions";
 
-	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB_SUBSCRIPTIONS},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_EVENTSUB_SUBSCRIPTIONS)},Network::Method::GET,[this](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -400,7 +398,7 @@ void EventSub::RemoveEventSubscription(const QString &id)
 {
 	static const char *TWITCH_API_OPERATION_SUBSCRIPTION_DELETE="delete subscription";
 
-	Network::Request({TWITCH_API_ENDPOINT_EVENTSUB_SUBSCRIPTIONS},Network::Method::DELETE,[this,id](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_EVENTSUB_SUBSCRIPTIONS)},Network::Method::DELETE,[this,id](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 204:

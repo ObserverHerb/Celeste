@@ -31,11 +31,14 @@ public:
 protected:
 	ApplicationSetting settingLogDirectory;
 	QFile file;
+	std::queue<Entry> hold;
 	bool CreateDirectory();
+	void Write(const Entry &entry);
 signals:
 	void Print(const Entry &entry);
 public slots:
 	bool Open();
-	void Write(const QString &message,const QString &operation,const QString &subsystem);
+	void Close();
+	void Receive(const QString &message,const QString &operation,const QString &subsystem);
 	void Archive();
 };

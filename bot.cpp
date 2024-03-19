@@ -6,6 +6,7 @@
 #include <ranges>
 #include "bot.h"
 #include "globals.h"
+#include "twitch.h"
 
 const char *COMMANDS_LIST_FILENAME="commands.json";
 const char *COMMAND_TYPE_NATIVE="native";
@@ -37,14 +38,6 @@ const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
-const char *TWITCH_API_ENDPOINT_EMOTE_URL="https://static-cdn.jtvnw.net/emoticons/v1/%1/1.0";
-const char *TWITCH_API_ENDPOINT_CHAT_SETTINGS="https://api.twitch.tv/helix/chat/settings";
-const char *TWITCH_API_ENDPOINT_STREAM_INFORMATION="https://api.twitch.tv/helix/streams";
-const char *TWITCH_API_ENDPOINT_CHANNEL_INFORMATION="https://api.twitch.tv/helix/channels";
-const char *TWITCH_API_ENDPOINT_GAME_INFORMATION="https://api.twitch.tv/helix/games";
-const char *TWITCH_API_ENDPOINT_USER_FOLLOWS="https://api.twitch.tv/helix/channels/followers";
-const char *TWITCH_API_ENDPOINT_BADGES="https://api.twitch.tv/helix/chat/badges/global";
-const char *TWITCH_API_ENDPOINT_SHOUTOUTS="https://api.twitch.tv/helix/chat/shoutouts";
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
@@ -307,19 +300,23 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 bool Bot::SaveDynamicCommands(const QJsonDocument &json)
 {
-	const char *OPERATION="save dynamic commands";
 	QFile commandListFile(Filesystem::DataPath().filePath(COMMANDS_LIST_FILENAME));
-	if (!commandListFile.open(QIODevice::WriteOnly))
+	bool result=true;
+
+	try
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_OPEN,commandListFile.fileName()),OPERATION);
-		return false;
+		if (!commandListFile.open(QIODevice::WriteOnly)) throw std::runtime_error(FILE_OPERATION_OPEN);
+		if (commandListFile.write(json.toJson(QJsonDocument::Indented)) <= 0) throw std::runtime_error(FILE_OPERATION_WRITE);
 	}
-	if (commandListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+
+	catch (const std::runtime_error &exception)
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(FILE_OPERATION_WRITE,commandListFile.fileName()),OPERATION);
-		return false;
+		emit Print(QString{FILE_ERROR_TEMPLATE_COMMANDS_LIST}.arg(exception.what(),commandListFile.fileName()),"save dynamic commands");
+		result=false;
 	}
-	return true;
+
+	commandListFile.close();
+	return result;
 }
 
 void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject)
@@ -445,19 +442,23 @@ QJsonDocument Bot::SerializeVibePlaylist(const File::List &songs)
 
 bool Bot::SaveVibePlaylist(const QJsonDocument &json)
 {
-	static const char *OPERATION="save vibe playlist";
 	QFile songListFile(Filesystem::DataPath().filePath(VIBE_PLAYLIST_FILENAME));
-	if (!songListFile.open(QIODevice::WriteOnly))
+	bool result=true;
+
+	try
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_OPEN,songListFile.fileName()),OPERATION);
-		return false;
+		if (!songListFile.open(QIODevice::WriteOnly)) throw std::runtime_error(FILE_OPERATION_OPEN);
+		if (songListFile.write(json.toJson(QJsonDocument::Indented)) <= 0) throw std::runtime_error(FILE_OPERATION_WRITE);
 	}
-	if (songListFile.write(json.toJson(QJsonDocument::Indented)) <= 0)
+
+	catch (const std::runtime_error &exception)
 	{
-		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(FILE_OPERATION_WRITE,songListFile.fileName()),OPERATION);
-		return false;
+		emit Print(QString{FILE_ERROR_TEMPLATE_VIBE_PLAYLIST}.arg(exception.what(),songListFile.fileName()),"save vibe playlist");
+		result=false;
 	}
-	return true;
+
+	songListFile.close();
+	return result;
 }
 
 void Bot::LoadRoasts()
@@ -468,7 +469,7 @@ void Bot::LoadRoasts()
 
 void Bot::LoadBadgeIconURLs()
 {
-	Network::Request({TWITCH_API_ENDPOINT_BADGES},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_BADGES)},Network::Method::GET,[this](QNetworkReply *reply) {
 		static const char *JSON_KEY_ID="id";
 		static const char *JSON_KEY_SET_ID="set_id";
 		static const char *JSON_KEY_VERSIONS="versions";
@@ -823,7 +824,7 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 	emote.path=Filesystem::TemporaryPath().filePath(QString("%1.png").arg(emote.id));
 	if (!QFile(emote.path).exists())
 	{
-		Network::Request(QString(TWITCH_API_ENDPOINT_EMOTE_URL).arg(emote.id),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
+		Network::Request(Twitch::Content(Twitch::ENDPOINT_EMOTES).arg(emote.id),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
 			if (downloadReply->error())
 			{
 				emit Print(QString("Failed to download emote %1: %2").arg(emote.name,downloadReply->errorString()));
@@ -927,10 +928,10 @@ void Bot::DispatchCommand(const Command &command,const QString &login)
 			DispatchVideo(command);
 			break;
 		case CommandType::AUDIO:
-			emit PlayAudio(viewer.DisplayName(),command.Message(),command.Path());
+			emit PlayAudio(viewer.DisplayName(),command.Message(),File::List(command.Path()).Random());
 			break;
 		case CommandType::PULSAR:
-			emit Pulse(command.Message());
+			emit Pulse(command.Message(),command.Name());
 			break;
 		case CommandType::NATIVE:
 			switch (nativeCommandFlags.at(command.Name()))
@@ -1019,7 +1020,7 @@ void Bot::DispatchCommandList()
 
 void Bot::DispatchFollowage(const Viewer::Local &viewer)
 {
-	Network::Request({TWITCH_API_ENDPOINT_USER_FOLLOWS},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_USER_FOLLOWS)},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -1082,7 +1083,7 @@ void Bot::DispatchShoutout(Command command)
 	Viewer::Remote *streamer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
 	connect(streamer,&Viewer::Remote::Recognized,streamer,[this](const Viewer::Local &streamer) {
 		// native Twitch shoutout
-		Network::Request({TWITCH_API_ENDPOINT_SHOUTOUTS},Network::Method::POST,[this,streamerID=streamer.ID()](QNetworkReply *reply) {
+		Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_SHOUTOUTS)},Network::Method::POST,[this,streamerID=streamer.ID()](QNetworkReply *reply) {
 			// 204 is successful
 			switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 			{
@@ -1125,7 +1126,7 @@ void Bot::DispatchShoutout(Command command)
 
 void Bot::DispatchUptime(bool total)
 {
-	Network::Request({TWITCH_API_ENDPOINT_STREAM_INFORMATION},Network::Method::GET,[this,total](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_STREAM_INFORMATION)},Network::Method::GET,[this,total](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1257,7 +1258,7 @@ void Bot::AdjustVibeVolume(Command command)
 
 void Bot::ToggleEmoteOnly()
 {
-	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHAT_SETTINGS)},Network::Method::GET,[this](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1324,7 +1325,7 @@ void Bot::EmoteOnly(bool enable)
 	// this is for authorizing the moderator at the API-level, which we're not worried about here
 	// it's always going to be the broadcaster running the bot and access is protected through
 	// DispatchCommand()
-	Network::Request({TWITCH_API_ENDPOINT_CHAT_SETTINGS},Network::Method::PATCH,[this](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHAT_SETTINGS)},Network::Method::PATCH,[this](QNetworkReply *reply) {
 		if (reply->error()) emit Print(QString("Something went wrong setting emote only: %1").arg(reply->errorString()));
 	},{
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
@@ -1338,7 +1339,7 @@ void Bot::EmoteOnly(bool enable)
 
 void Bot::StreamTitle(const QString &title)
 {
-	Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHANNEL_INFORMATION)},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1373,7 +1374,7 @@ void Bot::StreamTitle(const QString &title)
 
 void Bot::StreamCategory(const QString &category)
 {
-	Network::Request({TWITCH_API_ENDPOINT_GAME_INFORMATION},Network::Method::GET,[this,category](QNetworkReply *reply) {
+	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_GAME_INFORMATION)},Network::Method::GET,[this,category](QNetworkReply *reply) {
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -1405,7 +1406,7 @@ void Bot::StreamCategory(const QString &category)
 		}
 
 		const QString categoryID=jsonFieldID->toString();
-		Network::Request({TWITCH_API_ENDPOINT_CHANNEL_INFORMATION},Network::Method::PATCH,[this,category,categoryID](QNetworkReply *reply) {
+		Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHANNEL_INFORMATION)},Network::Method::PATCH,[this,category,categoryID](QNetworkReply *reply) {
 			if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
 			{
 				emit Print("Failed to change stream category");

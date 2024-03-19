@@ -32,11 +32,11 @@ protected:
 	void SwapPersistentPane(PersistentPane *pane);
 	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
-	void ReportVideoFailed(const QString &reason);
 	void contextMenuEvent(QContextMenuEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
 signals:
 	void Print(const QString &message);
+	void Print(const QString &message,const QString &operation,const QString &subsystem="main window");
 	void ChatMessage(const Chat::Message &message);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();

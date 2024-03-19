@@ -598,6 +598,7 @@ namespace UI
 				});
 				type->setPlaceholderText(u"Native"_s);
 				type->setCurrentIndex(static_cast<int>(commandType));
+				type->setFocusPolicy(Qt::StrongFocus);
 				connect(type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
 				type->installEventFilter(this);
 				detailsLayout.addWidget(type,3,0,1,2);
@@ -617,6 +618,7 @@ namespace UI
 			{
 				duplicates=new QCheckBox(u"Duplicates"_s,details);
 				duplicates->setChecked(commandDuplicates);
+				duplicates->setEnabled(commandRandom);
 				connect(duplicates,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
 				duplicates->installEventFilter(this);
 				detailsLayout.addWidget(duplicates,3,3,1,1);
@@ -625,8 +627,9 @@ namespace UI
 			if (!message)
 			{
 				message=new QTextEdit(details);
-				message->setPlaceholderText("Message to display in content");
+				message->setPlaceholderText(u"Message to display in content"_s);
 				message->setText(commandMessage);
+				message->setVisible(commandType == UI::Commands::Type::AUDIO);
 				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
 				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
 				message->viewport()->installEventFilter(this);
@@ -702,15 +705,15 @@ namespace UI
 
 		void Entry::TypeChanged(int index)
 		{
-			enum Type currentType=static_cast<enum Type>(index);
+			commandType=static_cast<UI::Commands::Type>(index);
 
-			if (currentType == Type::PULSAR)
+			if (commandType == Type::PULSAR)
 			{
 				Pulsar();
 				return;
 			}
 
-			if (currentType == Type::NATIVE)
+			if (commandType == Type::NATIVE)
 			{
 				Native();
 				return;
@@ -724,9 +727,9 @@ namespace UI
 			browse->setEnabled(true);
 			type->setEnabled(true);
 			random->setEnabled(true);
-			message->setEnabled(currentType == Type::VIDEO ? false : true);
+			message->setVisible(commandType == Type::VIDEO ? false : true);
 
-			ValidatePath(Path(),Random(),currentType);
+			ValidatePath(Path(),Random(),commandType);
 		}
 
 		void Entry::Native()
@@ -739,7 +742,7 @@ namespace UI
 			browse->setEnabled(false);
 			type->setEnabled(false);
 			random->setEnabled(false);
-			message->setEnabled(false);
+			message->setVisible(false);
 		}
 
 		void Entry::Pulsar()
@@ -751,7 +754,7 @@ namespace UI
 			path->setEnabled(false);
 			browse->setEnabled(false);
 			random->setEnabled(false);
-			message->setEnabled(false);
+			message->setVisible(false);
 		}
 
 		void Entry::Browse()
@@ -785,6 +788,16 @@ namespace UI
 				if (object == duplicates) emit Help("When choosing a random media file from a folder, sometimes the same file can be chosen back-to-back. Check this box to prevent that.");
 				if (object == type) emit Help("Determines what kind of action is taken in response to a command.\n\nValid values are:\nAnnounce - Displays text while playing an audio file\nVideo - Displays a video");
 				if (object == message->viewport()) emit Help("If the command will display text in conjunction with the media, this is the message that will be shown.");
+			}
+
+			if (event->type() == QEvent::Wheel)
+			{
+				QComboBox *combo=qobject_cast<QComboBox*>(object);
+				if (combo && !combo->hasFocus())
+				{
+					wheelEvent(static_cast<QWheelEvent*>(event));
+					return true;
+				}
 			}
 
 			return false;

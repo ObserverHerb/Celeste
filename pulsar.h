@@ -16,6 +16,7 @@ public:
 protected:
 	std::unordered_map<QString,QJsonArray> triggers;
 	std::unordered_map<QString,QSize> dimensions;
+	std::unordered_map<QString,QString> commandCrossReference;
 	QLocalSocket *socket;
 	QTimer reconnectDelay;
 	ApplicationSetting settingReconnectDelay;
@@ -24,6 +25,7 @@ signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("Pulsar"));
 	void Dimensions(const QSize &dimensions);
 public slots:
+	void Pulse(const QString &trigger,const QString &command);
 	void Pulse(const QString &trigger);
 protected slots:
 	void Error(QLocalSocket::LocalSocketError error);

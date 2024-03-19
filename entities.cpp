@@ -6,6 +6,7 @@
 #include <cstring>
 #include "entities.h"
 #include "globals.h"
+#include "twitch.h"
 
 Q_DECLARE_METATYPE(std::chrono::milliseconds)
 
@@ -636,18 +637,16 @@ namespace Music
 
 namespace Viewer
 {
-	const char *TWITCH_API_ENDPOINT_USERS="https://api.twitch.tv/helix/users";
-
 	namespace ProfileImage
 	{
 		Remote::Remote(const QUrl &profileImageURL)
 		{
 			Network::Request(profileImageURL,Network::Method::GET,[this](QNetworkReply *reply) {
-				this->deleteLater();
 				if (reply->error())
 					emit Print(QString("Failed: %1").arg(reply->errorString()),"profile image retrieval");
 				else
 					emit Retrieved(QImage::fromData(reply->readAll()));
+				this->deleteLater();
 			});
 		}
 
@@ -684,7 +683,7 @@ namespace Viewer
 
 	Remote::Remote(Security &security,const QString &username) : name(username)
 	{
-		Network::Request({TWITCH_API_ENDPOINT_USERS},Network::Method::GET,[this](QNetworkReply* reply) {
+		Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_USERS)},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
 
 			try

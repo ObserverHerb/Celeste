@@ -11,17 +11,17 @@ Log::Log(QObject *parent) : QObject(parent),
 
 Log::~Log()
 {
-	file.close();
+	Close();
 }
 
 bool Log::CreateDirectory()
 {
 	QDir directory(settingLogDirectory);
 	const char *operation="creating log directory";
-	emit Print({directory.absolutePath(),operation});
+	Write({directory.absolutePath(),operation});
 	if (!directory.exists() && !directory.mkpath(directory.absolutePath()))
 	{
-		emit Print({QString("Failed: %1").arg(directory.absolutePath()),operation});
+		Write({QString("Failed: %1").arg(directory.absolutePath()),operation});
 		return false;
 	}
 	return true;
@@ -30,58 +30,78 @@ bool Log::CreateDirectory()
 bool Log::Open()
 {
 	const char *operation="create log file";
-	emit Print({QDir(settingLogDirectory).absolutePath(),operation});
+	Write({file.fileName(),operation});
 	if (!CreateDirectory()) return false;
-	if (!file.open(QIODevice::ReadWrite))
+	if (!file.open(QIODevice::ReadWrite|QIODevice::Truncate))
 	{
-		emit Print({"Failed",operation});
+		Write({"Failed",operation});
 		return false;
 	}
 	return true;
 }
 
-void Log::Write(const QString &message,const QString &operation,const QString &subsystem)
+void Log::Close()
 {
-	Entry entry(message,operation,subsystem);
+	Write({file.fileName(),"close log file"});
+	file.close();
+}
+
+void Log::Write(const Entry &entry)
+{
 	emit Print(entry);
-	if (file.write(entry) < 0 || !file.flush()) emit Print({"Failed","write to log file"});
+	hold.push(entry);
+	if (!file.isOpen()) return;
+	while (!hold.empty())
+	{
+		if (file.write(hold.front()) < 0 || !file.flush())
+		{
+			hold.push({"Failed","write to log file"});
+			return;
+		}
+		hold.pop();
+	}
+}
+
+void Log::Receive(const QString &message,const QString &operation,const QString &subsystem)
+{
+	Write({message,operation,subsystem});
 }
 
 void Log::Archive()
 {
 	const char *operation="archive log";
-	if (!file.reset())
-	{
-		emit Print({"Failed to seek to beginning of file",operation});
-		return;
-	}
 
 	QFile datedFile(QDir(settingLogDirectory).absoluteFilePath(QDate::currentDate().toString("yyyyMMdd.log")));
 	if (datedFile.exists())
 	{
+		if (!file.reset())
+		{
+			Write({"Failed to seek to beginning of file",operation});
+			return;
+		}
+
 		if (!datedFile.open(QIODevice::WriteOnly|QIODevice::Append))
 		{
-			emit Print({"Could not open log file for today's date",operation});
+			Write({"Could not open log file for today's date",operation});
 			return;
 		}
 		while (!file.atEnd())
 		{
 			if (datedFile.write(file.read(4096)) < 0)
 			{
-				emit Print({"Could not append to archived log file",operation});
+				Write({"Could not append to archived log file",operation});
 				return;
 			}
 		}
 	}
 	else
 	{
-		if (!file.rename(QFileInfo(datedFile).absoluteFilePath()))
+		if (!file.rename(QFileInfo(datedFile).absoluteFilePath())) // rename will close the file for you, per Qt docs
 		{
-			emit Print({"Could not save log as archive file",operation});
+			Write({"Could not save log as archive file",operation});
 			return;
 		}
 	}
-	file.close();
 }
 
 ApplicationSetting& Log::Directory()

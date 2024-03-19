@@ -23,6 +23,26 @@ namespace Resources
 	inline const char *CELESTE=":/celeste.png";
 }
 
+namespace Concept
+{
+	template<typename T> concept Container=requires(T m)
+	{
+		requires std::forward_iterator<typename T::iterator>;
+		{ m.empty() }->std::same_as<bool>;
+		{ m.size() }->std::same_as<typename T::size_type>;
+	};
+
+	template<typename T> concept AssociativeContainer=requires(T m,typename T::key_type k)
+	{
+		typename T::key_type;
+		typename T::mapped_type;
+		typename T::const_iterator;
+		{ m.find(k) }->std::convertible_to<typename T::const_iterator>;
+	};
+
+	template <typename T> concept Widget=std::is_base_of<QWidget,T>::value;
+}
+
 namespace NumberConvert
 {
 	template <std::integral T>
@@ -194,13 +214,6 @@ namespace Filesystem
 
 namespace Random
 {
-	template<typename T> concept Container=requires(T m)
-	{
-		requires std::forward_iterator<typename T::iterator>;
-		{ m.empty() }->std::same_as<bool>;
-		{ m.size() }->std::same_as<typename T::size_type>;
-	};
-
 	inline std::random_device generator;
 
 	inline int Bounded(int lower,int upper)
@@ -209,14 +222,14 @@ namespace Random
 		return distribution(generator);
 	}
 
-	template<Container T> inline int Bounded(const T &container)
+	template<Concept::Container T> inline int Bounded(const T &container)
 	{
 		if (container.empty()) throw std::range_error("Tried to pull random item from empty container");
 		if (container.size() > std::numeric_limits<int>::max()) throw std::range_error("Container contains too many elements");
 		return Bounded(0,static_cast<int>(container.size())-1);
 	}
 
-	template<Container T> inline void Shuffle(T &container)
+	template<Concept::Container T> inline void Shuffle(T &container)
 	{
 		std::shuffle(container.begin(),container.end(),generator);
 	}
@@ -327,15 +340,7 @@ namespace JSON
 
 namespace Container
 {
-	template<typename T> concept AssociativeContainer=requires(T m,typename T::key_type k)
-	{
-		typename T::key_type;
-		typename T::mapped_type;
-		typename T::const_iterator;
-		{ m.find(k) }->std::convertible_to<typename T::const_iterator>;
-	};
-
-	template <AssociativeContainer T>
+	template <Concept::AssociativeContainer T>
 	typename T::mapped_type Resolve(T &container,const typename T::key_type &key,const typename T::mapped_type &value)
 	{
 		auto candidate=container.find(key);

@@ -21,7 +21,6 @@
 
 const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
-const char *SUBSYSTEM_DIALOG="configuration dialog";
 const char *SUBSYSTEM_AUTHORIZATION="authorization";
 
 enum
@@ -120,11 +119,9 @@ void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &comm
 {
 	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
 	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log](const Command::Lookup& commands) {
-		static const char *ERROR_COMMANDS_LIST_FILE="Something went wrong saving the commands list to a file";
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
-			MessageBox(u"Save dynamic commands Failed"_s,ERROR_COMMANDS_LIST_FILE,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
-			log.Write(ERROR_COMMANDS_LIST_FILE,u"save dynamic commands"_s,SUBSYSTEM_DIALOG);
+			MessageBox(u"Save dynamic commands Failed"_s,u"Something went wrong saving the commands list to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 		}
 	});
 	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int result) {
@@ -152,11 +149,9 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
 	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
-		static const char *ERROR_VIBE_PLAYLIST_FILE="Something went wrong saving the vibe playlist to a file";
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
-			MessageBox(u"Save vibe playlist Failed"_s,ERROR_VIBE_PLAYLIST_FILE,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
-			log.Write(ERROR_VIBE_PLAYLIST_FILE,u"save playlist"_s,SUBSYSTEM_DIALOG);
+			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 		}
 	});
 	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
@@ -216,6 +211,7 @@ int main(int argc,char *argv[])
 		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
 		const File::List &musicPlaylist=celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist());
 		Pulsar pulsar;
+		EventSub *eventSub=nullptr;
 		ApplicationWindow window;
 		UI::Metrics::Dialog metrics(&window);
 		UI::Status::Window<StatusPane> status(&window);
@@ -224,10 +220,10 @@ int main(int argc,char *argv[])
 			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
 			application.exit(AUTHENTICATION_ERROR);
 		});
-		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,&Window::Print);
+		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,QOverload<const QString&>::of(&Window::Print));
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
-		celeste.connect(&celeste,&Bot::Print,&log,&Log::Write);
+		celeste.connect(&celeste,&Bot::Print,&log,&Log::Receive);
 		celeste.connect(&celeste,&Bot::AnnounceArrival,&window,&Window::AnnounceArrival);
 		celeste.connect(&celeste,&Bot::AnnounceRedemption,&window,&Window::AnnounceRedemption);
 		celeste.connect(&celeste,&Bot::AnnounceSubscription,&window,&Window::AnnounceSubscription);
@@ -248,15 +244,15 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::Shoutout,&window,&Window::Shoutout);
 		celeste.connect(&celeste,&Bot::PlayVideo,&window,&Window::PlayVideo);
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
-		celeste.connect(&celeste,&Bot::Pulse,&pulsar,&Pulsar::Pulse);
+		celeste.connect(&celeste,&Bot::Pulse,&pulsar,QOverload<const QString&,const QString&>::of(&Pulsar::Pulse));
 		celeste.connect(&celeste,&Bot::Welcomed,&metrics,&UI::Metrics::Dialog::Acknowledged);
 		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
 		celeste.connect(&celeste,&Bot::Panic,&celeste,[&celeste]() {
 			celeste.disconnect();
 		});
-		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
+		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Receive);
 		pulsar.connect(&pulsar,&Pulsar::Dimensions,&window,&Window::Resize);
-		channel->connect(channel,&Channel::Print,&log,&Log::Write);
+		channel->connect(channel,&Channel::Print,&log,&Log::Receive);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
@@ -265,9 +261,12 @@ int main(int argc,char *argv[])
 			log.connect(&log,&Log::Print,&status.Pane(),&StatusPane::Print);
 			window.ShowChat();
 		});
-		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&window]() {
+		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&pulsar,&window]() {
 			log.disconnect(echo);
-			celeste.connect(&celeste,&Bot::Print,&window,&Window::Print);
+			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&window,QOverload<const QString&>::of(&Window::Print));
+			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&log,&Log::Receive);
+			celeste.connect(&celeste,&Bot::Print,&window,QOverload<const QString&>::of(&Window::Print));
+			pulsar.connect(&pulsar,&Pulsar::Print,&window,QOverload<const QString&>::of(&Window::Print));
 		});
 		channel->connect(channel,&Channel::Disconnected,[channel,&window]() {
 			qApp->alert(&window);
@@ -275,13 +274,11 @@ int main(int argc,char *argv[])
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log]() {
-			static EventSub *eventSub=nullptr;
-
+		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log,&application,eventSub]() mutable {
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
-			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Write);
+			eventSub->connect(eventSub,&EventSub::Print,&log,&Log::Receive);
 			eventSub->connect(eventSub,&EventSub::Redemption,&celeste,&Bot::Redemption);
 			eventSub->connect(eventSub,&EventSub::ChannelSubscription,&celeste,&Bot::Subscription);
 			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
@@ -295,12 +292,12 @@ int main(int argc,char *argv[])
 			eventSub->connect(eventSub,&EventSub::RateLimitHit,eventSub,[]() {
 				MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
-			eventSub->connect(eventSub,&EventSub::Connected,eventSub,[]() {
-				eventSub->Subscribe();
-			},Qt::QueuedConnection);
-			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window]() {
+			eventSub->connect(eventSub,&EventSub::Connected,eventSub,QOverload<>::of(&EventSub::Subscribe),Qt::QueuedConnection);
+			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
 			});
+			celeste.connect(&celeste,&Bot::Panic,eventSub,&EventSub::deleteLater,Qt::QueuedConnection);
+			application.connect(&application,&QApplication::aboutToQuit,eventSub,&EventSub::deleteLater,Qt::DirectConnection);
 		});
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
 		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);

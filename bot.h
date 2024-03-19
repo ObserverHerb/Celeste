@@ -141,7 +141,7 @@ signals:
 	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void Panic(const QString &text);
-	void Pulse(const QString &trigger);
+	void Pulse(const QString &trigger,const QString &command);
 	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);
