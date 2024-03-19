@@ -7,6 +7,14 @@
 
 const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
 
+QMediaPlayer* BuildPlayer(QObject *parent,qreal initialVolume)
+{
+	QMediaPlayer *player=new QMediaPlayer(parent);
+	player->setAudioOutput(new QAudioOutput(parent));
+	player->audioOutput()->setVolume(initialVolume);
+	return player;
+}
+
 StatusPane::StatusPane(QWidget *parent) : PersistentPane(parent),
 	output(this),
 	settingFont(SETTINGS_CATEGORY,"Font","Droid Sans Mono"),
@@ -230,7 +238,7 @@ void EphemeralPane::Expire()
 	deleteLater();
 }
 
-VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : EphemeralPane(parent), videoPlayer(Multimedia::Player(this,1)), viewport(new QVideoWidget(this))
+VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : EphemeralPane(parent), videoPlayer(BuildPlayer(this,1)), viewport(new QVideoWidget(this))
 {
 	if (!QFile(path).exists()) throw std::runtime_error(QString{"File doesn't exist ("+path+")"}.toStdString());
 	videoPlayer->setVideoOutput(viewport);
@@ -406,7 +414,7 @@ ApplicationSetting& AnnouncePane::Duration()
 	return settingDuration;
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AnnouncePane(lines,parent), audioPlayer(Multimedia::Player(this,1)), path(path)
+AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AnnouncePane(lines,parent), audioPlayer(BuildPlayer(this,1)), path(path)
 {
 	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();

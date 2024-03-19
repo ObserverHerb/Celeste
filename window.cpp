@@ -419,6 +419,14 @@ void Window::ReleaseLiveEphemeralPane()
 	}
 }
 
+void Window::Resize(const QSize &dimensions)
+{
+	if (dimensions.isEmpty())
+		setFixedSize(settingWindowSize);
+	else
+		setFixedSize(dimensions);
+}
+
 const QSize Window::ScreenThird()
 {
 	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());

@@ -71,6 +71,7 @@ public slots:
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
+	void Resize(const QSize &dimensions);
 protected slots:
 	void StageEphemeralPane(EphemeralPane *pane);
 };

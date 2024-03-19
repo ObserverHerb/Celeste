@@ -255,6 +255,7 @@ int main(int argc,char *argv[])
 			celeste.disconnect();
 		});
 		pulsar.connect(&pulsar,&Pulsar::Print,&log,&Log::Write);
+		pulsar.connect(&pulsar,&Pulsar::Dimensions,&window,&Window::Resize);
 		channel->connect(channel,&Channel::Print,&log,&Log::Write);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);

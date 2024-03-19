@@ -12,6 +12,7 @@
 #include <QVBoxLayout>
 #include <QCheckBox>
 #include <unordered_map>
+#include <unordered_set>
 #include <iostream>
 #include "pulsar.h"
 
@@ -42,16 +43,6 @@ using SceneItemPtr=std::unique_ptr<obs_sceneitem_t,decltype(&obs_sceneitem_relea
 using SourcePtr=std::unique_ptr<obs_source_t,decltype(&obs_source_release)>;
 using SourceListPtr=std::unique_ptr<obs_frontend_source_list,decltype(&obs_frontend_source_list_free)>;
 
-void HandleEvent(obs_frontend_event event,void *data)
-{
-	switch (event)
-	{
-		case OBS_FRONTEND_EVENT_SCENE_CHANGED:
-			Log("Scene Changed: "+std::string(obs_source_get_name(SourcePtr(obs_frontend_get_current_scene(),&obs_source_release).get())));
-			break;
-	}
-}
-
 enum Triggers
 {
 	SWITCH_SCENE,
@@ -66,8 +57,9 @@ std::unordered_map<std::string,int> triggers={
 	{"move_source",MOVE_SOURCE}
 };
 
-QLocalServer *server;
-QCheckBox *enabled;
+QLocalServer *server=nullptr;
+std::unordered_set<QLocalSocket*> sockets;
+QCheckBox *enabled=nullptr;
 
 obs_sceneitem_t* FindSource(const std::string &name)
 {
@@ -124,11 +116,20 @@ void SwitchScene(const std::string &name)
 	obs_frontend_set_current_scene(SourcePtr(FindScene(name),&obs_source_release).get());
 }
 
+void SceneSwitched(const std::string &name)
+{
+	QJsonObject object;
+	object.insert(JSON_KEY_SCENE,QString::fromStdString(name));
+	for (QLocalSocket *socket : sockets) std::to_string(socket->write(QJsonDocument(object).toJson(QJsonDocument::Compact)+'\n'));
+	Log("Scene Changed: "+name);
+}
+
 void Connection()
 {
 	Log("Incoming connection established");
 
 	QLocalSocket *socket=server->nextPendingConnection();
+	sockets.insert(socket);
 	socket->connect(socket,&QLocalSocket::readyRead,socket,[socket]() {
 		try
 		{
@@ -177,8 +178,19 @@ void Connection()
 		}
 	});
 	socket->connect(socket,&QLocalSocket::disconnected,socket,[socket]() {
+		sockets.erase(socket);
 		socket->deleteLater();
 	});
+}
+
+void HandleEvent(obs_frontend_event event,void *data)
+{
+	switch (event)
+	{
+	case OBS_FRONTEND_EVENT_SCENE_CHANGED:
+		SceneSwitched({obs_source_get_name(SourcePtr(obs_frontend_get_current_scene(),&obs_source_release).get())});
+		break;
+	}
 }
 
 bool obs_module_load()
