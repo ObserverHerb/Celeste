@@ -49,7 +49,7 @@ signals:
 	void CloseRequested(QCloseEvent *event);
 public slots:
 	void ShowChat();
-	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
+	void AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
 	void AnnounceRedemption(const QString &name,const QString &rewardTitle,const QString &message);
 	void AnnounceSubscription(const QString &name,const QString &audioPath);
 	void AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath);
@@ -65,7 +65,7 @@ public slots:
 	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
 	void ShowPanicText(const QString &text);
-	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
+	void Shoutout(const QString &name,const QString &description,std::shared_ptr<QImage> profileImage);
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);

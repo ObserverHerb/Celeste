@@ -134,7 +134,7 @@ signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
 	void ChatMessage(const Chat::Message &message);
 	void RefreshChat();
-	void AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath);
+	void AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &name,const QString &message,const QString &path);
 	void SetAgenda(const QString &agenda);
@@ -142,7 +142,7 @@ signals:
 	void ShowCommand(const QString &name,const QString &description);
 	void Panic(const QString &text);
 	void Pulse(const QString &trigger,const QString &command);
-	void Shoutout(const QString &name,const QString &description,const QImage &profileImage);
+	void Shoutout(const QString &name,const QString &description,std::shared_ptr<QImage> profileImage);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);

@@ -288,7 +288,7 @@ namespace Viewer
 			QImage image;
 		signals:
 			void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("profile image retrieval"));
-			void Retrieved(const QImage &image);
+			void Retrieved(std::shared_ptr<QImage> image);
 		};
 	}
 

@@ -621,7 +621,7 @@ void Bot::DispatchArrival(const QString &login)
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
 		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settingRaidInterruptDuration)) return;
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](std::shared_ptr<QImage> profileImage) {
 			// Do we have a sound configured to announce them with? If so, fire the signal.
 			if (settingArrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
 
@@ -1117,7 +1117,7 @@ void Bot::DispatchShoutout(Command command)
 		});
 		// bot shoutout
 		Viewer::ProfileImage::Remote *profileImage=streamer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,displayName=streamer.DisplayName(),description=streamer.Description()](const QImage &profileImage) {
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,displayName=streamer.DisplayName(),description=streamer.Description()](std::shared_ptr<QImage> profileImage) {
 			emit Shoutout(displayName,description,profileImage);
 		},Qt::QueuedConnection);
 	},Qt::QueuedConnection);

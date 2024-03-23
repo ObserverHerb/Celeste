@@ -645,7 +645,7 @@ namespace Viewer
 				if (reply->error())
 					emit Print(QString("Failed: %1").arg(reply->errorString()),"profile image retrieval");
 				else
-					emit Retrieved(QImage::fromData(reply->readAll()));
+					emit Retrieved(std::make_shared<QImage>(QImage::fromData(reply->readAll())));
 				this->deleteLater();
 			});
 		}
