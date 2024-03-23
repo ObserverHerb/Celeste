@@ -152,7 +152,9 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
 			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
+			return;
 		}
+		bot.SetVibePlaylist(files);
 	});
 	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
 		Q_UNUSED(result)
@@ -209,7 +211,7 @@ int main(int argc,char *argv[])
 		Music::Player musicPlayer(true,0);
 		Bot celeste(musicPlayer,security);
 		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
-		const File::List &musicPlaylist=celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist());
+		const File::List &musicPlaylist=celeste.SetVibePlaylist(celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist()));
 		Pulsar pulsar;
 		EventSub *eventSub=nullptr;
 		ApplicationWindow window;

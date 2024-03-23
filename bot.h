@@ -48,8 +48,9 @@ public:
 	const Command::Lookup& Commands() const;
 	const Command::Lookup& DeserializeCommands(const QJsonDocument &json);
 	QJsonDocument LoadDynamicCommands();
-	const File::List& DeserializeVibePlaylist(const QJsonDocument &json);
+	File::List DeserializeVibePlaylist(const QJsonDocument &json);
 	QJsonDocument LoadVibePlaylist();
+	const File::List& SetVibePlaylist(const File::List &files);
 	ApplicationSetting& ArrivalSound();
 	ApplicationSetting& PortraitVideo();
 	ApplicationSetting& CheerVideo();

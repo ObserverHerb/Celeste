@@ -400,9 +400,14 @@ void Bot::SaveViewerAttributes(bool reset)
 	viewerAttributesFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
 }
 
-const File::List& Bot::DeserializeVibePlaylist(const QJsonDocument &json)
+File::List Bot::DeserializeVibePlaylist(const QJsonDocument &json)
 {
-	vibeKeeper.Sources(File::List{json.toVariant().toStringList()});
+	return {json.toVariant().toStringList()};
+}
+
+const File::List& Bot::SetVibePlaylist(const File::List &files)
+{
+	vibeKeeper.Sources(files);
 	return vibeKeeper.Sources();
 }
 
