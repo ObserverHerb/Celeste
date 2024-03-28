@@ -62,7 +62,7 @@ const char *FILE_OPERATION_WRITE="write";
 const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST="Failed to %1 command list file: %2";
 const char *FILE_ERROR_TEMPLATE_VIBE_PLAYLIST="Failed to %1 vibe playlist list file: %2";
 
-const std::unordered_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
+const Bot::CommandTypeLookup Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
 	{COMMAND_TYPE_VIDEO,CommandType::VIDEO},
 	{COMMAND_TYPE_AUDIO,CommandType::AUDIO},
