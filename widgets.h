@@ -514,7 +514,7 @@ namespace UI
 				Settings settings;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
-				void PlayArrivalSound(const QString &name,QImage profileImage,const QString &audioPath);
+				void PlayArrivalSound(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
 				void PlayPortraitVideo(const QString &path);
 				void PlayCheerVideo(const QString &chatter,const unsigned int count,const QString &message,const QString &path);
 				void PlaySubscriptionSound(const QString &chatter,const QString &path);

@@ -73,13 +73,13 @@ void Window::SwapPersistentPane(PersistentPane *pane)
 	connect(this,PrintUI::of(&Window::Print),livePersistentPane,&PersistentPane::Print);
 }
 
-void Window::AnnounceArrival(const QString &name,QImage profileImage,const QString &audioPath)
+void Window::AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath)
 {
 	MultimediaAnnouncePane *pane=new MultimediaAnnouncePane({
 		{"Please welcome",1},
 		{QString("%1").arg(name),1.5},
 		{"to the chat",1}
-	},profileImage,audioPath,this);
+	},*profileImage,audioPath,this);
 	connect(pane,&MultimediaAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
 }
@@ -269,13 +269,13 @@ void Window::ShowPanicText(const QString &text)
 	emit Print(text);
 }
 
-void Window::Shoutout(const QString &name,const QString &description,const QImage &profileImage)
+void Window::Shoutout(const QString &name,const QString &description,std::shared_ptr<QImage> profileImage)
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
 		{"Drop a follow on",1},
 		{QString("%1").arg(name),1.5},
 		{description,0.5}
-	},profileImage,this);
+	},*profileImage,this);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->Duration(10000); // TODO: change from hardcoded to configurable duration
 	StageEphemeralPane(pane);

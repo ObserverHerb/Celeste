@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include "security.h"
 #include "entities.h"
+#include "network.h"
 
 const char *QUERY_PARAMETER_CLIENT_ID="client_id";
 const char *QUERY_PARAMETER_CLIENT_SECRET="client_secret";
@@ -153,7 +154,7 @@ void Security::RewireMessage(QMqttMessage message)
 
 void Security::ValidateToken()
 {
-	Network::Request(settingCallbackURL,Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request::Send(settingCallbackURL,Network::Method::GET,[this](QNetworkReply *reply) {
 		if (!reply->error() && reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 400)
 		{
 			const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
@@ -167,7 +168,7 @@ void Security::ValidateToken()
 					settingOAuthToken.Set(jsonFieldAccessToken->toString());
 					settingRefreshToken.Set(jsonFieldRefreshToken->toString());
 
-					Network::Request({TWITCH_API_ENDPOINT_VALIDATE},Network::Method::GET,[this](QNetworkReply *reply) {
+					Network::Request::Send({TWITCH_API_ENDPOINT_VALIDATE},Network::Method::GET,[this](QNetworkReply *reply) {
 						if (!reply->error() && reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 401)
 						{
 							const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());

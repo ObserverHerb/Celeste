@@ -6,6 +6,7 @@
 #include <ranges>
 #include "bot.h"
 #include "globals.h"
+#include "network.h"
 #include "twitch.h"
 
 const char *COMMANDS_LIST_FILENAME="commands.json";
@@ -62,7 +63,7 @@ const char *FILE_OPERATION_WRITE="write";
 const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST="Failed to %1 command list file: %2";
 const char *FILE_ERROR_TEMPLATE_VIBE_PLAYLIST="Failed to %1 vibe playlist list file: %2";
 
-const std::unordered_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
+const Bot::CommandTypeLookup Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
 	{COMMAND_TYPE_VIDEO,CommandType::VIDEO},
 	{COMMAND_TYPE_AUDIO,CommandType::AUDIO},
@@ -400,9 +401,14 @@ void Bot::SaveViewerAttributes(bool reset)
 	viewerAttributesFile.write(QJsonDocument(entries).toJson(QJsonDocument::Indented));
 }
 
-const File::List& Bot::DeserializeVibePlaylist(const QJsonDocument &json)
+File::List Bot::DeserializeVibePlaylist(const QJsonDocument &json)
 {
-	vibeKeeper.Sources(File::List{json.toVariant().toStringList()});
+	return {json.toVariant().toStringList()};
+}
+
+const File::List& Bot::SetVibePlaylist(const File::List &files)
+{
+	vibeKeeper.Sources(files);
 	return vibeKeeper.Sources();
 }
 
@@ -469,7 +475,7 @@ void Bot::LoadRoasts()
 
 void Bot::LoadBadgeIconURLs()
 {
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_BADGES)},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_BADGES)},Network::Method::GET,[this](QNetworkReply *reply) {
 		static const char *JSON_KEY_ID="id";
 		static const char *JSON_KEY_SET_ID="set_id";
 		static const char *JSON_KEY_VERSIONS="versions";
@@ -621,7 +627,7 @@ void Bot::DispatchArrival(const QString &login)
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
 		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settingRaidInterruptDuration)) return;
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](const QImage &profileImage) {
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](std::shared_ptr<QImage> profileImage) {
 			// Do we have a sound configured to announce them with? If so, fire the signal.
 			if (settingArrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
 
@@ -806,7 +812,7 @@ std::optional<QString> Bot::DownloadBadgeIcon(const QString &badge,const QString
 	QString badgePath=CHAT_BADGE_ICON_PATH_TEMPLATE.arg(badge,version);
 	if (!QFile(badgePath).exists())
 	{
-		Network::Request(badgeIconURL,Network::Method::GET,[this,badgeIconURL,badgePath](QNetworkReply *downloadReply) {
+		Network::Request::Send(badgeIconURL,Network::Method::GET,[this,badgeIconURL,badgePath](QNetworkReply *downloadReply) {
 			if (downloadReply->error())
 			{
 				emit Print(QString("Failed to download badge %1: %2").arg(badgeIconURL,downloadReply->errorString()));
@@ -824,7 +830,7 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 	emote.path=Filesystem::TemporaryPath().filePath(QString("%1.png").arg(emote.id));
 	if (!QFile(emote.path).exists())
 	{
-		Network::Request(Twitch::Content(Twitch::ENDPOINT_EMOTES).arg(emote.id),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
+		Network::Request::Send(Twitch::Content(Twitch::ENDPOINT_EMOTES).arg(emote.id),Network::Method::GET,[this,emote](QNetworkReply *downloadReply) {
 			if (downloadReply->error())
 			{
 				emit Print(QString("Failed to download emote %1: %2").arg(emote.name,downloadReply->errorString()));
@@ -1020,7 +1026,7 @@ void Bot::DispatchCommandList()
 
 void Bot::DispatchFollowage(const Viewer::Local &viewer)
 {
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_USER_FOLLOWS)},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_USER_FOLLOWS)},Network::Method::GET,[this,viewer](QNetworkReply *reply) {
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{
@@ -1080,10 +1086,15 @@ void Bot::DispatchPanic(const QString &name)
 
 void Bot::DispatchShoutout(Command command)
 {
-	Viewer::Remote *streamer=new Viewer::Remote(security,QString(command.Message()).remove("@"));
-	connect(streamer,&Viewer::Remote::Recognized,streamer,[this](const Viewer::Local &streamer) {
+	DispatchShoutout(QString(command.Message()).remove("@"));
+}
+
+void Bot::DispatchShoutout(const QString &streamer)
+{
+	Viewer::Remote *profile=new Viewer::Remote(security,streamer);
+	connect(profile,&Viewer::Remote::Recognized,profile,[this](const Viewer::Local &profile) {
 		// native Twitch shoutout
-		Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_SHOUTOUTS)},Network::Method::POST,[this,streamerID=streamer.ID()](QNetworkReply *reply) {
+		Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_SHOUTOUTS)},Network::Method::POST,[this,streamerID=profile.ID()](QNetworkReply *reply) {
 			// 204 is successful
 			switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 			{
@@ -1108,7 +1119,7 @@ void Bot::DispatchShoutout(Command command)
 			}
 		},{
 			{"from_broadcaster_id",security.AdministratorID()},
-			{"to_broadcaster_id",streamer.ID()},
+			{"to_broadcaster_id",profile.ID()},
 			{"moderator_id",security.AdministratorID()}
 		},{
 			{NETWORK_HEADER_AUTHORIZATION,StringConvert::ByteArray(QString("Bearer %1").arg(static_cast<QString>(security.OAuthToken())))},
@@ -1116,17 +1127,17 @@ void Bot::DispatchShoutout(Command command)
 			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_FORM} // Error code 400 can also be cause by missing content type
 		});
 		// bot shoutout
-		Viewer::ProfileImage::Remote *profileImage=streamer.ProfileImage();
-		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,displayName=streamer.DisplayName(),description=streamer.Description()](const QImage &profileImage) {
+		Viewer::ProfileImage::Remote *profileImage=profile.ProfileImage();
+		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,displayName=profile.DisplayName(),description=profile.Description()](std::shared_ptr<QImage> profileImage) {
 			emit Shoutout(displayName,description,profileImage);
 		},Qt::QueuedConnection);
 	},Qt::QueuedConnection);
-	connect(streamer,&Viewer::Remote::Print,this,&Bot::Print);
+	connect(profile,&Viewer::Remote::Print,this,&Bot::Print);
 }
 
 void Bot::DispatchUptime(bool total)
 {
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_STREAM_INFORMATION)},Network::Method::GET,[this,total](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_STREAM_INFORMATION)},Network::Method::GET,[this,total](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1258,7 +1269,7 @@ void Bot::AdjustVibeVolume(Command command)
 
 void Bot::ToggleEmoteOnly()
 {
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHAT_SETTINGS)},Network::Method::GET,[this](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_CHAT_SETTINGS)},Network::Method::GET,[this](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1374,7 +1385,7 @@ void Bot::StreamTitle(const QString &title)
 
 void Bot::StreamCategory(const QString &category)
 {
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_GAME_INFORMATION)},Network::Method::GET,[this,category](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_GAME_INFORMATION)},Network::Method::GET,[this,category](QNetworkReply *reply) {
 		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
 		if (!parsedJSON)
 		{

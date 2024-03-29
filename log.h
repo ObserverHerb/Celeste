@@ -2,6 +2,7 @@
 
 #include <QString>
 #include <QFile>
+#include <queue>
 #include "globals.h"
 #include "settings.h"
 

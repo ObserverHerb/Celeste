@@ -100,7 +100,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 	}));
 	configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
 
-	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,QImage,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
+	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,std::shared_ptr<QImage>,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayCheerVideo),&window,&Window::AnnounceCheer);
@@ -152,7 +152,9 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
 			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
+			return;
 		}
+		bot.SetVibePlaylist(files);
 	});
 	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
 		Q_UNUSED(result)
@@ -209,7 +211,7 @@ int main(int argc,char *argv[])
 		Music::Player musicPlayer(true,0);
 		Bot celeste(musicPlayer,security);
 		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
-		const File::List &musicPlaylist=celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist());
+		const File::List &musicPlaylist=celeste.SetVibePlaylist(celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist()));
 		Pulsar pulsar;
 		EventSub *eventSub=nullptr;
 		ApplicationWindow window;
