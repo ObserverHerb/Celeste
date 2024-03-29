@@ -3,9 +3,6 @@
 #include <QString>
 #include <QStandardPaths>
 #include <QDir>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QUrlQuery>
 #include <QJsonDocument>
 #include <QMediaPlayer>
 #include <QAudioOutput>
@@ -15,7 +12,6 @@
 #include <optional>
 #include <random>
 #include <functional>
-#include <queue>
 #include <stdexcept>
 
 using namespace Qt::Literals::StringLiterals;
@@ -245,71 +241,6 @@ namespace Multimedia
 		player->setAudioOutput(new QAudioOutput(parent));
 		player->audioOutput()->setVolume(initialVolume);
 		return player;
-	}
-}
-
-namespace Network
-{
-	inline const char *CONTENT_TYPE="Content-Type";
-	inline const char *CONTENT_TYPE_PLAIN="text/plain";
-	inline const char* CONTENT_TYPE_HTML="text/html";
-	inline const char *CONTENT_TYPE_JSON="application/json";
-	inline const char *CONTENT_TYPE_FORM="application/x-www-form-urlencoded";
-
-	static QNetworkAccessManager networkManager;
-
-	enum class Method
-	{
-		GET,
-		POST,
-		PATCH,
-		DELETE
-	};
-
-	using Reply=std::function<void(QNetworkReply*)>;
-	static std::queue<std::pair<std::function<void()>,Reply>> queue;
-
-	inline void Request(QUrl url,Method method,Reply callback,const QUrlQuery &queryParameters=QUrlQuery(),const std::vector<std::pair<QByteArray,QByteArray>> &headers=std::vector<std::pair<QByteArray,QByteArray>>(),const QByteArray &payload=QByteArray())
-	{
-		networkManager.connect(&networkManager,&QNetworkAccessManager::finished,&networkManager,[](QNetworkReply *reply) {
-			reply->deleteLater();
-		},Qt::QueuedConnection);
-
-		QNetworkRequest request;
-		for (const std::pair<QByteArray,QByteArray> &header : headers) request.setRawHeader(header.first,header.second);
-		switch (method)
-		{
-		case Method::GET:
-		{
-			url.setQuery(queryParameters);
-			request.setUrl(url);
-			auto sendRequest=[request,callback]() {
-				QNetworkReply *reply=networkManager.get(request);
-				networkManager.connect(&networkManager,&QNetworkAccessManager::finished,reply,callback,Qt::QueuedConnection);
-				reply->connect(reply,&QNetworkReply::finished,reply,[]() {
-					queue.pop();
-					if (queue.size() > 0) queue.front().first();
-				},Qt::QueuedConnection);
-			};
-			if (queue.size() == 0) sendRequest();
-			queue.push({sendRequest,callback});
-			break;
-		}
-		case Method::POST:
-			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload),callback,Qt::QueuedConnection);
-			break;
-		case Method::PATCH:
-			url.setQuery(queryParameters);
-			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"PATCH"_ba,payload),callback,Qt::QueuedConnection);
-			break;
-		case Method::DELETE:
-			url.setQuery(queryParameters);
-			request.setUrl(url);
-			networkManager.connect(&networkManager,&QNetworkAccessManager::finished,networkManager.sendCustomRequest(request,"DELETE"_ba,payload),callback,Qt::QueuedConnection);
-			break;
-		}
 	}
 }
 

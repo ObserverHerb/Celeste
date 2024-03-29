@@ -36,6 +36,8 @@ add_executable(Celeste
 	pulsar.cpp
 	log.h
 	log.cpp
+	network.h
+	network.cpp
 	window.h
 	window.cpp
 	bot.h

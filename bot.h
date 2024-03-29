@@ -124,6 +124,7 @@ protected:
 	void DispatchFollowage(const Viewer::Local &viewer);
 	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
+	void DispatchShoutout(const QString &streamer);
 	void DispatchUptime(bool total);
 	void DispatchHelpText();
 	void ToggleLimitViewer(const QString &target);

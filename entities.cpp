@@ -6,6 +6,7 @@
 #include <cstring>
 #include "entities.h"
 #include "globals.h"
+#include "network.h"
 #include "twitch.h"
 
 Q_DECLARE_METATYPE(std::chrono::milliseconds)
@@ -641,7 +642,7 @@ namespace Viewer
 	{
 		Remote::Remote(const QUrl &profileImageURL)
 		{
-			Network::Request(profileImageURL,Network::Method::GET,[this](QNetworkReply *reply) {
+			Network::Request::Send(profileImageURL,Network::Method::GET,[this](QNetworkReply *reply) {
 				if (reply->error())
 					emit Print(QString("Failed: %1").arg(reply->errorString()),"profile image retrieval");
 				else
@@ -683,7 +684,7 @@ namespace Viewer
 
 	Remote::Remote(Security &security,const QString &username) : name(username)
 	{
-		Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_USERS)},Network::Method::GET,[this](QNetworkReply* reply) {
+		Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_USERS)},Network::Method::GET,[this](QNetworkReply* reply) {
 			const char *OPERATION="request viewer information";
 
 			try
