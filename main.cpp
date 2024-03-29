@@ -257,13 +257,13 @@ int main(int argc,char *argv[])
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Parted),&metrics,&UI::Metrics::Dialog::Parted);
-		channel->connect(channel,QOverload<>::of(&Channel::Joined),&window,&Window::ShowChat);
 		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&pulsar,&window]() {
 			log.disconnect(echo);
 			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&window,QOverload<const QString&>::of(&Window::Print));
 			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&log,&Log::Receive);
 			celeste.connect(&celeste,&Bot::Print,&window,QOverload<const QString&>::of(&Window::Print));
 			pulsar.connect(&pulsar,&Pulsar::Print,&window,QOverload<const QString&>::of(&Window::Print));
+			window.ShowChat();
 		});
 		channel->connect(channel,&Channel::Disconnected,[channel,&window]() {
 			qApp->alert(&window);
