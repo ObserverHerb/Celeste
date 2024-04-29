@@ -145,7 +145,7 @@ void ShowEventSubscriptions(ApplicationWindow &window,EventSub *eventSub)
 	configureEventSubscriptions->open();
 }
 
-void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log &log)
+void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Music::Player &player,Log &log)
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
 	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
@@ -159,6 +159,9 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log
 	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
 		Q_UNUSED(result)
 		configurePlaylist->deleteLater();
+	});
+	configurePlaylist->connect(configurePlaylist,QOverload<QUrl>::of(&UI::VibePlaylist::Dialog::Play),[&player](QUrl source) {
+		player.Start(source);
 	});
 
 	configurePlaylist->open();
@@ -325,8 +328,8 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands,&log]() {
 			ShowCommands(window,celeste,botCommands,log);
 		});
-		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&log]() {
-			ShowPlaylist(musicPlaylist,window,celeste,log);
+		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&musicPlayer,&log]() {
+			ShowPlaylist(musicPlaylist,window,celeste,musicPlayer,log);
 		});
 		window.connect(&window,&Window::ShowStatus,[&status]() {
 			status.Open();

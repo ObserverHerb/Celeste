@@ -132,14 +132,25 @@ namespace Music
 		connect(&volumeAdjustment,&QPropertyAnimation::finished,this,&Player::VolumeMuted);
 	}
 
+	void Player::Start(QUrl source)
+	{
+		Next(source);
+		Start();
+	}
+
 	void Player::Start()
+	{
+		if (!Empty()) player.play();
+	}
+
+	bool Player::Empty()
 	{
 		if (sources().isEmpty())
 		{
 			emit Print("No songs available to play.");
-			return;
+			return true;
 		}
-		player.play();
+		return false;
 	}
 
 	void Player::Stop()
@@ -295,11 +306,11 @@ namespace Music
 		emit Print(QString{"Failed to start: %1"}.arg(errorString));
 	}
 
-	bool Player::Next()
+	bool Player::Next(QUrl source)
 	{
 		try
 		{
-			player.setSource(QUrl::fromLocalFile(sources.Unique()));
+			player.setSource(source.isEmpty() ? QUrl::fromLocalFile(sources.Unique()) : source);
 		}
 
 		catch (const std::runtime_error &exception)

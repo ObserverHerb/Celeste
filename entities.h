@@ -121,14 +121,16 @@ namespace Music
 		QPropertyAnimation volumeAdjustment;
 		static const char *ERROR_LOADING;
 		static const char *OPERATION_LOADING;
-		bool Next();
+		bool Next(QUrl source={});
 		int TranslateVolume(qreal volume);
 		qreal TranslateVolume(int volume);
+		bool Empty();
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player")) const;
 		void PlaylistLoaded();
 	public slots:
 		void Start();
+		void Start(QUrl source);
 	protected slots:
 		void StateChanged(QMediaPlayer::PlaybackState state);
 		void MediaStatusChanged(QMediaPlayer::MediaStatus status);

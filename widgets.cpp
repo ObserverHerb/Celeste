@@ -2003,6 +2003,8 @@ namespace UI
 			connect(&remove,&QPushButton::clicked,this,&Dialog::Remove);
 			layout.addWidget(&buttons);
 
+			connect(&list,&QTableWidget::itemDoubleClicked,this,QOverload<QTableWidgetItem*>::of(&Dialog::Play));
+
 			setSizeGripEnabled(true);
 		}
 
@@ -2039,7 +2041,7 @@ namespace UI
 			list.setItem(row,0,ReadOnlyItem(*artist));
 			list.setItem(row,1,ReadOnlyItem(album ? *album : QString{}));
 			list.setItem(row,2,ReadOnlyItem(*title));
-			list.setItem(row,3,ReadOnlyItem(path));
+			list.setItem(row,COLUMN_PATH,ReadOnlyItem(path));
 		}
 
 		void Dialog::Add(const QStringList &paths,bool failurePrompt)
@@ -2074,6 +2076,13 @@ namespace UI
 				list.removeRow(list.row(*candidate));
 			}
 		}
+
+		void Dialog::Play(QTableWidgetItem *item)
+		{
+			QTableWidgetItem *candidate=item->column() == COLUMN_PATH ? item : list.item(item->row(),COLUMN_PATH);
+			if (candidate) emit Play(QUrl::fromLocalFile(candidate->text()));
+		}
+
 	}
 
 	namespace EventSubscriptions

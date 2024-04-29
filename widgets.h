@@ -625,6 +625,8 @@ namespace UI
 
 	namespace VibePlaylist
 	{
+		const int COLUMN_PATH=3;
+
 		class Dialog : public QDialog
 		{
 			Q_OBJECT
@@ -648,9 +650,11 @@ namespace UI
 			static const int COLUMN_COUNT;
 		signals:
 			void Save(const File::List &files);
+			void Play(QUrl songPath);
 		protected slots:
 			void Add();
 			void Remove();
+			void Play(QTableWidgetItem *item);
 		};
 	}
 
