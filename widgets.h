@@ -11,6 +11,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QSpinBox>
+#include <QSlider>
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -640,7 +641,11 @@ namespace UI
 			QPushButton remove;
 			QPushButton discard;
 			QPushButton save;
-			QMediaPlayer reader;
+			QFrame mediaControls;
+			QHBoxLayout mediaControlsLayout;
+			QSlider volume;
+			QPushButton start;
+			QPushButton stop;
 			const File::List &files;
 			QDir initialAddFilesPath;
 			void Save();
@@ -651,6 +656,8 @@ namespace UI
 		signals:
 			void Save(const File::List &files);
 			void Play(QUrl songPath);
+			void Stop();
+			void Volume(int value);
 		protected slots:
 			void Add();
 			void Remove();

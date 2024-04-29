@@ -160,9 +160,9 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Mus
 		Q_UNUSED(result)
 		configurePlaylist->deleteLater();
 	});
-	configurePlaylist->connect(configurePlaylist,QOverload<QUrl>::of(&UI::VibePlaylist::Dialog::Play),[&player](QUrl source) {
-		player.Start(source);
-	});
+	configurePlaylist->connect(configurePlaylist,QOverload<QUrl>::of(&UI::VibePlaylist::Dialog::Play),&player,QOverload<QUrl>::of(&Music::Player::Start));
+	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::Stop,&player,&Music::Player::Stop);
+	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::Volume,&player,QOverload<int>::of(&Music::Player::Volume));
 
 	configurePlaylist->open();
 }

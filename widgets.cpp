@@ -1971,7 +1971,11 @@ namespace UI
 			remove(Text::BUTTON_REMOVE,this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
-			reader(this),
+			mediaControls(this),
+			mediaControlsLayout(&mediaControls),
+			volume(Qt::Horizontal,&mediaControls),
+			start("\u23F5",&mediaControls),
+			stop("\u23F9",&mediaControls),
 			files(files)
 		{
 			setLayout(&layout);
@@ -1991,6 +1995,16 @@ namespace UI
 			}
 			list.setSortingEnabled(true);
 			layout.addWidget(&list);
+
+			mediaControlsLayout.addWidget(&stop,0);
+			mediaControlsLayout.addWidget(&start,0);
+			mediaControlsLayout.addWidget(&volume,1);
+			layout.addWidget(&mediaControls);
+			connect(&volume,&QSlider::valueChanged,this,&Dialog::Volume);
+			connect(&start,&QPushButton::pressed,[this]() {
+				Play(nullptr); // FIXME: there has to be a better way to do this than a while lambda
+			});
+			connect(&stop,&QPushButton::pressed,this,&Dialog::Stop);
 
 			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
 			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
@@ -2079,6 +2093,11 @@ namespace UI
 
 		void Dialog::Play(QTableWidgetItem *item)
 		{
+			if (!item)
+			{
+				if (list.selectedItems().empty()) return;
+				item=list.selectedItems().front();
+			}
 			QTableWidgetItem *candidate=item->column() == COLUMN_PATH ? item : list.item(item->row(),COLUMN_PATH);
 			if (candidate) emit Play(QUrl::fromLocalFile(candidate->text()));
 		}

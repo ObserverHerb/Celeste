@@ -102,9 +102,7 @@ namespace Music
 	public:
 		Player(bool loop,int initialVolume,QObject *parent=nullptr);
 		void DuckVolume(bool duck);
-		void Volume(int volume);
 		void Volume(int targetVolume,std::chrono::seconds duration);
-		void Stop();
 		bool Playing() const;
 		struct Metadata Metadata() const;
 		QString Filename() const;
@@ -131,6 +129,8 @@ namespace Music
 	public slots:
 		void Start();
 		void Start(QUrl source);
+		void Stop();
+		void Volume(int volume);
 	protected slots:
 		void StateChanged(QMediaPlayer::PlaybackState state);
 		void MediaStatusChanged(QMediaPlayer::MediaStatus status);
