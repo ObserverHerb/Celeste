@@ -1336,7 +1336,7 @@ void Bot::EmoteOnly(bool enable)
 	// this is for authorizing the moderator at the API-level, which we're not worried about here
 	// it's always going to be the broadcaster running the bot and access is protected through
 	// DispatchCommand()
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHAT_SETTINGS)},Network::Method::PATCH,[this](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_CHAT_SETTINGS)},Network::Method::PATCH,[this](QNetworkReply *reply) {
 		if (reply->error()) emit Print(QString("Something went wrong setting emote only: %1").arg(reply->errorString()));
 	},{
 		{QUERY_PARAMETER_BROADCASTER_ID,security.AdministratorID()},
@@ -1350,7 +1350,7 @@ void Bot::EmoteOnly(bool enable)
 
 void Bot::StreamTitle(const QString &title)
 {
-	Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHANNEL_INFORMATION)},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_CHANNEL_INFORMATION)},Network::Method::PATCH,[this,title](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1417,7 +1417,7 @@ void Bot::StreamCategory(const QString &category)
 		}
 
 		const QString categoryID=jsonFieldID->toString();
-		Network::Request({Twitch::Endpoint(Twitch::ENDPOINT_CHANNEL_INFORMATION)},Network::Method::PATCH,[this,category,categoryID](QNetworkReply *reply) {
+		Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_CHANNEL_INFORMATION)},Network::Method::PATCH,[this,category,categoryID](QNetworkReply *reply) {
 			if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 204)
 			{
 				emit Print("Failed to change stream category");
