@@ -25,13 +25,13 @@ namespace Network
 	using Headers=std::vector<Header>;
 	using Callback=std::function<void(QNetworkReply*)>;
 
-	class Request : public QObject
+	class Request final : public QObject
 	{
 		Q_OBJECT
 	public:
-		Request(const QUrl &url,Method method,Callback callback,const QUrlQuery &queryParameters,const Headers &headers,const QByteArray &payload);
 		static Request* Send(const QUrl &url,Method method,Callback callback,const QUrlQuery &queryParameters=QUrlQuery{},const Headers &headers=Headers{},const QByteArray &payload=QByteArray{});
-	protected:
+	private:
+		Request(const QUrl &url,Method method,Callback callback,const QUrlQuery &queryParameters,const Headers &headers,const QByteArray &payload);
 		QUrl url;
 		Method method;
 		Callback callback;
@@ -43,7 +43,7 @@ namespace Network
 		static std::queue<Request*> queue;
 		void Send();
 		void DeferredSend();
-	protected slots:
+	private slots:
 		void Finished();
 		void DeferredFinished();
 	};
