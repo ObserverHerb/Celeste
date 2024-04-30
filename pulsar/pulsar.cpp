@@ -120,7 +120,7 @@ void SceneSwitched(const std::string &name)
 {
 	QJsonObject object;
 	object.insert(JSON_KEY_SCENE,QString::fromStdString(name));
-	for (QLocalSocket *socket : sockets) std::to_string(socket->write(QJsonDocument(object).toJson(QJsonDocument::Compact)+'\n'));
+	for (QLocalSocket *socket : sockets) socket->write(QJsonDocument(object).toJson(QJsonDocument::Compact)+'\n');
 	Log("Scene Changed: "+name);
 }
 
