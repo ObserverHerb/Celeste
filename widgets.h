@@ -626,13 +626,21 @@ namespace UI
 
 	namespace VibePlaylist
 	{
-		const int COLUMN_PATH=3;
+		enum class Columns
+		{
+			ARTIST,
+			ALBUM,
+			TITLE,
+			PATH,
+			MAX
+		};
 
 		class Dialog : public QDialog
 		{
 			Q_OBJECT
 		public:
 			Dialog(const File::List &files,QWidget *parent);
+			Dialog(const File::List &files,const QString currentlyPlayingFile,QWidget *parent);
 		protected:
 			QVBoxLayout layout;
 			QTableWidget list;

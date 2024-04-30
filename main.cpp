@@ -147,7 +147,7 @@ void ShowEventSubscriptions(ApplicationWindow &window,EventSub *eventSub)
 
 void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Music::Player &player,Log &log)
 {
-	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
+	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,player.Filename(),&window);
 	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{

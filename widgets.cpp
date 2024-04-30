@@ -1961,11 +1961,9 @@ namespace UI
 
 	namespace VibePlaylist
 	{
-		const int Dialog::COLUMN_COUNT=4;
-
 		Dialog::Dialog(const File::List &files,QWidget *parent) : QDialog(parent),
 			layout(this),
-			list(0,COLUMN_COUNT,this),
+			list(0,static_cast<int>(Columns::MAX),this),
 			buttons(this),
 			add(Text::BUTTON_ADD,this),
 			remove(Text::BUTTON_REMOVE,this),
@@ -2022,6 +2020,12 @@ namespace UI
 			setSizeGripEnabled(true);
 		}
 
+		Dialog::Dialog(const File::List &files,const QString currentlyPlayingFile,QWidget *parent): Dialog(files,parent)
+		{
+			QList<QTableWidgetItem*> items=list.findItems(currentlyPlayingFile,Qt::MatchExactly);
+			for (QTableWidgetItem *item : items) list.selectRow(item->row());
+		}
+
 		void Dialog::showEvent(QShowEvent *event)
 		{
 			setMinimumWidth(ScreenWidthThird(this));
@@ -2031,7 +2035,7 @@ namespace UI
 		void Dialog::Save()
 		{
 			QStringList paths;
-			for (int row=0; row < list.rowCount(); row++) paths.append(list.item(row,COLUMN_COUNT-1)->text());
+			for (int row=0; row < list.rowCount(); row++) paths.append(list.item(row,static_cast<int>(Columns::MAX)-1)->text());
 			emit Save({paths});
 		}
 
@@ -2055,7 +2059,7 @@ namespace UI
 			list.setItem(row,0,ReadOnlyItem(*artist));
 			list.setItem(row,1,ReadOnlyItem(album ? *album : QString{}));
 			list.setItem(row,2,ReadOnlyItem(*title));
-			list.setItem(row,COLUMN_PATH,ReadOnlyItem(path));
+			list.setItem(row,static_cast<int>(Columns::PATH),ReadOnlyItem(path));
 		}
 
 		void Dialog::Add(const QStringList &paths,bool failurePrompt)
@@ -2085,7 +2089,7 @@ namespace UI
 		void Dialog::Remove()
 		{
 			QList<QTableWidgetItem*> items=list.selectedItems();
-			for (QList<QTableWidgetItem*>::iterator candidate=items.begin(); candidate != items.end(); candidate+=COLUMN_COUNT)
+			for (QList<QTableWidgetItem*>::iterator candidate=items.begin(); candidate != items.end(); candidate+=static_cast<int>(Columns::MAX))
 			{
 				list.removeRow(list.row(*candidate));
 			}
@@ -2098,7 +2102,7 @@ namespace UI
 				if (list.selectedItems().empty()) return;
 				item=list.selectedItems().front();
 			}
-			QTableWidgetItem *candidate=item->column() == COLUMN_PATH ? item : list.item(item->row(),COLUMN_PATH);
+			QTableWidgetItem *candidate=item->column() == static_cast<int>(Columns::PATH) ? item : list.item(item->row(),static_cast<int>(Columns::PATH));
 			if (candidate) emit Play(QUrl::fromLocalFile(candidate->text()));
 		}
 
