@@ -113,11 +113,12 @@ protected:
 	void LoadBadgeIconURLs();
 	void StartClocks();
 	std::optional<CommandType> ValidCommandType(const QString &type);
+	int ParseEmoteNamesAndDownloadImages(std::vector<Chat::Emote> &emotes,const QStringView &textWindow);
 	void DownloadEmote(Chat::Emote &emote);
 	std::optional<QString> DownloadBadgeIcon(const QString &badge,const QString &version);
-	std::optional<QString> ParseCommand(QStringView &message);
-	bool DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login,bool html=true);
-	void DispatchCommand(const Command &command,const QString &login);
+	std::optional<QString> ParseCommandIfExists(QStringView &message);
+	bool DispatchCommandViaChatMessage(const QString &name,const Chat::Message chatMessage,const QString &login);
+	void DispatchCommandViaCommandObject(const Command &command,const QString &login);
 	void DispatchArrival(const QString &login);
 	void DispatchVideo(Command command);
 	void DispatchCommandList();
@@ -134,7 +135,7 @@ protected:
 	void StreamCategory(const QString &category);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
-	void ChatMessage(const Chat::Message &message);
+	void ChatMessage(std::shared_ptr<Chat::Message> message);
 	void RefreshChat();
 	void AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
 	void PlayVideo(const QString &path);
@@ -161,7 +162,7 @@ signals:
 	void Welcomed(const QString &user);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
-	void DispatchCommand(JSON::SignalPayload *response,const QString &name,const QString &login);
+	void DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QString &name,const QString &login);
 	void Ping();
 	void Subscription(const QString &login,const QString &displayName);
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);

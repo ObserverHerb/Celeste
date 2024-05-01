@@ -134,25 +134,45 @@ void ChatPane::Refresh()
 	chat->viewport()->update();
 }
 
-void ChatPane::Message(const Chat::Message &message) const
+void ChatPane::Message(std::shared_ptr<Chat::Message> message) const
 {
+	const QString imageTemplate(R"(<img style="vertical-align: middle;" src="%1" />)");
+
 	QString badges;
-	for (const QString &icon : message.badges) badges.append(QString{"<img style='vertical-align: middle;' src='%1' /> "}.arg(icon));
+	for (const QString &icon : message->badges) badges.append(QString{"<img style='vertical-align: middle;' src='%1' /> "}.arg(icon));
 
-	QString emotedMessage;
-	unsigned int position=0;
-	for (const Chat::Emote &emote : message.emotes)
+	int reserve=0;
+	for (const Chat::Emote &emote : message->emotes) reserve+=imageTemplate.size()+emote.path.size()-emote.name.size();
+	message->text.reserve(reserve);
+
+	Chat::EmoteList::const_reverse_iterator emote=message->emotes.crbegin();
+	for (int index=message->text.size()-1; index >= 0; index--)
 	{
-		if (position < emote.start) emotedMessage+=QStringView{message.text}.mid(position,emote.start-position);
-		emotedMessage+=QString(R"(<img style="vertical-align: middle;" src="%1" />)").arg(emote.path);
-		position=emote.end+1;
-	}
-	if (position < static_cast<unsigned int>(message.text.size())) emotedMessage+=QStringView{message.text}.mid(position,message.text.size()-position);
+		// replace entities
+		if (!message->html)
+		{
+			if (message->text.at(index) == QLatin1Char('<'))
+				message->text.replace(index,1,"&lt;");
+			else if (message->text.at(index) == QLatin1Char('>'))
+				message->text.replace(index,1,"&gt;");
+			else if (message->text.at(index) == QLatin1Char('&'))
+				message->text.replace(index,1,"&amp;");
+			else if (message->text.at(index) == QLatin1Char('"'))
+				message->text.replace(index,1,"&quot;");
+		}
 
-	if (message.action)
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message.displayName,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
+		// replace emotes
+		if (emote != message->emotes.crend() && index == emote->start)
+		{
+			message->text.replace(index,emote->name.size(),imageTemplate.arg(emote->path));
+			emote++;
+		}
+	}
+
+	if (message->action)
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message->displayName,message->text,message->color.isValid() ? message->color.name() : settingForegroundColor,badges));
 	else
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message.displayName,emotedMessage,message.color.isValid() ? message.color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message->displayName,message->text,message->color.isValid() ? message->color.name() : settingForegroundColor,badges));
 }
 
 void ChatPane::Print(const QString &text)

@@ -345,6 +345,7 @@ namespace Chat
 		unsigned int end { 0 };
 		bool operator<(const Emote &other) const { return start < other.start; }
 	};
+	using EmoteList=std::vector<Emote>;
 
 	struct Message
 	{
@@ -356,6 +357,7 @@ namespace Chat
 		bool action { false };
 		bool broadcaster { false };
 		bool moderator { false };
+		bool html { false };
 		bool Privileged() const { return broadcaster || moderator; }
 	};
 }

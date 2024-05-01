@@ -36,7 +36,7 @@ protected:
 signals:
 	void Print(const QString &message);
 	void Print(const QString &message,const QString &operation,const QString &subsystem="main window");
-	void ChatMessage(const Chat::Message &message);
+	void ChatMessage(std::shared_ptr<Chat::Message> message);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();
 	void SuppressMusic();

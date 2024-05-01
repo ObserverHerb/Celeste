@@ -14,6 +14,7 @@ const char *COMMAND_TYPE_NATIVE="native";
 const char *COMMAND_TYPE_AUDIO="announce";
 const char *COMMAND_TYPE_VIDEO="video";
 const char *COMMAND_TYPE_PULSAR="pulsar";
+const char COMMAND_PREFIX='!';
 const char *VIEWER_ATTRIBUTES_FILENAME="viewers.json";
 const char *VIEWER_ATTRIBUTES_ERROR="Failed to add viewer to list of viewers";
 const char *VIBE_PLAYLIST_FILENAME="songs.json";
@@ -543,7 +544,7 @@ void Bot::Redemption(const QString &login,const QString &name,const QString &rew
 	if (auto redemption=redemptions.find(rewardTitle); redemption != redemptions.end())
 	{
 		const Command &command=redemption->second;
-		DispatchCommand(command,login);
+		DispatchCommandViaCommandObject(command,login);
 		return;
 	}
 
@@ -658,7 +659,7 @@ void Bot::DispatchArrival(const QString &login)
 						return true;
 					}
 					return false;
-				}) && triggerViewerIsCandidate) emit DispatchCommand(candidateCommand,security.Administrator());
+				}) && triggerViewerIsCandidate) emit DispatchCommandViaCommandObject(candidateCommand,security.Administrator());
 			}
 
 			// save the viewer object and its attributes, marking it as welcomed
@@ -767,11 +768,11 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	// determine if this is a command, and if so, process it as such
 	// and if it's valid, we're done
 	window=message;
-	std::optional<QString> command=ParseCommand(*window);
+	std::optional<QString> command=ParseCommandIfExists(*window);
 	if (command)
 	{
 		chatMessage.text=window->toString().trimmed();
-		DispatchCommand(*command,chatMessage,login.toString());
+		DispatchCommandViaChatMessage(*command,chatMessage,login.toString());
 		return;
 	}
 
@@ -785,19 +786,12 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		chatMessage.action=true;
 	}
 
-	// set emote name and check for wall of text
-	int emoteCharacterCount=0;
-	for (Chat::Emote &emote : chatMessage.emotes)
-	{
-		const QStringView name=remainingText.mid(emote.start,1+emote.end-emote.start); // end is an index, not a size, so we have to add 1 to get the size
-		emoteCharacterCount+=name.size();
-		emote.name=name.toString();
-		DownloadEmote(emote); // once we know the emote name, we can determine the path, which means we can download it (download will set the path in the struct)
-	}
+	// download emotes (which will set emote names in the process) and check for wall of text
+	int emoteCharacterCount=ParseEmoteNamesAndDownloadImages(chatMessage.emotes,remainingText);
 	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold) && settingTextWallSound) emit AnnounceTextWall(message,settingTextWallSound);
 
-	chatMessage.text=remainingText.toString().toHtmlEscaped();
-	emit ChatMessage(chatMessage);
+	chatMessage.text=remainingText.toString();
+	emit ChatMessage(std::make_shared<Chat::Message>(chatMessage));
 	inactivityClock.start();
 }
 
@@ -825,6 +819,19 @@ std::optional<QString> Bot::DownloadBadgeIcon(const QString &badge,const QString
 	return badgePath;
 }
 
+int Bot::ParseEmoteNamesAndDownloadImages(std::vector<Chat::Emote> &emotes,const QStringView &textWindow)
+{
+	int emoteCharacterCount=0;
+	for (Chat::Emote &emote : emotes)
+	{
+		const QStringView name=textWindow.mid(emote.start,1+emote.end-emote.start); // end is an index, not a size, so we have to add 1 to get the size
+		emoteCharacterCount+=name.size();
+		emote.name=name.toString();
+		DownloadEmote(emote); // once we know the emote name, we can determine the path, which means we can download it (download will set the path in the struct)
+	}
+	return emoteCharacterCount;
+}
+
 void Bot::DownloadEmote(Chat::Emote &emote)
 {
 	emote.path=Filesystem::TemporaryPath().filePath(QString("%1.png").arg(emote.id));
@@ -842,21 +849,26 @@ void Bot::DownloadEmote(Chat::Emote &emote)
 	}
 }
 
-std::optional<QString> Bot::ParseCommand(QStringView &message)
+std::optional<QString> Bot::ParseCommandIfExists(QStringView &message)
 {
 	QStringView command=message.left(message.indexOf(' '));
-	if (command.isEmpty() || command.at(0) != '!') return std::nullopt;
+	if (command.isEmpty() || command.at(0) != COMMAND_PREFIX) return std::nullopt;
 	message=message.mid(command.size()+1);
 	return {command.trimmed().mid(1).toString()};
 }
 
-void Bot::DispatchCommand(JSON::SignalPayload *response,const QString &name,const QString &login)
+void Bot::DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QString &name,const QString &login)
 {
+	// This function provides a way for a subsystem to retrieve the parsed chat
+	// message back if that message had a command in it.
+	// We use the SignalPayload here as a traffic controller to handle the
+	// back-and-forth communication between the subsystems since Qt's signals
+	// and slots are one-way.
 	const QString message=response->context.toString();
 	if (!message.isNull())
 	{
 		QStringView window{message};
-		std::optional<QString> command=ParseCommand(window);
+		std::optional<QString> command=ParseCommandIfExists(window);
 		if (command)
 		{
 			// NOTE: there is chat/color for chat color and moderation/moderators for privileged commands if I ever want to implement this
@@ -864,7 +876,7 @@ void Bot::DispatchCommand(JSON::SignalPayload *response,const QString &name,cons
 				.displayName=name,
 				.text=window.toString()
 			};
-			DispatchCommand(*command,message,login,false);
+			DispatchCommandViaChatMessage(*command,message,login);
 			response->context.setValue(message);
 		}
 	}
@@ -872,7 +884,7 @@ void Bot::DispatchCommand(JSON::SignalPayload *response,const QString &name,cons
 	response->Dispatch();
 }
 
-bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,const QString &login,bool html) // build a command object from a command name and a chat message and forward
+bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMessage,const QString &login) // build a command object from a command name and a chat message and forward
 {
 	// FIRST! determine if command exists
 	auto commandCandidate=commands.find(name);
@@ -904,26 +916,25 @@ bool Bot::DispatchCommand(const QString name,const Chat::Message &chatMessage,co
 	}
 
 	// command is reformatting text, so feed the formatted chat message back into the system
-	if (html && command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
+	if (command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
 	{
-		emit ChatMessage({
-			.displayName=chatMessage.displayName,
-			.text=chatMessage.text,
-			.color=chatMessage.color,
-			.badges=chatMessage.badges,
-			.emotes={},
-			.action=chatMessage.action,
-			.broadcaster=chatMessage.broadcaster,
-			.moderator=chatMessage.moderator
-		});
+		int offset=name.size()+QString(COMMAND_PREFIX).size()+1; // the 1 is the space between the command name and the remaining chat message
+		for (Chat::Emote &emote : chatMessage.emotes) // since we've stripped off the command name, we need to slide all of the emote indices left
+		{
+			emote.start-=offset;
+			emote.end-=offset;
+		}
+		ParseEmoteNamesAndDownloadImages(chatMessage.emotes,chatMessage.text);
+		chatMessage.html=true;
+		emit ChatMessage(std::make_shared<Chat::Message>(chatMessage)); // short circuit by firing off the chat message, but not processing the command any further
 		return true;
 	}
 
-	DispatchCommand(chatMessage.text.isEmpty() ? command : Command{command,chatMessage.text},login);
+	DispatchCommandViaCommandObject(chatMessage.text.isEmpty() ? command : Command{command,chatMessage.text},login);
 	return true;
 }
 
-void Bot::DispatchCommand(const Command &command,const QString &login)
+void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &login)
 {
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
