@@ -115,10 +115,10 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 	configureOptions->open();
 }
 
-void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands,Log &log)
+void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands)
 {
 	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
-	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log](const Command::Lookup& commands) {
+	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot](const Command::Lookup& commands) {
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
 			MessageBox(u"Save dynamic commands Failed"_s,u"Something went wrong saving the commands list to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
@@ -140,15 +140,16 @@ void ShowEventSubscriptions(ApplicationWindow &window,EventSub *eventSub)
 	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::RequestSubscriptionList,eventSub,&EventSub::RequestEventSubscriptionList,Qt::QueuedConnection);
 	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::RemoveSubscription,eventSub,&EventSub::RemoveEventSubscription,Qt::QueuedConnection);
 	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::finished,configureEventSubscriptions,[configureEventSubscriptions](int finished) {
+		Q_UNUSED(finished)
 		configureEventSubscriptions->deleteLater();
 	},Qt::QueuedConnection);
 	configureEventSubscriptions->open();
 }
 
-void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Log &log)
+void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot)
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,&window);
-	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
+	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot](const File::List &files) {
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
 			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
@@ -271,7 +272,7 @@ int main(int argc,char *argv[])
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log,&application,eventSub]() mutable {
+		channel->connect(channel,&Channel::Connected,[&security,&window,&celeste,&log,&application,eventSub]() mutable {
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
@@ -317,11 +318,11 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
 			ShowOptions(window,channel,celeste,musicPlayer,log,security);
 		});
-		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands,&log]() {
-			ShowCommands(window,celeste,botCommands,log);
+		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands]() {
+			ShowCommands(window,celeste,botCommands);
 		});
-		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&log]() {
-			ShowPlaylist(musicPlaylist,window,celeste,log);
+		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste]() {
+			ShowPlaylist(musicPlaylist,window,celeste);
 		});
 
 		if (!log.Open()) MessageBox(u"Error Opening Log"_s,u"Failed to open log file. Log messages will not be saved to filesystem"_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);

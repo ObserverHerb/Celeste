@@ -11,7 +11,6 @@
 #include <chrono>
 #include <optional>
 #include <random>
-#include <functional>
 #include <stdexcept>
 
 using namespace Qt::Literals::StringLiterals;

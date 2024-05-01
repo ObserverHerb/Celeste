@@ -371,11 +371,12 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 	{
 		const QJsonObject attributes=viewer->toObject();
 		viewers[viewer.key()]={
-			Container::Resolve(attributes,JSON_KEY_COMMANDS,true).toBool(),
-			Container::Resolve(attributes,JSON_KEY_WELCOME,false).toBool(),
-			Container::Resolve(attributes,JSON_KEY_BOT,false).toBool(),
-			Container::Resolve(attributes,JSON_KEY_LIMIT_COMMANDS,false).toBool(),
-			Container::Resolve(attributes,JSON_KEY_SUBSCRIBED,false).toBool()
+			.commands=Container::Resolve(attributes,JSON_KEY_COMMANDS,true).toBool(),
+			.welcomed=Container::Resolve(attributes,JSON_KEY_WELCOME,false).toBool(),
+			.bot=Container::Resolve(attributes,JSON_KEY_BOT,false).toBool(),
+			.limited=Container::Resolve(attributes,JSON_KEY_LIMIT_COMMANDS,false).toBool(),
+			.subscribed=Container::Resolve(attributes,JSON_KEY_SUBSCRIBED,false).toBool(),
+			.commandTimestamp=std::chrono::system_clock::now()-std::chrono::minutes(static_cast<qint64>(settingCommandCooldown))
 		};
 	}
 
@@ -736,14 +737,14 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 			if (!entry) continue;
 			StringViewTakeResult id=StringView::Take(*entry,':');
 			if (!id) continue;
-			while(!entry->isEmpty())
+			while (!entry->isEmpty())
 			{
 				StringViewTakeResult occurrence=StringView::Take(*entry,',');
 				StringViewTakeResult left=StringView::First(*occurrence,'-');
 				StringViewTakeResult right=StringView::Last(*occurrence,'-');
 				if (!left || !right) continue;
-				unsigned int start=StringConvert::PositiveInteger(left->toString());
-				unsigned int end=StringConvert::PositiveInteger(right->toString());
+				int start=StringConvert::Integer(left->toString());
+				int end=StringConvert::Integer(right->toString());
 				const Chat::Emote emote {
 					.id=id->toString(),
 					.start=start,
