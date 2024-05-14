@@ -315,17 +315,17 @@ namespace UI
 			details(this),
 			detailsLayout(nullptr),
 			header(this),
-			name(u"Command Name"_s,std::bind_front(&Entry::SetupCommandNameTextEdit,this),&details),
-			description(u"Command Description"_s,std::bind_front(&Entry::SetupDescriptionTextEdit,this),&details),
-			aliases(u"Aliases Dialog"_s,std::bind_front(&Entry::SetupAliasesButton,this),&details),
-			triggers(u"Triggers Dialog"_s,std::bind_front(&Entry::SetupTriggersButton,this),&details),
-			path(u"Media Location"_s,std::bind_front(&Entry::SetupPathTextEdit,this),&details),
-			browse(u"Browse"_s,std::bind_front(&Entry::SetupBrowseButton,this),&details),
-			type(u"Type"_s,std::bind_front(&Entry::SetupTypeList,this),&details),
-			random(u"Choose Random Media"_s,std::bind_front(&Entry::SetupRandomCheckBox,this),&details),
-			duplicates(u"Allow Duplicates"_s,std::bind_front(&Entry::SetupDuplicatesCheckBox,this),&details),
-			protect(u"Protect"_s,std::bind_front(&Entry::SetupProtectCheckBox,this),&details),
-			message(u"Message"_s,std::bind_front(&Entry::SetupMessageTextEdit,this),&details),
+			name(u"Command Name"_s,std::bind_front(&Entry::SetUpCommandNameTextEdit,this),&details),
+			description(u"Command Description"_s,std::bind_front(&Entry::SetUpDescriptionTextEdit,this),&details),
+			aliases(u"Aliases Dialog"_s,std::bind_front(&Entry::SetUpAliasesButton,this),&details),
+			triggers(u"Triggers Dialog"_s,std::bind_front(&Entry::SetUpTriggersButton,this),&details),
+			path(u"Media Location"_s,std::bind_front(&Entry::SetUpPathTextEdit,this),&details),
+			browse(u"Browse"_s,std::bind_front(&Entry::SetUpBrowseButton,this),&details),
+			type(u"Type"_s,std::bind_front(&Entry::SetUpTypeList,this),&details),
+			random(u"Choose Random Media"_s,std::bind_front(&Entry::SetUpRandomCheckBox,this),&details),
+			duplicates(u"Allow Duplicates"_s,std::bind_front(&Entry::SetUpDuplicatesCheckBox,this),&details),
+			protect(u"Protect"_s,std::bind_front(&Entry::SetUpProtectCheckBox,this),&details),
+			message(u"Message"_s,std::bind_front(&Entry::SetUpMessageTextEdit,this),&details),
 			errorReport(errorReport)
 		{
 			type=static_cast<int>(UI::Commands::Type::INVALID);
@@ -554,7 +554,7 @@ namespace UI
 			}
 		}
 
-		void Entry::SetupCommandNameTextEdit(QLineEdit *widget)
+		void Entry::SetUpCommandNameTextEdit(QLineEdit *widget)
 		{
 			widget->setPlaceholderText(u"Command Name"_s);
 			widget->setObjectName(BuildTrackingName(name));
@@ -565,7 +565,7 @@ namespace UI
 			detailsLayout.addWidget(widget,0,0);
 		}
 
-		void Entry::SetupDescriptionTextEdit(QLineEdit *widget)
+		void Entry::SetUpDescriptionTextEdit(QLineEdit *widget)
 		{
 			widget->setPlaceholderText(u"Description of the action this command takes"_s);
 			widget->setText(description);
@@ -574,7 +574,7 @@ namespace UI
 			detailsLayout.addWidget(widget,1,0,1,4);
 		}
 
-		void Entry::SetupTypeList(QComboBox *widget)
+		void Entry::SetUpTypeList(QComboBox *widget)
 		{
 			widget->addItems({
 				u"Video"_s,
@@ -589,7 +589,7 @@ namespace UI
 			detailsLayout.addWidget(widget,3,0,1,2);
 		}
 
-		void Entry::SetupPathTextEdit(QLineEdit *widget)
+		void Entry::SetUpPathTextEdit(QLineEdit *widget)
 		{
 			widget->setPlaceholderText(path.Name());
 			widget->setObjectName(BuildTrackingName(Name(),path.Name()));
@@ -600,7 +600,7 @@ namespace UI
 			detailsLayout.addWidget(widget,2,0,1,3);
 		}
 
-		void Entry::SetupProtectCheckBox(QCheckBox *widget)
+		void Entry::SetUpProtectCheckBox(QCheckBox *widget)
 		{
 			widget->setText(u"Protect"_s);
 			widget->setChecked(protect);
@@ -609,7 +609,7 @@ namespace UI
 			detailsLayout.addWidget(widget,0,3);
 		}
 
-		void Entry::SetupRandomCheckBox(QCheckBox *widget)
+		void Entry::SetUpRandomCheckBox(QCheckBox *widget)
 		{
 			widget->setChecked(random);
 			widget->setText(u"Random"_s);
@@ -619,7 +619,7 @@ namespace UI
 			detailsLayout.addWidget(widget,3,2,1,1);
 		}
 
-		void Entry::SetupDuplicatesCheckBox(QCheckBox *widget)
+		void Entry::SetUpDuplicatesCheckBox(QCheckBox *widget)
 		{
 			widget->setChecked(duplicates);
 			widget->setEnabled(random);
@@ -629,7 +629,7 @@ namespace UI
 			detailsLayout.addWidget(widget,3,3,1,1);
 		}
 
-		void Entry::SetupMessageTextEdit(QTextEdit *widget)
+		void Entry::SetUpMessageTextEdit(QTextEdit *widget)
 		{
 			widget->setPlaceholderText(u"Message to display in announcement"_s);
 			widget->setText(message);
@@ -640,7 +640,7 @@ namespace UI
 			detailsLayout.addWidget(widget,4,0,1,4);
 		}
 
-		void Entry::SetupBrowseButton(QPushButton *widget)
+		void Entry::SetUpBrowseButton(QPushButton *widget)
 		{
 			widget->setText(Text::BROWSE);
 			connect(widget,&QPushButton::clicked,this,&Entry::Browse);
@@ -648,7 +648,7 @@ namespace UI
 			detailsLayout.addWidget(widget,2,3,1,1);
 		}
 
-		void Entry::SetupAliasesButton(QPushButton *widget)
+		void Entry::SetUpAliasesButton(QPushButton *widget)
 		{
 			widget->setText(u"Aliases"_s);
 			connect(widget,&QPushButton::clicked,this,&Entry::SelectAliases);
@@ -656,7 +656,7 @@ namespace UI
 			detailsLayout.addWidget(widget,0,1);
 		}
 
-		void Entry::SetupTriggersButton(QPushButton *widget)
+		void Entry::SetUpTriggersButton(QPushButton *widget)
 		{
 			widget->setText(u"Triggers"_s);
 			connect(widget,&QPushButton::clicked,this,&Entry::SelectTriggers);
