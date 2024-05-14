@@ -2038,6 +2038,10 @@ namespace UI
 
 		void Dialog::AddCategory(Categories::Category *category)
 		{
+			// need to do it this way because all UI elements in Celeste require
+			// a parent, but we have to wait until after the parent dialog exists
+			// to create and attach the categories, so these can't be passed into
+			// the constructor
 			scrollLayout->addWidget(category);
 			connect(category,&Categories::Category::Help,&help,&QTextEdit::setText);
 			categories.push_back(category);
