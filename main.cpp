@@ -47,43 +47,44 @@ int MessageBox(const QString &title,const QString &text,QMessageBox::Icon icon,Q
 
 void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Player &musicPlayer,Log &log,Security &security)
 {
+	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
 	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Channel({
 		.name=channel->Name(),
 		.protection=channel->Protection()
-	}));
-	configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
+	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Window({
 		.backgroundColor=window.BackgroundColor(),
 		.dimensions=window.Dimensions()
-	}));
+	},configureOptions));
 	StatusPane statusPane(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Status({
 		.font=statusPane.Font(),
 		.fontSize=statusPane.FontSize(),
 		.foregroundColor=statusPane.ForegroundColor(),
 		.backgroundColor=statusPane.BackgroundColor()
-	}));
+	},errorReport,configureOptions));
 	ChatPane chatPane(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Chat({
 		.font=chatPane.Font(),
 		.fontSize=chatPane.FontSize(),
 		.foregroundColor=chatPane.ForegroundColor(),
 		.backgroundColor=chatPane.BackgroundColor(),
 		.statusInterval=chatPane.StatusInterval()
-	}));
+	},errorReport,configureOptions));
 	AnnouncePane announcePane(QString{},&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Pane({
 		.font=announcePane.Font(),
 		.fontSize=announcePane.FontSize(),
 		.foregroundColor=announcePane.ForegroundColor(),
 		.backgroundColor=announcePane.BackgroundColor(),
 		.accentColor=announcePane.AccentColor(),
 		.duration=announcePane.Duration()
-	}));
-	configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
+	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Music({
 		.suppressedVolume=musicPlayer.SuppressedVolume()
-	}));
-	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
+	},configureOptions));
+	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot({
 		.arrivalSound=bot.ArrivalSound(),
 		.portraitVideo=bot.PortraitVideo(),
 		.cheerVideo=bot.CheerVideo(),
@@ -93,12 +94,12 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 		.helpCooldown=bot.HelpCooldown(),
 		.textWallThreshold=bot.TextWallThreshold(),
 		.textWallSound=bot.TextWallSound()
-	});
+	},errorReport,configureOptions);
 	configureOptions->AddCategory(optionsCategoryBot);
-	configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Log({
 		.directory=log.Directory()
-	}));
-	configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
+	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Security(security,errorReport,configureOptions));
 
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,std::shared_ptr<QImage>,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
