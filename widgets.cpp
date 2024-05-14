@@ -396,10 +396,10 @@ namespace UI
 				ValidateName(name);
 				return;
 			}
-			errorReport.SwapTrackingName(BuildTrackingName(name.CachedValue()),BuildTrackingName(name));
-			path.Name(BuildTrackingName(name,path.Name()));
+			errorReport.SwapTrackingName(BuildErrorTrackingName(name.CachedValue()),BuildErrorTrackingName(name));
+			path.Name(BuildErrorTrackingName(name,path.Name()));
 			name.CacheValue();
-			name.Name(BuildTrackingName(name));
+			name.Name(BuildErrorTrackingName(name));
 			UpdateHeader(name);
 		}
 
@@ -557,7 +557,7 @@ namespace UI
 		void Entry::SetUpCommandNameTextEdit(QLineEdit *widget)
 		{
 			widget->setPlaceholderText(u"Command Name"_s);
-			widget->setObjectName(BuildTrackingName(name));
+			widget->setObjectName(BuildErrorTrackingName(name));
 			widget->setText(name);
 			connect(widget,&QLineEdit::textChanged,this,&Entry::ValidateName);
 			connect(widget,&QLineEdit::editingFinished,this,&Entry::UpdateName);
@@ -592,7 +592,7 @@ namespace UI
 		void Entry::SetUpPathTextEdit(QLineEdit *widget)
 		{
 			widget->setPlaceholderText(path.Name());
-			widget->setObjectName(BuildTrackingName(Name(),path.Name()));
+			widget->setObjectName(BuildErrorTrackingName(Name(),path.Name()));
 			connect(widget,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 			connect(widget,&QLineEdit::textChanged,this,&Entry::UpdatePath);
 			widget->setText(path);
@@ -864,16 +864,16 @@ namespace UI
 			return false;
 		}
 
-		QString Entry::BuildTrackingName(const QString &commandName,const QString message)
+		QString Entry::BuildErrorTrackingName(const QString &commandName,const QString message)
 		{
 			QString trackingName=QString("<b>!%1</b>").arg(commandName);
 			if (!message.isEmpty()) trackingName+=" "+message;
 			return trackingName;
 		}
 
-		QString Entry::BuildTrackingName(const QString &commandName)
+		QString Entry::BuildErrorTrackingName(const QString &commandName)
 		{
-			return BuildTrackingName(commandName,{});
+			return BuildErrorTrackingName(commandName,{});
 		}
 
 		Dialog::Dialog(const Command::Lookup &commands,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),

@@ -417,8 +417,8 @@ namespace UI
 			void SetUpAliasesButton(QPushButton *widget);
 			void SetUpTriggersButton(QPushButton *widget);
 			bool eventFilter(QObject *object,QEvent *event) override;
-			static QString BuildTrackingName(const QString &commandName,const QString message);
-			static QString BuildTrackingName(const QString &commandName);
+			static QString BuildErrorTrackingName(const QString &commandName,const QString message);
+			static QString BuildErrorTrackingName(const QString &commandName);
 		signals:
 			void Help(const QString &text);
 		protected slots:
