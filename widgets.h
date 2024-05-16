@@ -156,11 +156,9 @@ namespace UI
 	}
 
 	template <IsWidget TWidget>
-	class EphemeralWidget
+	class EphemeralWidgetBase
 	{
 	public:
-		EphemeralWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), setupNeeded(setupNeeded), parent(parent), widget(nullptr) { }
-
 		void Show()
 		{
 			if (widget) return;
@@ -190,89 +188,59 @@ namespace UI
 		void Visible(bool visible) { widget->setVisible(visible); }
 		std::optional<QWidget*> Viewport() requires WidgetHasViewport<TWidget> { return widget ? std::make_optional(widget->viewport()) : std::nullopt; }
 		bool operator==(const QObject *other) const { return widget==other; }
+	protected:
+		QString name;
+		QWidget *parent;
+		TWidget *widget;
+		std::function<void(TWidget*)> setupNeeded;
+		EphemeralWidgetBase(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), setupNeeded(setupNeeded), parent(parent), widget(nullptr) { }
+
+		TWidget* Widget()
+		{
+			if (!widget) Show();
+			return widget;
+		}
+	};
+
+	template <IsWidget TWidget>
+	class EphemeralWidget : public EphemeralWidgetBase<TWidget>
+	{
+	public:
+		EphemeralWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : EphemeralWidgetBase<TWidget>(name,setupNeeded,parent) { }
 		void operator=(const QString &text) requires WidgetIsText<TWidget> { value=text; }
 		void operator=(bool checked) requires WidgetIsBool<TWidget> { value=checked; }
 		void operator=(int index) requires WidgetIsList<TWidget> { value=index; }
-		operator QString() const requires WidgetIsText<TWidget> { return widget ? Text() : value; }
-		operator bool() const requires WidgetIsBool<TWidget> { return widget ? widget->isChecked() : value; }
-		operator int() const requires WidgetIsList<TWidget> { return widget ? widget->currentIndex() : value; }
-		void RevertValue() requires WidgetIsText<TWidget> { if (widget) Text(value); }
-		void RevertValue() requires WidgetIsBool<TWidget> { if (widget) widget->setChecked(value); }
-		void RevertValue() requires WidgetIsList<TWidget> { if (widget) widget->setCurrentIndex(value); }
-		void CacheValue() requires WidgetIsText<TWidget> { if (widget) value=Text(); }
-		void CacheValue() requires WidgetIsBool<TWidget> { if (widget) value=widget->isChecked(); }
-		void CacheValue() requires WidgetIsList<TWidget> { if (widget) value=widget->currentIndex(); }
+		operator QString() const requires WidgetIsText<TWidget> { return this->widget ? Text() : value; }
+		operator bool() const requires WidgetIsBool<TWidget> { return this->widget ? this->widget->isChecked() : value; }
+		operator int() const requires WidgetIsList<TWidget> { return this->widget ? this->widget->currentIndex() : value; }
+		void RevertValue() requires WidgetIsText<TWidget> { if (this->widget) Text(value); }
+		void RevertValue() requires WidgetIsBool<TWidget> { if (this->widget) this->widget->setChecked(value); }
+		void RevertValue() requires WidgetIsList<TWidget> { if (this->widget) this->widget->setCurrentIndex(value); }
+		void CacheValue() requires WidgetIsText<TWidget> { if (this->widget) value=Text(); }
+		void CacheValue() requires WidgetIsBool<TWidget> { if (this->widget) value=this->widget->isChecked(); }
+		void CacheValue() requires WidgetIsList<TWidget> { if (this->widget) value=this->widget->currentIndex(); }
 		const QString& CachedValue() const requires WidgetIsText<TWidget> { return value; }
 		bool CachedValue() const requires WidgetIsBool<TWidget> { return value; }
 		int CachedValue() const requires WidgetIsList<TWidget> { return value; }
+
 	protected:
-		QString name;
-		QWidget *parent;
-		TWidget *widget;
 		std::conditional<WidgetIsText<TWidget>,QString,bool>::type value;
-		std::function<void(TWidget*)> setupNeeded;
-
-		TWidget* Widget()
-		{
-			if (!widget) Show();
-			return widget;
-		}
-
-		QString Text() const requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { return widget->text(); }
-		QString Text() const requires WidgetIsRichText<TWidget> { return widget->toPlainText(); }
-		void Text(const QString &value) requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { if (widget) widget->setText(value); }
-		void Text(const QString &value) requires WidgetIsRichText<TWidget> { if (widget) widget->setPlainText(value); }
+		QString Text() const requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { return this->widget->text(); }
+		QString Text() const requires WidgetIsRichText<TWidget> { return this->widget->toPlainText(); }
+		void Text(const QString &value) requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { if (this->widget) this->widget->setText(value); }
+		void Text(const QString &value) requires WidgetIsRichText<TWidget> { if (this->widget) this->widget->setPlainText(value); }
 	};
 
 	template <IsWidget TWidget,typename TValue>
-	class EphemeralPayloadWidget
+	class EphemeralPayloadWidget : public EphemeralWidgetBase<TWidget>
 	{
 	public:
-		EphemeralPayloadWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), setupNeeded(setupNeeded), parent(parent), widget(nullptr) { }
-
-		void Show()
-		{
-			if (widget) return;
-			TWidget *candidate=new TWidget(parent);
-			setupNeeded(candidate);
-			widget=candidate;
-			widget->setObjectName(name);
-		}
-
-		void Hide()
-		{
-			if (!widget) return;
-			widget->disconnect();
-			widget->deleteLater();
-			widget=nullptr;
-		}
-
-		void Name(const QString &name)
-		{
-			this->name=name;
-			if (widget) widget->setObjectName(name);
-		}
-
-		const QString& Name() const { return name; }
-		TWidget* operator*() { return Widget(); }
-		void Enable(bool enabled) { widget->setEnabled(enabled); }
-		void Visible(bool visible) { widget->setVisible(visible); }
-		std::optional<QWidget*> Viewport() requires WidgetHasViewport<TWidget> { return widget ? std::make_optional(widget->viewport()) : std::nullopt; }
-		bool operator==(const QObject *other) const { return widget==other; }
+		EphemeralPayloadWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : EphemeralWidgetBase<TWidget>(name,setupNeeded,parent) { }
 		void operator=(const TValue &value) { this->value=value; }
 		operator TValue() const { return value; }
-	protected:
-		QString name;
-		QWidget *parent;
-		TWidget *widget;
-		TValue value;
-		std::function<void(TWidget*)> setupNeeded;
 
-		TWidget* Widget()
-		{
-			if (!widget) Show();
-			return widget;
-		}
+	protected:
+		TValue value;
 	};
 
 	class Color : public QLabel
