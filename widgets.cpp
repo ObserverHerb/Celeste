@@ -593,9 +593,9 @@ namespace UI
 		{
 			widget->setPlaceholderText(path.Name());
 			widget->setObjectName(BuildErrorTrackingName(Name(),path.Name()));
+			widget->setText(path);
 			connect(widget,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
 			connect(widget,&QLineEdit::textChanged,this,&Entry::UpdatePath);
-			widget->setText(path);
 			widget->installEventFilter(this);
 			detailsLayout.addWidget(widget,2,0,1,3);
 		}
