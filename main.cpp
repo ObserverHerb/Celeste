@@ -18,6 +18,7 @@
 #include "globals.h"
 #include "security.h"
 #include "pulsar.h"
+#include "network.h"
 
 const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
@@ -47,43 +48,44 @@ int MessageBox(const QString &title,const QString &text,QMessageBox::Icon icon,Q
 
 void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Player &musicPlayer,Log &log,Security &security)
 {
+	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
 	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Channel(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Channel({
 		.name=channel->Name(),
 		.protection=channel->Protection()
-	}));
-	configureOptions->AddCategory(new UI::Options::Categories::Window(configureOptions,{
+	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Window({
 		.backgroundColor=window.BackgroundColor(),
 		.dimensions=window.Dimensions()
-	}));
+	},configureOptions));
 	StatusPane statusPane(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Status(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Status({
 		.font=statusPane.Font(),
 		.fontSize=statusPane.FontSize(),
 		.foregroundColor=statusPane.ForegroundColor(),
 		.backgroundColor=statusPane.BackgroundColor()
-	}));
+	},errorReport,configureOptions));
 	ChatPane chatPane(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Chat(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Chat({
 		.font=chatPane.Font(),
 		.fontSize=chatPane.FontSize(),
 		.foregroundColor=chatPane.ForegroundColor(),
 		.backgroundColor=chatPane.BackgroundColor(),
 		.statusInterval=chatPane.StatusInterval()
-	}));
+	},errorReport,configureOptions));
 	AnnouncePane announcePane(QString{},&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Pane(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Pane({
 		.font=announcePane.Font(),
 		.fontSize=announcePane.FontSize(),
 		.foregroundColor=announcePane.ForegroundColor(),
 		.backgroundColor=announcePane.BackgroundColor(),
 		.accentColor=announcePane.AccentColor(),
 		.duration=announcePane.Duration()
-	}));
-	configureOptions->AddCategory(new UI::Options::Categories::Music(configureOptions,{
+	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Music({
 		.suppressedVolume=musicPlayer.SuppressedVolume()
-	}));
-	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(configureOptions,{
+	},configureOptions));
+	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot({
 		.arrivalSound=bot.ArrivalSound(),
 		.portraitVideo=bot.PortraitVideo(),
 		.cheerVideo=bot.CheerVideo(),
@@ -93,12 +95,12 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 		.helpCooldown=bot.HelpCooldown(),
 		.textWallThreshold=bot.TextWallThreshold(),
 		.textWallSound=bot.TextWallSound()
-	});
+	},errorReport,configureOptions);
 	configureOptions->AddCategory(optionsCategoryBot);
-	configureOptions->AddCategory(new UI::Options::Categories::Log(configureOptions,{
+	configureOptions->AddCategory(new UI::Options::Categories::Log({
 		.directory=log.Directory()
-	}));
-	configureOptions->AddCategory(new UI::Options::Categories::Security(configureOptions,security));
+	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Security(security,errorReport,configureOptions));
 
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,std::shared_ptr<QImage>,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
@@ -115,10 +117,10 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 	configureOptions->open();
 }
 
-void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands,Log &log)
+void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands)
 {
 	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
-	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot,&log](const Command::Lookup& commands) {
+	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot](const Command::Lookup& commands) {
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
 			MessageBox(u"Save dynamic commands Failed"_s,u"Something went wrong saving the commands list to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
@@ -140,6 +142,7 @@ void ShowEventSubscriptions(ApplicationWindow &window,EventSub *eventSub)
 	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::RequestSubscriptionList,eventSub,&EventSub::RequestEventSubscriptionList,Qt::QueuedConnection);
 	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::RemoveSubscription,eventSub,&EventSub::RemoveEventSubscription,Qt::QueuedConnection);
 	configureEventSubscriptions->connect(configureEventSubscriptions,&UI::EventSubscriptions::Dialog::finished,configureEventSubscriptions,[configureEventSubscriptions](int finished) {
+		Q_UNUSED(finished)
 		configureEventSubscriptions->deleteLater();
 	},Qt::QueuedConnection);
 	configureEventSubscriptions->open();
@@ -175,6 +178,7 @@ int main(int argc,char *argv[])
 	application.setOrganizationName(ORGANIZATION_NAME);
 	application.setApplicationName(APPLICATION_NAME);
 	if constexpr (!Platform::Windows()) application.setWindowIcon(QIcon(Resources::CELESTE));
+	Network::networkManager=new QNetworkAccessManager();
 
 #ifdef DEVELOPER_MODE
 	if (MessageBox(u"DEVELOPER MODE"_s,u"**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?"_s,QMessageBox::Warning,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::No) return OK;
@@ -276,7 +280,7 @@ int main(int argc,char *argv[])
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&window,channel,&celeste,&log,&application,eventSub]() mutable {
+		channel->connect(channel,&Channel::Connected,[&security,&window,&celeste,&log,&application,eventSub]() mutable {
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
@@ -286,7 +290,7 @@ int main(int argc,char *argv[])
 			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 			eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
 			eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
-			eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommand),Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommandViaSubsystem),Qt::QueuedConnection);
 			eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[](const QString &type) {
 				MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
@@ -322,8 +326,8 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
 			ShowOptions(window,channel,celeste,musicPlayer,log,security);
 		});
-		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands,&log]() {
-			ShowCommands(window,celeste,botCommands,log);
+		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands]() {
+			ShowCommands(window,celeste,botCommands);
 		});
 		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&musicPlayer,&log]() {
 			ShowPlaylist(musicPlaylist,window,celeste,musicPlayer,log);

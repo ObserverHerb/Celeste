@@ -20,13 +20,13 @@ namespace Twitch
 
 	inline QString Endpoint(const QString &path)
 	{
-		return QStringBuilder<QString,QString>(API_HOST,path);
+		return QString(API_HOST)+path;
 	}
 	
 	inline const char *ENDPOINT_EMOTES="emoticons/v1/%1/1.0";
 
 	inline QString Content(const QString &path)
 	{
-		return QStringBuilder<QString,QString>(CONTENT_HOST,path);
+		return QString(CONTENT_HOST)+path;
 	}
 }
