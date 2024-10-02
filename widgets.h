@@ -11,6 +11,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QSpinBox>
+#include <QGroupBox>
 #include <QGridLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -21,6 +22,8 @@
 #include <QSizeGrip>
 #include <QDialog>
 #include <QDir>
+#include <unordered_set>
+#include <concepts>
 #include "entities.h"
 
 namespace StyleSheet
@@ -85,16 +88,191 @@ signals:
 
 namespace UI
 {
-	void Valid(QWidget *widget,bool valid);
-	void Require(QWidget *widget,bool empty);
 	QString OpenVideo(QWidget *parent,QString initialPath=QString());
 	QString OpenAudio(QWidget *parent,QString initialPath=QString());
 
-	class Help : public QTextEdit
+	template <typename T> concept IsWidget=requires { std::convertible_to<T*,QWidget*>; };
+
+	template <typename T> concept WidgetHasViewport=requires (T member)
 	{
-		Q_OBJECT
+		IsWidget<T>;
+		{ member.viewport() }->std::same_as<QWidget*>;
+	};
+
+	template <typename T> concept WidgetIsBool=requires(T member,bool checked)
+	{
+		IsWidget<T>;
+		{ member.setChecked(checked) }->std::same_as<void>;
+	};
+
+	template <typename T> concept WidgetIsText=requires(T member,const QString &text)
+	{
+		IsWidget<T>;
+		requires !WidgetIsBool<T>;
+		{ member.setText(text) }->std::same_as<void>;
+	};
+
+	template <typename T> concept WidgetIsRichText=requires(T member,const QString &text)
+	{
+		IsWidget<T>;
+		requires !WidgetIsBool<T>;
+		{ member.setPlainText(text) }->std::same_as<void>;
+	};
+
+	template <typename T> concept WidgetIsList=requires(T member,int index)
+	{
+		IsWidget<T>;
+		{ member.setCurrentIndex(index) }->std::same_as<void>;
+	};
+
+	namespace Feedback
+	{
+		class Error : public QObject
+		{
+			Q_OBJECT
+		private:
+			using ErrorList=std::unordered_set<QString>;
+		public:
+			Error();
+			void SwapTrackingName(const QString &oldName,const QString &newName);
+		protected:
+			ErrorList errors;
+			void CompileErrorMessages();
+		signals:
+			void Clear(bool clear);
+			void Count(int errors);
+			void ReportProblem(const QString &message);
+		public slots:
+			void Valid(QWidget *widget);
+			void Invalid(QWidget *widget);
+		};
+
+		class Help : public QTextEdit
+		{
+			Q_OBJECT
+		public:
+			Help(QWidget *parent);
+		};
+	}
+
+	template <IsWidget TWidget>
+	class EphemeralWidget
+	{
 	public:
-		Help(QWidget *parent);
+		EphemeralWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), setupNeeded(setupNeeded), parent(parent), widget(nullptr) { }
+
+		void Show()
+		{
+			if (widget) return;
+			TWidget *candidate=new TWidget(parent);
+			setupNeeded(candidate);
+			widget=candidate;
+			widget->setObjectName(name);
+		}
+
+		void Hide()
+		{
+			if (!widget) return;
+			widget->disconnect();
+			widget->deleteLater();
+			widget=nullptr;
+		}
+
+		void Name(const QString &name)
+		{
+			this->name=name;
+			if (widget) widget->setObjectName(name);
+		}
+
+		const QString& Name() const { return name; }
+		TWidget* operator*() { return Widget(); }
+		void Enable(bool enabled) { widget->setEnabled(enabled); }
+		void Visible(bool visible) { widget->setVisible(visible); }
+		std::optional<QWidget*> Viewport() requires WidgetHasViewport<TWidget> { return widget ? std::make_optional(widget->viewport()) : std::nullopt; }
+		bool operator==(const QObject *other) const { return widget==other; }
+		void operator=(const QString &text) requires WidgetIsText<TWidget> { value=text; }
+		void operator=(bool checked) requires WidgetIsBool<TWidget> { value=checked; }
+		void operator=(int index) requires WidgetIsList<TWidget> { value=index; }
+		operator QString() const requires WidgetIsText<TWidget> { return widget ? Text() : value; }
+		operator bool() const requires WidgetIsBool<TWidget> { return widget ? widget->isChecked() : value; }
+		operator int() const requires WidgetIsList<TWidget> { return widget ? widget->currentIndex() : value; }
+		void RevertValue() requires WidgetIsText<TWidget> { if (widget) Text(value); }
+		void RevertValue() requires WidgetIsBool<TWidget> { if (widget) widget->setChecked(value); }
+		void RevertValue() requires WidgetIsList<TWidget> { if (widget) widget->setCurrentIndex(value); }
+		void CacheValue() requires WidgetIsText<TWidget> { if (widget) value=Text(); }
+		void CacheValue() requires WidgetIsBool<TWidget> { if (widget) value=widget->isChecked(); }
+		void CacheValue() requires WidgetIsList<TWidget> { if (widget) value=widget->currentIndex(); }
+		const QString& CachedValue() const requires WidgetIsText<TWidget> { return value; }
+		bool CachedValue() const requires WidgetIsBool<TWidget> { return value; }
+		int CachedValue() const requires WidgetIsList<TWidget> { return value; }
+	protected:
+		QString name;
+		QWidget *parent;
+		TWidget *widget;
+		std::conditional<WidgetIsText<TWidget>,QString,bool>::type value;
+		std::function<void(TWidget*)> setupNeeded;
+
+		TWidget* Widget()
+		{
+			if (!widget) Show();
+			return widget;
+		}
+
+		QString Text() const requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { return widget->text(); }
+		QString Text() const requires WidgetIsRichText<TWidget> { return widget->toPlainText(); }
+		void Text(const QString &value) requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { if (widget) widget->setText(value); }
+		void Text(const QString &value) requires WidgetIsRichText<TWidget> { if (widget) widget->setPlainText(value); }
+	};
+
+	template <IsWidget TWidget,typename TValue>
+	class EphemeralPayloadWidget
+	{
+	public:
+		EphemeralPayloadWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), setupNeeded(setupNeeded), parent(parent), widget(nullptr) { }
+
+		void Show()
+		{
+			if (widget) return;
+			TWidget *candidate=new TWidget(parent);
+			setupNeeded(candidate);
+			widget=candidate;
+			widget->setObjectName(name);
+		}
+
+		void Hide()
+		{
+			if (!widget) return;
+			widget->disconnect();
+			widget->deleteLater();
+			widget=nullptr;
+		}
+
+		void Name(const QString &name)
+		{
+			this->name=name;
+			if (widget) widget->setObjectName(name);
+		}
+
+		const QString& Name() const { return name; }
+		TWidget* operator*() { return Widget(); }
+		void Enable(bool enabled) { widget->setEnabled(enabled); }
+		void Visible(bool visible) { widget->setVisible(visible); }
+		std::optional<QWidget*> Viewport() requires WidgetHasViewport<TWidget> { return widget ? std::make_optional(widget->viewport()) : std::nullopt; }
+		bool operator==(const QObject *other) const { return widget==other; }
+		void operator=(const TValue &value) { this->value=value; }
+		operator TValue() const { return value; }
+	protected:
+		QString name;
+		QWidget *parent;
+		TWidget *widget;
+		TValue value;
+		std::function<void(TWidget*)> setupNeeded;
+
+		TWidget* Widget()
+		{
+			if (!widget) Show();
+			return widget;
+		}
 	};
 
 	class Color : public QLabel
@@ -164,7 +342,7 @@ namespace UI
 		public:
 			NamesList(const QString &title,const QString &placeholder,QWidget *parent);
 			void Populate(const QStringList &names);
-			QStringList operator()() const;
+			operator QStringList() const;
 		protected:
 			QGridLayout layout;
 			QListWidget list;
@@ -182,8 +360,8 @@ namespace UI
 		{
 			Q_OBJECT
 		public:
-			Entry(QWidget *parent);
-			Entry(const Command &command,QWidget *parent);
+			Entry(Feedback::Error &errorReport,QWidget *parent);
+			Entry(const Command &command,Feedback::Error &errorReport,QWidget *parent);
 			QString Name() const;
 			QString Description() const;
 			QStringList Aliases() const;
@@ -198,57 +376,56 @@ namespace UI
 			bool Protected() const;
 			void ToggleFold();
 		protected:
-			QString commandName;
-			QString commandDescription;
-			bool commandProtect;
-			QString commandPath;
-			bool commandRandom;
-			bool commandDuplicates;
-			QString commandMessage;
-			UI::Commands::Type commandType;
-			QStringList commandAliases;
-			QStringList commandTriggers;
 			QGridLayout layout;
-			QFrame *details;
+			QFrame details;
 			QGridLayout detailsLayout;
 			QPushButton header;
-			QLineEdit *name;
-			QLineEdit *description;
-			QPushButton *openAliases;
-			QPushButton *openTriggers;
-			QLineEdit *path;
-			QPushButton *browse;
-			QComboBox *type;
-			QCheckBox *random;
-			QCheckBox *duplicates;
-			QCheckBox *protect;
-			QTextEdit *message;
-			UI::Commands::NamesList *aliases;
-			UI::Commands::NamesList *triggers;
-			void UpdateName(const QString &text);
+			EphemeralWidget<QLineEdit> name;
+			EphemeralWidget<QLineEdit> description;
+			EphemeralPayloadWidget<QPushButton,QStringList> aliases;
+			EphemeralPayloadWidget<QPushButton,QStringList> triggers;
+			EphemeralWidget<QLineEdit> path;
+			EphemeralWidget<QPushButton> browse;
+			EphemeralWidget<QComboBox> type;
+			EphemeralWidget<QCheckBox> random;
+			EphemeralWidget<QCheckBox> duplicates;
+			EphemeralWidget<QCheckBox> protect;
+			EphemeralWidget<QTextEdit> message;
+			Feedback::Error &errorReport;
+			void UpdateName();
 			void UpdateDescription(const QString &text);
 			void UpdateMessage();
 			void UpdatePath(const QString &text);
 			void UpdateProtect(int state);
 			void UpdateRandom(int state);
 			void UpdateDuplicates(int state);
-			void UpdateAliases();
-			void UpdateTriggers();
 			void Native();
 			void Pulsar();
 			void Browse();
+			void SelectAliases();
+			void SelectTriggers();
 			void UpdateHeader();
-			void TryBuildUI();
-			void ValidatePath(const QString &text,bool random,const enum Type type);
+			void SetUpCommandNameTextEdit(QLineEdit *widget);
+			void SetUpDescriptionTextEdit(QLineEdit *widget);
+			void SetUpTypeList(QComboBox *widget);
+			void SetUpPathTextEdit(QLineEdit *widget);
+			void SetUpProtectCheckBox(QCheckBox *widget);
+			void SetUpRandomCheckBox(QCheckBox *widget);
+			void SetUpDuplicatesCheckBox(QCheckBox *widget);
+			void SetUpMessageTextEdit(QTextEdit *widget);
+			void SetUpBrowseButton(QPushButton *widget);
+			void SetUpAliasesButton(QPushButton *widget);
+			void SetUpTriggersButton(QPushButton *widget);
 			bool eventFilter(QObject *object,QEvent *event) override;
+			static QString BuildErrorTrackingName(const QString &commandName,const QString message);
+			static QString BuildErrorTrackingName(const QString &commandName);
 		signals:
 			void Help(const QString &text);
 		protected slots:
 			void UpdateHeader(const QString &commandName);
-			void ValidateName(const QString &text);
-			void ValidateDescription(const QString &text);
-			void ValidatePath(const QString &text);
-			void ValidateMessage();
+			bool ValidateName(const QString &text);
+			bool ValidatePath(const QString &text);
+			bool ValidateMessage();
 			void RandomChanged(const int state);
 			void TypeChanged(int index);
 		};
@@ -261,13 +438,17 @@ namespace UI
 		protected:
 			QWidget entriesFrame;
 			QVBoxLayout scrollLayout;
-			Help help;
+			QGroupBox helpBox;
+			Feedback::Help help;
+			Feedback::Error errorReport;
 			QLabel labelFilter;
 			QComboBox filter;
 			QDialogButtonBox buttons;
 			QPushButton discard;
 			QPushButton save;
 			QPushButton newEntry;
+			QGroupBox errorBox;
+			QLabel errorMessages;
 			QStatusBar statusBar;
 			std::unordered_map<QString,Entry*> entries;
 			void PopulateEntries(const Command::Lookup &commands);
@@ -314,12 +495,13 @@ namespace UI
 					ApplicationSetting &name;
 					ApplicationSetting &protection;
 				};
-				Channel(QWidget *parent,Settings settings);
+				Channel(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit name;
 				QCheckBox protection;
 				Settings settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void ValidateName(const QString &text);
@@ -334,7 +516,7 @@ namespace UI
 					ApplicationSetting &backgroundColor;
 					ApplicationSetting &dimensions;
 				};
-				Window(QWidget *parent,Settings settings);
+				Window(Settings settings,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit backgroundColor;
@@ -356,7 +538,7 @@ namespace UI
 					ApplicationSetting foregroundColor;
 					ApplicationSetting backgroundColor;
 				};
-				Status(QWidget *parent,Settings settings);
+				Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit font;
@@ -369,6 +551,7 @@ namespace UI
 				Color previewBackgroundColor;
 				QPushButton selectBackgroundColor;
 				Settings settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
@@ -390,7 +573,7 @@ namespace UI
 					ApplicationSetting backgroundColor;
 					ApplicationSetting statusInterval;
 				};
-				Chat(QWidget *parent,Settings settings);
+				Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit font;
@@ -404,6 +587,7 @@ namespace UI
 				QPushButton selectBackgroundColor;
 				QSpinBox statusInterval;
 				Settings settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void PickFont();
@@ -427,7 +611,7 @@ namespace UI
 					ApplicationSetting accentColor;
 					ApplicationSetting duration;
 				};
-				Pane(QWidget *parent,Settings settings);
+				Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit font;
@@ -444,6 +628,7 @@ namespace UI
 				QPushButton selectAccentColor;
 				QSpinBox duration;
 				Settings settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void PickFont();
@@ -463,7 +648,7 @@ namespace UI
 				{
 					ApplicationSetting &suppressedVolume;
 				};
-				Music(QWidget *parent,Settings settings);
+				Music(Settings settings,QWidget *parent);
 				void Save() override;
 			protected:
 				QSpinBox suppressedVolume;
@@ -487,7 +672,7 @@ namespace UI
 					ApplicationSetting &textWallThreshold;
 					ApplicationSetting &textWallSound;
 				};
-				Bot(QWidget *parent,Settings settings);
+				Bot(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit arrivalSound;
@@ -512,6 +697,7 @@ namespace UI
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
 				Settings settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void PlayArrivalSound(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
@@ -549,12 +735,13 @@ namespace UI
 				{
 					ApplicationSetting &directory;
 				};
-				Log(QWidget *parent,Settings settings);
+				Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit directory;
 				QPushButton selectDirectory;
 				Settings settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void OpenDirectory();
@@ -565,7 +752,7 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Security(QWidget *parent,::Security &settings);
+				Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit administrator;
@@ -575,6 +762,7 @@ namespace UI
 				QLineEdit permissions;
 				QPushButton selectPermissions;
 				::Security &settings;
+				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void SelectPermissions();
@@ -590,7 +778,7 @@ namespace UI
 			void AddCategory(Categories::Category *category);
 		protected:
 			QWidget entriesFrame;
-			Help help;
+			Feedback::Help help;
 			QDialogButtonBox buttons;
 			QPushButton discard;
 			QPushButton save;

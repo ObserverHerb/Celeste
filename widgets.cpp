@@ -130,19 +130,6 @@ namespace UI
 		return item;
 	}
 
-	void Valid(QWidget *widget,bool valid)
-	{
-		if (valid)
-			widget->setStyleSheet("background-color: none;");
-		else
-			widget->setStyleSheet("background-color: LavenderBlush;");
-	}
-
-	void Require(QWidget *widget,bool empty)
-	{
-		Valid(widget,!empty);
-	}
-
 	QString OpenVideo(QWidget *parent,QString initialPath)
 	{
 		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO)));
@@ -153,11 +140,50 @@ namespace UI
 		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
 	}
 
-	Help::Help(QWidget *parent) : QTextEdit(parent)
+	namespace Feedback
 	{
-		setEnabled(false);
-		setSizePolicy(QSizePolicy(QSizePolicy::Preferred,QSizePolicy::MinimumExpanding));
-		setStyleSheet(QStringLiteral("border: none; color: palette(window-text);"));
+		Error::Error() : errors(0) { }
+
+		void Error::SwapTrackingName(const QString &oldName,const QString &newName)
+		{
+			auto candidate=errors.find(oldName);
+			if (candidate != errors.end())
+			{
+				errors.erase(candidate);
+				errors.insert(newName);
+			}
+			CompileErrorMessages();
+		}
+
+		void Error::Valid(QWidget *widget)
+		{
+			widget->setStyleSheet("background-color: none;");
+			errors.erase(widget->objectName());
+			if (errors.size() == 0) emit Clear(true);
+			CompileErrorMessages();
+		}
+
+		void Error::Invalid(QWidget *widget)
+		{
+			widget->setStyleSheet("background-color: LavenderBlush;");
+			if (errors.insert(widget->objectName()).second) emit Clear(false);
+			CompileErrorMessages();
+		}
+
+		void Error::CompileErrorMessages()
+		{
+			QString messages;
+			for (const QString &error : errors) messages+=error+"<br>";
+			emit ReportProblem(messages.trimmed());
+			emit Count(messages.size());
+		}
+
+		Help::Help(QWidget *parent) : QTextEdit(parent)
+		{
+			setEnabled(false);
+			setSizePolicy(QSizePolicy(QSizePolicy::Preferred,QSizePolicy::MinimumExpanding));
+			setStyleSheet(QStringLiteral("border: none; color: palette(window-text);"));
+		}
 	}
 
 	Color::Color(QWidget *parent,const QString &color) : QLabel(parent)
@@ -244,7 +270,7 @@ namespace UI
 			for (const QString &name : names) list.addItem(name);
 		}
 
-		QStringList NamesList::operator()() const
+		NamesList::operator QStringList() const
 		{
 			QStringList result;
 			for (int index=0; index < list.count(); index++) result.append(list.item(index)->text());
@@ -284,28 +310,26 @@ namespace UI
 			QDialog::hideEvent(event);
 		}
 
-		Entry::Entry(QWidget *parent) : QWidget(parent),
-			commandProtect(false),
-			commandRandom(false),
-			commandDuplicates(false),
-			commandType(UI::Commands::Type::INVALID),
+		Entry::Entry(Feedback::Error &errorReport,QWidget *parent) : QWidget(parent),
 			layout(this),
-			details(nullptr),
+			details(this),
 			detailsLayout(nullptr),
 			header(this),
-			name(nullptr),
-			description(nullptr),
-			openAliases(nullptr),
-			openTriggers(nullptr),
-			path(nullptr),
-			browse(nullptr),
-			type(nullptr),
-			random(nullptr),
-			duplicates(nullptr),
-			protect(nullptr),
-			message(nullptr),
-			aliases(nullptr)
+			name(u"Command Name"_s,std::bind_front(&Entry::SetUpCommandNameTextEdit,this),&details),
+			description(u"Command Description"_s,std::bind_front(&Entry::SetUpDescriptionTextEdit,this),&details),
+			aliases(u"Aliases Dialog"_s,std::bind_front(&Entry::SetUpAliasesButton,this),&details),
+			triggers(u"Triggers Dialog"_s,std::bind_front(&Entry::SetUpTriggersButton,this),&details),
+			path(u"Media Location"_s,std::bind_front(&Entry::SetUpPathTextEdit,this),&details),
+			browse(u"Browse"_s,std::bind_front(&Entry::SetUpBrowseButton,this),&details),
+			type(u"Type"_s,std::bind_front(&Entry::SetUpTypeList,this),&details),
+			random(u"Choose Random Media"_s,std::bind_front(&Entry::SetUpRandomCheckBox,this),&details),
+			duplicates(u"Allow Duplicates"_s,std::bind_front(&Entry::SetUpDuplicatesCheckBox,this),&details),
+			protect(u"Protect"_s,std::bind_front(&Entry::SetUpProtectCheckBox,this),&details),
+			message(u"Message"_s,std::bind_front(&Entry::SetUpMessageTextEdit,this),&details),
+			errorReport(errorReport)
 		{
+			type=static_cast<int>(UI::Commands::Type::INVALID);
+
 			setLayout(&layout);
 
 			QFrame *frame=new QFrame(this);
@@ -319,41 +343,40 @@ namespace UI
 			header.setFlat(true);
 			frameLayout->addWidget(&header);
 
-			details=new QFrame(this);
-			details->setLayout(&detailsLayout);
-			details->setFrameShape(QFrame::NoFrame);
-			details->setVisible(false);
-			frameLayout->addWidget(details);
+			details.setLayout(&detailsLayout);
+			details.setFrameShape(QFrame::NoFrame);
+			details.setVisible(false);
+			frameLayout->addWidget(&details);
 
 			connect(&header,&QPushButton::clicked,this,&Entry::ToggleFold);
 		}
 
-		Entry::Entry(const Command &command,QWidget *parent) : Entry(parent)
+		Entry::Entry(const Command &command,Feedback::Error &errorReport,QWidget *parent) : Entry(errorReport,parent)
 		{
-			commandName=command.Name();
-			commandDescription=command.Description();
-			commandProtect=command.Protected();
-			commandPath=command.Path();
-			commandRandom=command.Random();
-			commandDuplicates=command.Duplicates();
-			commandMessage=command.Message();
-			commandTriggers=command.Viewers();
+			name=command.Name();
+			description=command.Description();
+			protect=command.Protected();
+			path=command.Path();
+			random=command.Random();
+			duplicates=command.Duplicates();
+			message=command.Message();
+			triggers=command.Viewers();
 
 			switch (command.Type())
 			{
 			case CommandType::BLANK:
-				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(commandName).toStdString());
+				throw std::logic_error(u"Warning: Type for command !%1 was blank."_s.arg(name).toStdString());
 			case CommandType::NATIVE:
-				commandType=Type::NATIVE;
+				type=static_cast<int>(Type::NATIVE);
 				break;
 			case CommandType::VIDEO:
-				commandType=Type::VIDEO;
+				type=static_cast<int>(Type::VIDEO);
 				break;
 			case CommandType::AUDIO:
-				commandType=Type::AUDIO;
+				type=static_cast<int>(Type::AUDIO);
 				break;
 			case CommandType::PULSAR:
-				commandType=Type::PULSAR;
+				type=static_cast<int>(Type::PULSAR);
 				break;
 			}
 
@@ -362,60 +385,58 @@ namespace UI
 
 		QString Entry::Name() const
 		{
-			return commandName;
+			return name;
 		}
 
-		void Entry::UpdateName(const QString &text)
+		void Entry::UpdateName()
 		{
-			commandName=text;
+			if (!ValidateName(name))
+			{
+				name.RevertValue();
+				ValidateName(name);
+				return;
+			}
+			errorReport.SwapTrackingName(BuildErrorTrackingName(name.CachedValue()),BuildErrorTrackingName(name));
+			path.Name(BuildErrorTrackingName(name,path.Name()));
+			name.CacheValue();
+			name.Name(BuildErrorTrackingName(name));
+			UpdateHeader(name);
 		}
 
 		QString Entry::Description() const
 		{
-			return commandDescription;
+			return description;
 		}
 
 		void Entry::UpdateDescription(const QString &text)
 		{
-			commandDescription=text;
+			description=text;
 		}
 
 		QStringList Entry::Aliases() const
 		{
-			return commandAliases;
+			return aliases;
 		}
 
 		void Entry::Aliases(const QStringList &names)
 		{
-			commandAliases=names;
-			if (aliases) aliases->Populate(names);
-			UpdateHeader();
-		}
-
-		void Entry::UpdateAliases()
-		{
-			commandAliases=(*aliases)();
+			aliases=names;
 			UpdateHeader();
 		}
 
 		QStringList Entry::Triggers() const
 		{
-			return commandTriggers;
-		}
-
-		void Entry::UpdateTriggers()
-		{
-			commandTriggers=(*triggers)();
+			return triggers;
 		}
 
 		QString Entry::Path() const
 		{
-			return commandPath;
+			return path;
 		}
 
 		void Entry::UpdatePath(const QString &text)
 		{
-			commandPath=text;
+			path=text;
 		}
 
 		QStringList Entry::Filters() const
@@ -426,10 +447,10 @@ namespace UI
 		CommandType Entry::Type() const
 		{
 			UI::Commands::Type candidate;
-			if (commandType == UI::Commands::Type::INVALID)
-				candidate=static_cast<enum Type>(type->currentIndex());
+			if (type == static_cast<int>(UI::Commands::Type::INVALID))
+				candidate=static_cast<enum Type>(static_cast<int>(type));
 			else
-				candidate=commandType;
+				candidate=static_cast<enum Type>(static_cast<int>(type));
 
 			switch (candidate)
 			{
@@ -442,48 +463,48 @@ namespace UI
 			case Type::NATIVE:
 				return CommandType::NATIVE;
 			case Type::INVALID:
-				throw std::logic_error(u"Fatal: An unrecognized type was selected for command !%1."_s.arg(commandName).toStdString());
+				throw std::logic_error(u"Fatal: An unrecognized type was selected for command !%1."_s.arg(name).toStdString());
 			}
 		}
 
 		bool Entry::Random() const
 		{
-			return commandRandom;
+			return random;
 		}
 
 		void Entry::UpdateRandom(int state)
 		{
-			commandRandom=state == Qt::Checked;
+			random=state == Qt::Checked;
 		}
 
 		bool Entry::Duplicates() const
 		{
-			return commandDuplicates;
+			return duplicates;
 		}
 
 		void Entry::UpdateDuplicates(int state)
 		{
-			commandDuplicates=state == Qt::Checked;
+			duplicates=state == Qt::Checked;
 		}
 
 		QString Entry::Message() const
 		{
-			return commandMessage;
+			return message;
 		}
 
 		void Entry::UpdateMessage()
 		{
-			commandMessage=message->toPlainText();
+			message.CacheValue();
 		}
 
 		bool Entry::Protected() const
 		{
-			return commandProtect;
+			return protect;
 		}
 
 		void Entry::UpdateProtect(int state)
 		{
-			commandProtect=state == Qt::Checked;
+			protect=state == Qt::Checked;
 		}
 
 		void Entry::UpdateHeader()
@@ -501,260 +522,277 @@ namespace UI
 
 		void Entry::ToggleFold()
 		{
-			if (details->isVisible())
+			if (details.isVisible())
 			{
-				details->setVisible(false);
+				name.Hide();
+				description.Hide();
+				type.Hide();
+				path.Hide();
+				protect.Hide();
+				duplicates.Hide();
+				random.Hide();
+				message.Hide();
+				browse.Hide();
+				aliases.Hide();
+				triggers.Show();
+				details.setVisible(false);
 			}
 			else
 			{
-				TryBuildUI();
-				details->setVisible(true);
+				name.Show();
+				description.Show();
+				type.Show();
+				path.Show();
+				protect.Show();
+				duplicates.Show();
+				random.Show();
+				message.Show();
+				browse.Show();
+				aliases.Show();
+				triggers.Show();
+				details.setVisible(true);
 			}
 		}
 
-		void Entry::TryBuildUI()
+		void Entry::SetUpCommandNameTextEdit(QLineEdit *widget)
 		{
-			if (!name)
-			{
-				name=new QLineEdit(details);
-				name->setPlaceholderText(u"Command Name"_s);
-				name->setText(commandName);
-				connect(name,&QLineEdit::textChanged,this,&Entry::ValidateName);
-				connect(name,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::UpdateHeader));
-				connect(name,&QLineEdit::textChanged,this,&Entry::UpdateName);
-				name->installEventFilter(this);
-				detailsLayout.addWidget(name,0,0);
-			}
-
-			if (!openAliases)
-			{
-				aliases=new UI::Commands::NamesList(u"Command Aliases"_s,u"Alias"_s,this);
-				aliases->Populate(commandAliases);
-				connect(aliases,&UI::Commands::NamesList::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
-				connect(aliases,&UI::Commands::NamesList::Finished,this,&Entry::UpdateAliases);
-				openAliases=new QPushButton(u"Aliases"_s,details);
-				connect(openAliases,&QPushButton::clicked,aliases,&QDialog::show);
-				openAliases->installEventFilter(this);
-				detailsLayout.addWidget(openAliases,0,1);
-			}
-
-			if (!openTriggers)
-			{
-				triggers=new UI::Commands::NamesList(u"Command Triggers"_s,u"Viewer Name"_s,this);
-				triggers->Populate(commandTriggers);
-				connect(aliases,&UI::Commands::NamesList::Finished,this,&Entry::UpdateTriggers);
-				openTriggers=new QPushButton(u"Triggers"_s,details);
-				connect(openTriggers,&QPushButton::clicked,triggers,&QDialog::show);
-				openTriggers->installEventFilter(this);
-				detailsLayout.addWidget(openTriggers,0,2);
-			}
-
-			if (!protect)
-			{
-				protect=new QCheckBox(u"Protect"_s,details);
-				protect->setChecked(commandProtect);
-				connect(protect,&QCheckBox::stateChanged,this,&Entry::UpdateProtect);
-				protect->installEventFilter(this);
-				detailsLayout.addWidget(protect,0,3);
-			}
-
-			if (!description)
-			{
-				description=new QLineEdit(details);
-				description->setPlaceholderText(u"Command Description"_s);
-				description->setText(commandDescription);
-				connect(description,&QLineEdit::textChanged,this,&Entry::ValidateDescription);
-				connect(description,&QLineEdit::textChanged,this,&Entry::UpdateDescription);
-				description->installEventFilter(this);
-				detailsLayout.addWidget(description,1,0,1,4);
-			}
-
-			if (!path)
-			{
-				path=new QLineEdit(details);
-				path->setPlaceholderText(u"Media Location"_s);
-				path->setText(commandPath);
-				connect(path,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
-				connect(path,&QLineEdit::textChanged,this,&Entry::UpdatePath);
-				path->installEventFilter(this);
-				detailsLayout.addWidget(path,2,0,1,3);
-			}
-
-			if (!browse)
-			{
-				browse=new QPushButton(Text::BROWSE,details);
-				connect(browse,&QPushButton::clicked,this,&Entry::Browse);
-				browse->installEventFilter(this);
-				detailsLayout.addWidget(browse,2,3,1,1);
-			}
-
-			if (!type)
-			{
-				type=new QComboBox(details);
-				type->addItems({
-					u"Video"_s,
-					u"Announce"_s,
-					u"Pulsar"_s
-				});
-				type->setPlaceholderText(u"Native"_s);
-				type->setCurrentIndex(static_cast<int>(commandType));
-				type->setFocusPolicy(Qt::StrongFocus);
-				connect(type,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
-				type->installEventFilter(this);
-				detailsLayout.addWidget(type,3,0,1,2);
-			}
-
-			if (!random)
-			{
-				random=new QCheckBox(u"Random"_s,details);
-				random->setChecked(commandRandom);
-				connect(random,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
-				connect(random,&QCheckBox::stateChanged,this,&Entry::UpdateRandom);
-				random->installEventFilter(this);
-				detailsLayout.addWidget(random,3,2,1,1);
-			}
-
-			if (!duplicates)
-			{
-				duplicates=new QCheckBox(u"Duplicates"_s,details);
-				duplicates->setChecked(commandDuplicates);
-				duplicates->setEnabled(commandRandom);
-				connect(duplicates,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
-				duplicates->installEventFilter(this);
-				detailsLayout.addWidget(duplicates,3,3,1,1);
-			}
-
-			if (!message)
-			{
-				message=new QTextEdit(details);
-				message->setPlaceholderText(u"Message to display in content"_s);
-				message->setText(commandMessage);
-				message->setVisible(commandType == UI::Commands::Type::AUDIO);
-				connect(message,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
-				connect(message,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
-				message->viewport()->installEventFilter(this);
-				detailsLayout.addWidget(message,4,0,1,4);
-			}
+			widget->setPlaceholderText(u"Command Name"_s);
+			widget->setObjectName(BuildErrorTrackingName(name));
+			widget->setText(name);
+			connect(widget,&QLineEdit::textChanged,this,&Entry::ValidateName);
+			connect(widget,&QLineEdit::editingFinished,this,&Entry::UpdateName);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,0,0);
 		}
 
-		void Entry::ValidateName(const QString &text)
+		void Entry::SetUpDescriptionTextEdit(QLineEdit *widget)
 		{
-			Require(name,text.isEmpty());
+			widget->setPlaceholderText(u"Description of the action this command takes"_s);
+			widget->setText(description);
+			connect(widget,&QLineEdit::textChanged,this,&Entry::UpdateDescription);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,1,0,1,4);
 		}
 
-		void Entry::ValidateDescription(const QString &text)
+		void Entry::SetUpTypeList(QComboBox *widget)
 		{
-			Require(description,text.isEmpty());
+			widget->addItems({
+				u"Video"_s,
+				u"Announce"_s,
+				u"Pulsar"_s
+			});
+			widget->setPlaceholderText(u"Native"_s);
+			widget->setCurrentIndex(type);
+			widget->setFocusPolicy(Qt::StrongFocus);
+			connect(widget,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Entry::TypeChanged);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,3,0,1,2);
 		}
 
-		void Entry::ValidatePath(const QString &text)
+		void Entry::SetUpPathTextEdit(QLineEdit *widget)
 		{
-			ValidatePath(text,Random(),static_cast<UI::Commands::Type>(type->currentIndex()));
+			widget->setPlaceholderText(path.Name());
+			widget->setObjectName(BuildErrorTrackingName(Name(),path.Name()));
+			connect(widget,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Entry::ValidatePath));
+			connect(widget,&QLineEdit::textChanged,this,&Entry::UpdatePath);
+			widget->setText(path);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,2,0,1,3);
 		}
 
-		void Entry::ValidatePath(const QString &text,bool random,const enum Type type)
+		void Entry::SetUpProtectCheckBox(QCheckBox *widget)
+		{
+			widget->setText(u"Protect"_s);
+			widget->setChecked(protect);
+			connect(widget,&QCheckBox::stateChanged,this,&Entry::UpdateProtect);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,0,3);
+		}
+
+		void Entry::SetUpRandomCheckBox(QCheckBox *widget)
+		{
+			widget->setChecked(random);
+			widget->setText(u"Random"_s);
+			connect(widget,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
+			connect(widget,&QCheckBox::stateChanged,this,&Entry::UpdateRandom);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,3,2,1,1);
+		}
+
+		void Entry::SetUpDuplicatesCheckBox(QCheckBox *widget)
+		{
+			widget->setChecked(duplicates);
+			widget->setEnabled(random);
+			widget->setText(u"Duplicates"_s);
+			connect(widget,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,3,3,1,1);
+		}
+
+		void Entry::SetUpMessageTextEdit(QTextEdit *widget)
+		{
+			widget->setPlaceholderText(u"Message to display in announcement"_s);
+			widget->setText(message);
+			widget->setVisible(type == static_cast<int>(UI::Commands::Type::AUDIO));
+			connect(widget,&QTextEdit::textChanged,this,&Entry::ValidateMessage);
+			connect(widget,&QTextEdit::textChanged,this,&Entry::UpdateMessage);
+			widget->viewport()->installEventFilter(this);
+			detailsLayout.addWidget(widget,4,0,1,4);
+		}
+
+		void Entry::SetUpBrowseButton(QPushButton *widget)
+		{
+			widget->setText(Text::BROWSE);
+			connect(widget,&QPushButton::clicked,this,&Entry::Browse);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,2,3,1,1);
+		}
+
+		void Entry::SetUpAliasesButton(QPushButton *widget)
+		{
+			widget->setText(u"Aliases"_s);
+			connect(widget,&QPushButton::clicked,this,&Entry::SelectAliases);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,0,1);
+		}
+
+		void Entry::SetUpTriggersButton(QPushButton *widget)
+		{
+			widget->setText(u"Triggers"_s);
+			connect(widget,&QPushButton::clicked,this,&Entry::SelectTriggers);
+			widget->installEventFilter(this);
+			detailsLayout.addWidget(widget,0,2);
+		}
+
+		bool Entry::ValidateName(const QString &text)
+		{
+			bool valid=!text.isEmpty();
+			if (valid)
+				errorReport.Valid(*name);
+			else
+				errorReport.Invalid(*name);
+			return valid;
+		}
+
+		bool Entry::ValidatePath(const QString &text)
 		{
 			QFileInfo candidate(text);
 
 			if (!candidate.exists())
 			{
-				Valid(path,false);
-				return;
+				errorReport.Invalid(*path);
+				return false;
 			}
 
-			if (random)
+			if (Random())
 			{
-				Valid(path,candidate.isDir());
-				return;
+				bool valid=candidate.isDir();
+				if (valid)
+					errorReport.Valid(*path);
+				else
+					errorReport.Invalid(*path);
+				return valid;
 			}
 			else
 			{
 				if (candidate.isDir())
 				{
-					Valid(path,false);
-					return;
+					errorReport.Invalid(*path);
+					return false;
 				}
 
+				bool valid;
 				const QString extension=candidate.suffix();
-				switch (type)
+				switch (static_cast<UI::Commands::Type>(static_cast<int>(type)))
 				{
 				case Type::VIDEO:
-					Valid(path,extension == Text::FILE_TYPE_VIDEO);
+					valid=extension == Text::FILE_TYPE_VIDEO;
 					break;
 				case Type::AUDIO:
-					Valid(path,extension == Text::FILE_TYPE_AUDIO);
+					valid=extension == Text::FILE_TYPE_AUDIO;
 					break;
 				default:
-					Valid(path,false);
+					valid=false;
 					break;
 				}
+				if (valid)
+					errorReport.Valid(*path);
+				else
+					errorReport.Invalid(*path);
+				return valid;
 			}
 		}
 
-		void Entry::ValidateMessage()
+		bool Entry::ValidateMessage()
 		{
-			if (static_cast<UI::Commands::Type>(type->currentIndex()) == UI::Commands::Type::AUDIO) Require(message,Message().isEmpty());
+			if (static_cast<UI::Commands::Type>(static_cast<int>(type)) != UI::Commands::Type::AUDIO) return false;
+			bool valid=Message().isEmpty();
+			if (valid)
+				errorReport.Valid(*message);
+			else
+				errorReport.Invalid(*message);
+			return valid;
 		}
 
 		void Entry::RandomChanged(const int state)
 		{
 			bool checked=state == Qt::Checked;
-			duplicates->setEnabled(checked);
-			ValidatePath(Path(),checked,static_cast<UI::Commands::Type>(type->currentIndex()));
+			duplicates.Enable(checked);
+			ValidatePath(path);
 		}
 
 		void Entry::TypeChanged(int index)
 		{
-			commandType=static_cast<UI::Commands::Type>(index);
+			type=index;
 
-			if (commandType == Type::PULSAR)
+			if (static_cast<UI::Commands::Type>(static_cast<int>(type)) == Type::PULSAR)
 			{
 				Pulsar();
 				return;
 			}
 
-			if (commandType == Type::NATIVE)
+			if (static_cast<UI::Commands::Type>(static_cast<int>(type)) == Type::NATIVE)
 			{
 				Native();
 				return;
 			}
 
-			name->setEnabled(true);
-			description->setEnabled(true);
-			aliases->setEnabled(true);
-			protect->setEnabled(true);
-			path->setEnabled(true);
-			browse->setEnabled(true);
-			type->setEnabled(true);
-			random->setEnabled(true);
-			message->setVisible(commandType == Type::VIDEO ? false : true);
+			name.Enable(true);
+			description.Enable(true);
+			aliases.Enable(true);
+			protect.Enable(true);
+			path.Enable(true);
+			browse.Enable(true);
+			type.Enable(true);
+			random.Enable(true);
+			message.Visible(type == static_cast<int>(Type::VIDEO) ? false : true);
 
-			ValidatePath(Path(),Random(),commandType);
+			ValidatePath(path);
 		}
 
 		void Entry::Native()
 		{
-			name->setEnabled(false);
-			description->setEnabled(false);
-			aliases->setEnabled(true);
-			protect->setEnabled(false);
-			path->setEnabled(false);
-			browse->setEnabled(false);
-			type->setEnabled(false);
-			random->setEnabled(false);
-			message->setVisible(false);
+			name.Enable(false);
+			description.Enable(false);
+			aliases.Enable(true);
+			protect.Enable(false);
+			path.Enable(false);
+			browse.Enable(false);
+			type.Enable(false);
+			random.Enable(false);
+			message.Visible(false);
 		}
 
 		void Entry::Pulsar()
 		{
-			name->setEnabled(true);
-			description->setEnabled(true);
-			aliases->setEnabled(false);
-			protect->setEnabled(true);
-			path->setEnabled(false);
-			browse->setEnabled(false);
-			random->setEnabled(false);
-			message->setVisible(false);
+			name.Enable(true);
+			description.Enable(true);
+			aliases.Enable(false);
+			protect.Enable(true);
+			path.Enable(false);
+			browse.Enable(false);
+			random.Enable(false);
+			message.Visible(false);
 		}
 
 		void Entry::Browse()
@@ -766,12 +804,35 @@ namespace UI
 			}
 			else
 			{
-				if (static_cast<UI::Commands::Type>(type->currentIndex()) == UI::Commands::Type::VIDEO)
+				if (static_cast<UI::Commands::Type>(static_cast<int>(type)) == UI::Commands::Type::VIDEO)
 					candidate=OpenVideo(this);
 				else
 					candidate=OpenAudio(this);
 			}
-			if (!candidate.isEmpty()) path->setText(candidate);
+			if (!candidate.isEmpty()) path=candidate;
+		}
+
+		void Entry::SelectAliases()
+		{
+			UI::Commands::NamesList *dialog=new UI::Commands::NamesList(u"Command Aliases"_s,u"Alias"_s,this);
+			dialog->Populate(aliases);
+			connect(dialog,&UI::Commands::NamesList::Finished,dialog,[dialog,this]() {
+				aliases=*dialog;
+			});
+			connect(dialog,&UI::Commands::NamesList::Finished,this,QOverload<>::of(&Entry::UpdateHeader));
+			connect(dialog,&UI::Commands::NamesList::Finished,dialog,&UI::Commands::NamesList::deleteLater);
+			dialog->show();
+		}
+
+		void Entry::SelectTriggers()
+		{
+			UI::Commands::NamesList *dialog=new UI::Commands::NamesList(u"Command Triggers"_s,u"Viewer Name"_s,this);
+			dialog->Populate(triggers);
+			connect(dialog,&UI::Commands::NamesList::Finished,dialog,[dialog,this]() {
+				triggers=*dialog;
+			});
+			connect(dialog,&UI::Commands::NamesList::Finished,dialog,&UI::Commands::NamesList::deleteLater);
+			dialog->show();
 		}
 
 		bool Entry::eventFilter(QObject *object,QEvent *event)
@@ -781,13 +842,13 @@ namespace UI
 				if (object == name) emit Help("Name of the command. This is the text that must appear after an exclamation mark (!).");
 				if (object == description) emit Help("Short description of the command that will appear in in list of commands and showcase rotation.");
 				if (object == protect) emit Help("When enabled, only the broadcaster and moderators will be able to use this command.");
-				if (object == openAliases) emit Help("List of alternate command names.");
-				if (object == openTriggers) emit Help("List of viewers who's arrival will trigger this command. If multiple viewers are listed, all of them have to arrive before the command will be triggered.");
+				if (object == aliases) emit Help("List of alternate command names.");
+				if (object == triggers) emit Help("List of viewers who's arrival will trigger this command. If multiple viewers are listed, all of them have to arrive before the command will be triggered.");
 				if (object == path || object == browse) emit Help("Location of the media that will be played for command types that use media, such as Video and Announce");
 				if (object == random) emit Help("When enabled, the media path must point to a folder instead of a file. An appropriate file will be selected from that path when the command is triggered.");
 				if (object == duplicates) emit Help("When choosing a random media file from a folder, sometimes the same file can be chosen back-to-back. Check this box to prevent that.");
 				if (object == type) emit Help("Determines what kind of action is taken in response to a command.\n\nValid values are:\nAnnounce - Displays text while playing an audio file\nVideo - Displays a video");
-				if (object == message->viewport()) emit Help("If the command will display text in conjunction with the media, this is the message that will be shown.");
+				if (std::optional<QWidget*> viewport=message.Viewport(); viewport && object == message.Viewport()) emit Help("If the command will display text in conjunction with the media, this is the message that will be shown.");
 			}
 
 			if (event->type() == QEvent::Wheel)
@@ -803,9 +864,22 @@ namespace UI
 			return false;
 		}
 
+		QString Entry::BuildErrorTrackingName(const QString &commandName,const QString message)
+		{
+			QString trackingName=QString("<b>!%1</b>").arg(commandName);
+			if (!message.isEmpty()) trackingName+=" "+message;
+			return trackingName;
+		}
+
+		QString Entry::BuildErrorTrackingName(const QString &commandName)
+		{
+			return BuildErrorTrackingName(commandName,{});
+		}
+
 		Dialog::Dialog(const Command::Lookup &commands,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			entriesFrame(this),
 			scrollLayout(&entriesFrame),
+			helpBox("Help",this),
 			help(this),
 			labelFilter("Filter:",this),
 			filter(this),
@@ -813,6 +887,8 @@ namespace UI
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
 			newEntry("&New",this),
+			errorBox("Errors",this),
+			errorMessages(&errorBox),
 			statusBar(this)
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#commands { background-color: palette(base); } QListWidget:enabled, QTextEdit:enabled { background-color: palette(base); }");
@@ -842,9 +918,17 @@ namespace UI
 			QWidget *rightPane=new QWidget(this);
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
 			rightPane->setLayout(rightLayout);
-			rightLayout->addWidget(&help,0,0,1,2);
+			QVBoxLayout *helpBoxLayout=new QVBoxLayout(&helpBox);
+			helpBox.setLayout(helpBoxLayout);
+			helpBoxLayout->addWidget(&help);
+			rightLayout->addWidget(&helpBox,0,0,1,2);
+			QVBoxLayout *errorBoxLayout=new QVBoxLayout(&errorBox);
+			errorBox.setLayout(errorBoxLayout);
+			errorBox.setVisible(false);
+			errorBoxLayout->addWidget(&errorMessages);
+			rightLayout->addWidget(&errorBox,1,0,1,2);
 			statusBar.setSizeGripEnabled(false);
-			rightLayout->addWidget(&statusBar,1,0,1,2);
+			rightLayout->addWidget(&statusBar,2,0,1,2);
 			labelFilter.setSizePolicy({QSizePolicy::Fixed,QSizePolicy::Fixed});
 			rightLayout->addWidget(&labelFilter,2,0);
 			filter.addItems({"All","Native","Dynamic","Pulsar"});
@@ -871,7 +955,7 @@ namespace UI
 			// we have to create a dummy entry and unfold it to correctly
 			// calculate the initial size of the dialog because it's based
 			// on the width of the widgets within an entry
-			Entry ruler(this); // there seems to be no problem with putting this on the stack (atm)
+			Entry ruler(errorReport,this); // there seems to be no problem with putting this on the stack (atm)
 			ruler.ToggleFold();
 			scrollLayout.addWidget(&ruler);
 			adjustSize();
@@ -893,8 +977,11 @@ namespace UI
 
 				try
 				{
-					Entry *entry=new Entry(command,&entriesFrame);
+					Entry *entry=new Entry(command,errorReport,&entriesFrame);
 					connect(entry,&Entry::Help,&help,&QTextEdit::setText);
+					connect(&errorReport,&Feedback::Error::Clear,&save,&QPushButton::setEnabled);
+					connect(&errorReport,&Feedback::Error::Count,&errorBox,&QGroupBox::setVisible);
+					connect(&errorReport,&Feedback::Error::ReportProblem,&errorMessages,&QLabel::setText);
 					entries.try_emplace(entry->Name(),entry);
 					scrollLayout.addWidget(entry);
 				}
@@ -927,7 +1014,7 @@ namespace UI
 				{},
 				{},
 				false
-			},this);
+			},errorReport,this);
 			entries.try_emplace(entry->Name(),entry);
 			scrollLayout.addWidget(entry);
 		}
@@ -1088,10 +1175,11 @@ namespace UI
 				if (color.isValid()) control.setText(color.name(QColor::HexArgb));
 			}
 
-			Channel::Channel(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Channel")),
+			Channel::Channel(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Channel")),
 				name(this),
 				protection(this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				connect(&name,&QLineEdit::textChanged,this,&Channel::ValidateName);
 
@@ -1127,7 +1215,11 @@ namespace UI
 
 			void Channel::ValidateName(const QString &text)
 			{
-				Require(&name,text.isEmpty());
+				bool valid=!text.isEmpty();
+				if (valid)
+					errorReport->Valid(&name);
+				else
+					errorReport->Invalid(&name);
 			}
 
 			void Channel::Save()
@@ -1140,7 +1232,7 @@ namespace UI
 				settings.name.Save();
 			}
 
-			Window::Window(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Main Window")),
+			Window::Window(Settings settings,QWidget *parent) : Category(parent,QStringLiteral("Main Window")),
 				backgroundColor(this),
 				selectBackgroundColor(Text::CHOOSE,this),
 				width(this),
@@ -1196,7 +1288,7 @@ namespace UI
 				settings.dimensions.Set(QSize{width.value(),height.value()});
 			}
 
-			Status::Status(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Status")),
+			Status::Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Status")),
 				font(this),
 				fontSize(this),
 				selectFont(Text::CHOOSE,this),
@@ -1206,7 +1298,8 @@ namespace UI
 				backgroundColor(this),
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Status::ValidateFont));
 				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Status::ValidateFont));
@@ -1252,7 +1345,10 @@ namespace UI
 			void Status::ValidateFont(const QString &family,const int pointSize)
 			{
 				QFont candidate(family,pointSize);
-				Valid(&font,candidate.exactMatch());
+				if (candidate.exactMatch())
+					errorReport->Valid(&font);
+				else
+					errorReport->Invalid(&font);
 			}
 
 			void Status::ValidateFont(const QString &family)
@@ -1286,7 +1382,7 @@ namespace UI
 				settings.backgroundColor.Set(backgroundColor.text());
 			}
 
-			Chat::Chat(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Chat")),
+			Chat::Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Chat")),
 				font(this),
 				fontSize(this),
 				selectFont(Text::CHOOSE,this),
@@ -1297,7 +1393,8 @@ namespace UI
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
 				statusInterval(this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Chat::ValidateFont));
 				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Chat::ValidateFont));
@@ -1345,7 +1442,10 @@ namespace UI
 			void Chat::ValidateFont(const QString &family,const int pointSize)
 			{
 				QFont candidate(family,pointSize);
-				Valid(&font,candidate.exactMatch());
+				if (candidate.exactMatch())
+					errorReport->Valid(&font);
+				else
+					errorReport->Invalid(&font);
 			}
 
 			void Chat::ValidateFont(const QString &family)
@@ -1381,7 +1481,7 @@ namespace UI
 				settings.statusInterval.Set(statusInterval.value());
 			}
 
-			Pane::Pane(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Panes")),
+			Pane::Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Panes")),
 				font(this),
 				fontSize(this),
 				selectFont(Text::CHOOSE,this),
@@ -1395,7 +1495,8 @@ namespace UI
 				previewAccentColor(this,settings.accentColor),
 				selectAccentColor(Text::CHOOSE,this),
 				duration(this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Pane::ValidateFont));
 				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Pane::ValidateFont));
@@ -1453,7 +1554,10 @@ namespace UI
 			void Pane::ValidateFont(const QString &family,const int pointSize)
 			{
 				QFont candidate(family,pointSize);
-				Valid(&font,candidate.exactMatch());
+				if (candidate.exactMatch())
+					errorReport->Valid(&font);
+				else
+					errorReport->Invalid(&font);
 			}
 
 			void Pane::ValidateFont(const QString &family)
@@ -1491,7 +1595,7 @@ namespace UI
 				settings.duration.Set(duration.value());
 			}
 
-			Music::Music(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Music")),
+			Music::Music(Settings settings,QWidget *parent) : Category(parent,QStringLiteral("Music")),
 				suppressedVolume(this),
 				settings(settings)
 			{
@@ -1520,7 +1624,7 @@ namespace UI
 				settings.suppressedVolume.Set(suppressedVolume.value());
 			}
 
-			Bot::Bot(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Bot Core")),
+			Bot::Bot(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Bot Core")),
 				arrivalSound(this),
 				selectArrivalSound(Text::BROWSE,this),
 				previewArrivalSound(Text::PREVIEW,this),
@@ -1542,7 +1646,8 @@ namespace UI
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
 				textWallThreshold(this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
 				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
@@ -1679,7 +1784,10 @@ namespace UI
 			{
 				QFileInfo candidate(path);
 				bool valid=candidate.exists() && (candidate.isDir() || candidate.suffix() == Text::FILE_TYPE_AUDIO);
-				Valid(&arrivalSound,valid);
+				if (valid)
+					errorReport->Valid(&arrivalSound);
+				else
+					errorReport->Invalid(&arrivalSound);
 				previewArrivalSound.setEnabled(valid);
 			}
 
@@ -1687,7 +1795,10 @@ namespace UI
 			{
 				QFileInfo candidate(path);
 				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
-				Valid(&portraitVideo,valid);
+				if (valid)
+					errorReport->Valid(&portraitVideo);
+				else
+					errorReport->Invalid(&portraitVideo);
 				previewPortraitVideo.setEnabled(valid);
 			}
 
@@ -1695,7 +1806,10 @@ namespace UI
 			{
 				QFileInfo candidate(path);
 				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
-				Valid(&cheerVideo,valid);
+				if (valid)
+					errorReport->Valid(&cheerVideo);
+				else
+					errorReport->Invalid(&cheerVideo);
 				previewCheerVideo.setEnabled(valid);
 			}
 
@@ -1703,7 +1817,10 @@ namespace UI
 			{
 				QFileInfo candidate(path);
 				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_AUDIO;
-				Valid(&subscriptionSound,valid);
+				if (valid)
+					errorReport->Valid(&subscriptionSound);
+				else
+					errorReport->Invalid(&subscriptionSound);
 				previewSubscriptionSound.setEnabled(valid);
 			}
 
@@ -1711,7 +1828,10 @@ namespace UI
 			{
 				QFileInfo candidate(path);
 				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_AUDIO;
-				Valid(&raidSound,valid);
+				if (valid)
+					errorReport->Valid(&raidSound);
+				else
+					errorReport->Invalid(&raidSound);
 				previewRaidSound.setEnabled(valid);
 			}
 
@@ -1719,7 +1839,10 @@ namespace UI
 			{
 				QFileInfo candidate(path);
 				bool valid=candidate.exists() &&candidate.suffix() == Text::FILE_TYPE_AUDIO;
-				Valid(&textWallSound,valid);
+				if (valid)
+					errorReport->Valid(&textWallSound);
+				else
+					errorReport->Invalid(&textWallSound);
 				textWallSound.setEnabled(valid);
 			}
 
@@ -1736,10 +1859,11 @@ namespace UI
 				if (QString text=textWallSound.text(); !text.isEmpty()) settings.textWallSound.Set(text);
 			}
 
-			Log::Log(QWidget *parent,Settings settings) : Category(parent,QStringLiteral("Logging")),
+			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Logging")),
 				directory(this),
 				selectDirectory(Text::BROWSE,this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				connect(&directory,&QLineEdit::textChanged,this,&Log::ValidateDirectory);
 				connect(&selectDirectory,&QPushButton::clicked,this,&Log::OpenDirectory);
@@ -1760,7 +1884,10 @@ namespace UI
 
 			void Log::ValidateDirectory(const QString &path)
 			{
-				Valid(&directory,QDir(path).exists());
+				if (QDir(path).exists())
+					errorReport->Valid(&directory);
+				else
+					errorReport->Invalid(&directory);
 			}
 
 			bool Log::eventFilter(QObject *object,QEvent *event)
@@ -1779,14 +1906,15 @@ namespace UI
 				settings.directory.Set(directory.text());
 			}
 
-			Security::Security(QWidget *parent,::Security &settings) : Category(parent,QStringLiteral("Security")),
+			Security::Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Security")),
 				administrator(this),
 				clientID(this),
 				token(this),
 				callbackURL(this),
 				permissions(this),
 				selectPermissions(Text::CHOOSE,this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
 				details->setVisible(false);
 
@@ -1844,7 +1972,10 @@ namespace UI
 
 			void Security::ValidateURL(const QString &text)
 			{
-				Valid(&callbackURL,QUrl(text).isValid());
+				if (QUrl(text).isValid())
+					errorReport->Valid(&callbackURL);
+				else
+					errorReport->Invalid(&callbackURL);
 			}
 		}
 
@@ -1907,6 +2038,10 @@ namespace UI
 
 		void Dialog::AddCategory(Categories::Category *category)
 		{
+			// need to do it this way because all UI elements in Celeste require
+			// a parent, but we have to wait until after the parent dialog exists
+			// to create and attach the categories, so these can't be passed into
+			// the constructor
 			scrollLayout->addWidget(category);
 			connect(category,&Categories::Category::Help,&help,&QTextEdit::setText);
 			categories.push_back(category);

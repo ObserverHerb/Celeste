@@ -81,7 +81,7 @@ signals:
 public slots:
 	void Refresh();
 	void Print(const QString &text) override;
-	void Message(const Chat::Message &message) const;
+	void Message(std::shared_ptr<Chat::Message> message) const;
 protected slots:
 	void DismissStatus();
 };

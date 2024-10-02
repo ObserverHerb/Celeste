@@ -338,24 +338,26 @@ namespace Chat
 {
 	struct Emote
 	{
-		QString name;
-		QString id;
-		QString path;
-		unsigned int start { 0 };
-		unsigned int end { 0 };
+		QString name {};
+		QString id {};
+		QString path {};
+		int start { 0 };
+		int end { 0 };
 		bool operator<(const Emote &other) const { return start < other.start; }
 	};
+	using EmoteList=std::vector<Emote>;
 
 	struct Message
 	{
-		QString displayName;
-		QString text;
-		QColor color;
-		QStringList badges;
-		std::vector<Chat::Emote> emotes;
+		QString displayName {};
+		QString text {};
+		QColor color {};
+		QStringList badges {};
+		std::vector<Chat::Emote> emotes {};
 		bool action { false };
 		bool broadcaster { false };
 		bool moderator { false };
+		bool html { false };
 		bool Privileged() const { return broadcaster || moderator; }
 	};
 }
