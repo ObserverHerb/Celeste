@@ -874,7 +874,7 @@ namespace UI
 
 			QDialog& Dialog()
 			{
-				return &dialog;
+				return dialog;
 			}
 
 			T& Pane()
