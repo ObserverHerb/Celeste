@@ -346,6 +346,12 @@ int main(int argc,char *argv[])
 		return application.exec();
 	}
 
+	catch (const std::runtime_error &exception)
+	{
+		MessageBox(u"Critial Error"_s,QString(exception.what())+u"\n\nApplication will exit."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
+		return FATAL_ERROR;
+	}
+
 	catch (const std::exception &exception)
 	{
 		qFatal("%s",exception.what());
