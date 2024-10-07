@@ -350,8 +350,9 @@ namespace Music
 		{
 			quint32 result;
 			std::memcpy(&result,value,sizeof(quint32));
-			quint8 out=0;
 			quint32 mask=0x7F000000;
+			quint8 out=0;
+			static_cast<void>(out); // silence spurious "unused variable" warnings
 			while (mask)
 			{
 				out >>= 1;
