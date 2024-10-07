@@ -135,7 +135,7 @@ void Channel::ParseMessage(const QString message)
 	if (!window.isEmpty()) parameters=StringView::Take(window,':');
 	std::optional<QStringView> finalParameter;
 	if (!window.isEmpty()) finalParameter=StringView::Take(window,'\n');
-	DispatchMessage(prefix ? prefix->toString() : QString(), source ? source->toString() : QString(), command->toString(), parameters ? parameters->toString().split(' ',StringConvert::Split::Behavior(StringConvert::Split::Behaviors::SKIP_EMPTY_PARTS)) : QStringList(), finalParameter ? finalParameter->toString() : QString());
+	DispatchMessage(prefix ? prefix->toString() : QString(), source ? source->toString() : QString(), command->toString(), parameters ? parameters->toString().split(' ',Qt::SkipEmptyParts) : QStringList(), finalParameter ? finalParameter->toString() : QString());
 }
 
 void Channel::DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParameter)

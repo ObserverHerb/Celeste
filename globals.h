@@ -85,29 +85,10 @@ namespace StringConvert
 		return count == 1 ? singular : plural;
 	}
 
-	namespace Split
-	{
-#if QT_VERSION < QT_VERSION_CHECK(5,14,0) // FIXME: remove Qt 5 support
-		enum class Behaviors
-		{
-			KEEP_EMPTY_PARTS=QString::SplitBehavior::KeepEmptyParts,
-			SKIP_EMPTY_PARTS=QString::SplitBehavior::SkipEmptyParts
-		};
-		inline QString::SplitBehavior Behavior(Behaviors behaviors) { return static_cast<QString::SplitBehavior>(behaviors); }
-#else
-		enum class Behaviors
-		{
-			KEEP_EMPTY_PARTS=Qt::KeepEmptyParts,
-			SKIP_EMPTY_PARTS=Qt::SkipEmptyParts
-		};
-		inline Qt::SplitBehaviorFlags Behavior(Behaviors behaviors) { return static_cast<Qt::SplitBehaviorFlags>(behaviors); }
-#endif
-	}
-
 	inline const QString SafeDump(const QString &data)
 	{
 #if defined QT_DEBUG && defined DEVELOPER_MODE
-		QStringList lines=data.split("\n",Split::Behavior(Split::Behaviors::SKIP_EMPTY_PARTS));
+		QStringList lines=data.split("\n",Qt::SkipEmptyParts);
 		for (QString &line : lines) line.prepend("> ");
 		return lines.join("\n");
 #else
