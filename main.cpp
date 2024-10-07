@@ -228,6 +228,7 @@ int main(int argc,char *argv[])
 			application.exit(AUTHENTICATION_ERROR);
 		});
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,QOverload<const QString&>::of(&Window::Print));
+		log.connect(&log,&Log::Print,&status.Pane(),&StatusPane::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
 		celeste.connect(&celeste,&Bot::Print,&log,&Log::Receive);
