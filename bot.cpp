@@ -275,7 +275,7 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 		if (candidate != aliases.end())
 		{
 			QJsonArray names;
-			QStringList nodes=aliases.extract(candidate).mapped();
+			const QStringList nodes=aliases.extract(candidate).mapped();
 			for (const QString &alias : nodes) names.append(alias);
 			object.insert(JSON_KEY_COMMAND_ALIASES,names);
 		}
