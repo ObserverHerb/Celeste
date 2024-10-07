@@ -147,10 +147,10 @@ void ShowEventSubscriptions(ApplicationWindow &window,EventSub *eventSub)
 	configureEventSubscriptions->open();
 }
 
-void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Music::Player &player,Log &log)
+void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Music::Player &player)
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,player.Filename(),&window);
-	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot,&log](const File::List &files) {
+	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot](const File::List &files) {
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
 			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
@@ -327,8 +327,8 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands]() {
 			ShowCommands(window,celeste,botCommands);
 		});
-		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&musicPlayer,&log]() {
-			ShowPlaylist(musicPlaylist,window,celeste,musicPlayer,log);
+		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&musicPlayer]() {
+			ShowPlaylist(musicPlaylist,window,celeste,musicPlayer);
 		});
 		window.connect(&window,&Window::ShowStatus,[&status]() {
 			status.Open();
