@@ -305,6 +305,7 @@ int main(int argc,char *argv[])
 		});
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
 		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);
+		security.connect(&security,&Security::Print,&log,&Log::Receive);
 		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel]() {
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals

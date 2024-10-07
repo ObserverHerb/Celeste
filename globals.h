@@ -87,7 +87,7 @@ namespace StringConvert
 
 	namespace Split
 	{
-#if QT_VERSION < QT_VERSION_CHECK(5,14,0)
+#if QT_VERSION < QT_VERSION_CHECK(5,14,0) // FIXME: remove Qt 5 support
 		enum class Behaviors
 		{
 			KEEP_EMPTY_PARTS=QString::SplitBehavior::KeepEmptyParts,
@@ -104,7 +104,7 @@ namespace StringConvert
 #endif
 	}
 
-	inline const QString Dump(const QString &data)
+	inline const QString SafeDump(const QString &data)
 	{
 #if defined QT_DEBUG && defined DEVELOPER_MODE
 		QStringList lines=data.split("\n",Split::Behavior(Split::Behaviors::SKIP_EMPTY_PARTS));

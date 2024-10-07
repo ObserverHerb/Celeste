@@ -141,7 +141,7 @@ void EventSub::Subscribe(const QString &type)
 
 	emit Print(u"Requesting subscription to %1"_s.arg(type),TWITCH_API_OPERATION_SUBSCRIBE);
 	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_EVENTSUB)},Network::Method::POST,[this,type](QNetworkReply *reply) {
-		emit Print(StringConvert::Dump(reply->readAll()),TWITCH_API_OPERATION_SUBSCRIBE);
+		emit Print(StringConvert::SafeDump(reply->readAll()),TWITCH_API_OPERATION_SUBSCRIBE);
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 202:
@@ -358,7 +358,7 @@ void EventSub::RequestEventSubscriptionList()
 		}
 
 		const QByteArray data=reply->readAll();
-		emit Print(StringConvert::Dump(data),TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
+		emit Print(StringConvert::SafeDump(data),TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
 
 		const JSON::ParseResult parsedJSON=JSON::Parse(StringConvert::ByteArray(data.trimmed()));
 		if (!parsedJSON)

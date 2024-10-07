@@ -54,6 +54,7 @@ private:
 	QTimer tokenValidationTimer;
 	bool authorizing;
 signals:
+	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("security"));
 	void TokenRequestFailed();
 	void Listening();
 	void Disconnected();
@@ -61,7 +62,8 @@ signals:
 public slots:
 	void AuthorizeUser();
 private slots:
-	void ValidateToken();
+	void ValidateTokenWithRewire();
+	void ValidateTokenWithTwitch();
 	void ObtainAdministratorProfile();
 	void RewireConnected();
 	void RewireError(QMqttClient::ClientError error);
