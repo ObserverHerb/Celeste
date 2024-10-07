@@ -194,7 +194,7 @@ namespace UI
 		QWidget *parent;
 		TWidget *widget;
 		std::function<void(TWidget*)> setupNeeded;
-		EphemeralWidgetBase(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), setupNeeded(setupNeeded), parent(parent), widget(nullptr) { }
+		EphemeralWidgetBase(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), parent(parent), widget(nullptr), setupNeeded(setupNeeded) { }
 
 		TWidget* Widget()
 		{
