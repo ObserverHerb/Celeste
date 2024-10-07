@@ -1648,6 +1648,7 @@ namespace UI
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
 				textWallThreshold(this),
+				pulsarEnabled(this),
 				settings(settings),
 				errorReport(errorReport)
 			{
@@ -1682,16 +1683,18 @@ namespace UI
 				textWallThreshold.setRange(1,std::numeric_limits<int>::max());
 				textWallThreshold.setValue(settings.textWallThreshold);
 				textWallSound.setText(settings.textWallSound);
+				pulsarEnabled.setChecked(settings.pulsarEnabled);
 
 				Rows({
-					{Label(QStringLiteral("Arrival Announcement Audio")),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
-					{Label(QStringLiteral("Portrait (Ping) Video")),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
-					{Label(QStringLiteral("Cheer (Bits) Video")),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
-					{Label(QStringLiteral("Subscription Announcement")),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
-					{Label(QStringLiteral("Raid Announcement")),&raidSound,&selectRaidSound,&previewRaidSound},
-					{Label(QStringLiteral("Inactivity Cooldown")),&inactivityCooldown},
-					{Label(QStringLiteral("Help Cooldown")),&helpCooldown},
-					{Label(QStringLiteral("Wall-of-Text Sound")),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(QStringLiteral("Threshold")),&textWallThreshold}
+					{Label(u"Arrival Announcement Audio"_s),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
+					{Label(u"Portrait (Ping) Video"_s),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
+					{Label(u"Cheer (Bits) Video"_s),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
+					{Label(u"Subscription Announcement"_s),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
+					{Label(u"Raid Announcement"_s),&raidSound,&selectRaidSound,&previewRaidSound},
+					{Label(u"Inactivity Cooldown"_s),&inactivityCooldown},
+					{Label(u"Help Cooldown"_s),&helpCooldown},
+					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(QStringLiteral("Threshold")),&textWallThreshold},
+					{Label(u"Use Pulsar"_s),&pulsarEnabled}
 				});
 			}
 
@@ -1699,17 +1702,18 @@ namespace UI
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &arrivalSound || object == &selectArrivalSound || object == &previewArrivalSound) emit Help(QStringLiteral("This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."));
-					if (object == &portraitVideo || object == &selectPortraitVideo || object == &previewPortraitVideo) emit Help(QStringLiteral("Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."));
-					if (object == &cheerVideo || object == &selectCheerVideo || object == &previewCheerVideo) emit Help(QStringLiteral("A video (mp4) that plays when a chatter cheers bits."));
-					if (object == &subscriptionSound || object == &selectSubscriptionSound || object == &previewSubscriptionSound) emit Help(QStringLiteral("This is the sound that plays when a chatter subscribes to the channel."));
-					if (object == &raidSound || object == &selectRaidSound || object == &previewRaidSound) emit Help(QStringLiteral("This is the sound that plays when another streamer raids the channel."));
-					if (object == &inactivityCooldown) emit Help(QStringLiteral(R"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"));
-					if (object == &helpCooldown) emit Help(QStringLiteral(R"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"));
-					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(QStringLiteral("This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."));
+					if (object == &arrivalSound || object == &selectArrivalSound || object == &previewArrivalSound) emit Help(u"This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."_s);
+					if (object == &portraitVideo || object == &selectPortraitVideo || object == &previewPortraitVideo) emit Help(u"Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."_s);
+					if (object == &cheerVideo || object == &selectCheerVideo || object == &previewCheerVideo) emit Help(u"A video (mp4) that plays when a chatter cheers bits."_s);
+					if (object == &subscriptionSound || object == &selectSubscriptionSound || object == &previewSubscriptionSound) emit Help(u"This is the sound that plays when a chatter subscribes to the channel."_s);
+					if (object == &raidSound || object == &selectRaidSound || object == &previewRaidSound) emit Help(u"This is the sound that plays when another streamer raids the channel."_s);
+					if (object == &inactivityCooldown) emit Help(uR"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"_s);
+					if (object == &helpCooldown) emit Help(uR"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"_s);
+					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s);
+					if (object == &pulsarEnabled) emit Help(u"Check this to enable the Pulsar plugin which allows the bot to communicate with OBS Studio. This will only work if the Pulsar plugin was installed when the bot was installed."_s);
 				}
 
-				if (event->type() == QEvent::HoverLeave) emit Help("");
+				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
 				return false;
 			}
 
@@ -1859,6 +1863,7 @@ namespace UI
 				settings.helpCooldown.Set(helpCooldown.value());
 				settings.textWallThreshold.Set(textWallThreshold.value());
 				if (QString text=textWallSound.text(); !text.isEmpty()) settings.textWallSound.Set(text);
+				settings.pulsarEnabled.Set(pulsarEnabled.isChecked());
 			}
 
 			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Logging")),

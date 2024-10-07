@@ -2,6 +2,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFile>
+#include <QMessageBox>
 #include "pulsar.h"
 #include "globals.h"
 
@@ -15,6 +16,7 @@ const char *JSON_KEY_DIMENSIONS_Y="height";
 const char *SETTINGS_CATEGORY_PULSAR="Pulsar";
 
 Pulsar::Pulsar() : socket(new QLocalSocket(this)),
+	settingEnabled(SETTINGS_CATEGORY_PULSAR,"Enabled",true),
 	settingReconnectDelay(SETTINGS_CATEGORY_PULSAR,"ReconnectDelay",5000)
 {
 	reconnectDelay.setInterval(static_cast<int>(settingReconnectDelay));
@@ -22,8 +24,6 @@ Pulsar::Pulsar() : socket(new QLocalSocket(this)),
 
 	connect(socket,&QLocalSocket::readyRead,this,&Pulsar::Data);
 	connect(socket,&QLocalSocket::errorOccurred,this,&Pulsar::Error);
-
-	Connect();
 }
 
 bool Pulsar::LoadTriggers()
@@ -103,8 +103,15 @@ void Pulsar::Error(QLocalSocket::LocalSocketError error)
 		error == QLocalSocket::SocketTimeoutError ||
 		error == QLocalSocket::ConnectionError)
 	{
-		emit Print(QString("Failed to connect to Pulsar: %1").arg(socket->errorString()),"connect");
-		reconnectDelay.start();
+		const QString failureMessage=QString("Failed to connect to Pulsar: %1").arg(socket->errorString());
+		emit Print(failureMessage,"connect");
+		QMessageBox failedDialog;
+		failedDialog.setWindowTitle("Connection to Pulsar Failed");
+		failedDialog.setText(failureMessage+"\n\nThis can happen if the bot is started before OBS Studio or if the Pulsar plugin has not been installed. Attempting to connect to Pulsar can be disabled in options.\n\nWould you like to try connecting again?");
+		failedDialog.setIcon(QMessageBox::Warning);
+		failedDialog.setStandardButtons(QMessageBox::Yes|QMessageBox::No);
+		failedDialog.setDefaultButton(QMessageBox::Yes);
+		if (failedDialog.exec() == QMessageBox::Yes) reconnectDelay.start();
 		return;
 	}
 
@@ -114,7 +121,7 @@ void Pulsar::Error(QLocalSocket::LocalSocketError error)
 
 void Pulsar::Connect()
 {
-	socket->connectToServer(PULSAR_SOCKET_NAME,QIODevice::ReadWrite);
+	if (settingEnabled) socket->connectToServer(PULSAR_SOCKET_NAME,QIODevice::ReadWrite);
 }
 
 void Pulsar::Reconnect()
@@ -174,4 +181,9 @@ void Pulsar::Pulse(const QString &trigger)
 	}
 
 	socket->write(QJsonDocument(payload->second).toJson(QJsonDocument::Compact)+'\n');
+}
+
+ApplicationSetting& Pulsar::Enabled()
+{
+	return settingEnabled;
 }

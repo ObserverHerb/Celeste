@@ -45,7 +45,7 @@ int MessageBox(const QString &title,const QString &text,QMessageBox::Icon icon,Q
 	return box.exec();
 }
 
-void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Player &musicPlayer,Log &log,Security &security)
+void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pulsar,Music::Player &musicPlayer,Log &log,Security &security)
 {
 	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
 	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
@@ -93,7 +93,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Music::Play
 		.inactivityCooldown=bot.InactivityCooldown(),
 		.helpCooldown=bot.HelpCooldown(),
 		.textWallThreshold=bot.TextWallThreshold(),
-		.textWallSound=bot.TextWallSound()
+		.textWallSound=bot.TextWallSound(),
+		.pulsarEnabled=pulsar.Enabled()
 	},errorReport,configureOptions);
 	configureOptions->AddCategory(optionsCategoryBot);
 	configureOptions->AddCategory(new UI::Options::Categories::Log({
@@ -323,8 +324,8 @@ int main(int argc,char *argv[])
 			celeste.SaveViewerAttributes(MessageBox(u"Reset Next Session"_s,u"Would you like to reset the session for the next stream?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes);
 			closeEvent->accept();
 		});
-		window.connect(&window,&Window::ConfigureOptions,&window,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
-			ShowOptions(window,channel,celeste,musicPlayer,log,security);
+		window.connect(&window,&Window::ConfigureOptions,&window,[&window,channel,&celeste,&pulsar,&musicPlayer,&log,&security]() {
+			ShowOptions(window,channel,celeste,pulsar,musicPlayer,log,security);
 		});
 		window.connect(&window,&Window::ConfigureCommands,&window,[&window,&celeste,&botCommands]() {
 			ShowCommands(window,celeste,botCommands);
@@ -337,6 +338,7 @@ int main(int argc,char *argv[])
 		});
 
 		if (!log.Open()) MessageBox(u"Error Opening Log"_s,u"Failed to open log file. Log messages will not be saved to filesystem"_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
+		pulsar.Connect();
 		pulsar.LoadTriggers();
 		window.show();
 		security.Listen();

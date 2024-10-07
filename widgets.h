@@ -640,6 +640,7 @@ namespace UI
 					ApplicationSetting &helpCooldown;
 					ApplicationSetting &textWallThreshold;
 					ApplicationSetting &textWallSound;
+					ApplicationSetting &pulsarEnabled;
 				};
 				Bot(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
@@ -665,6 +666,7 @@ namespace UI
 				QPushButton selectTextWallSound;
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
+				QCheckBox pulsarEnabled;
 				Settings settings;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
