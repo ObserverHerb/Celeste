@@ -75,13 +75,21 @@ void Window::SwapPersistentPane(PersistentPane *pane)
 
 void Window::AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath)
 {
-	MultimediaAnnouncePane *pane=new MultimediaAnnouncePane({
-		{"Please welcome",1},
-		{QString("%1").arg(name),1.5},
-		{"to the chat",1}
-	},*profileImage,audioPath,this);
-	connect(pane,&MultimediaAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	try
+	{
+		MultimediaAnnouncePane *pane=new MultimediaAnnouncePane({
+			{"Please welcome",1},
+			{QString("%1").arg(name),1.5},
+			{"to the chat",1}
+		},*profileImage,audioPath,this);
+		connect(pane,&MultimediaAnnouncePane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Print(exception.what(),"announce arrival");
+	}
 }
 
 void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,const QString& message)
@@ -99,24 +107,40 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 
 void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 {
-	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{QString("%1").arg(name),1.5},
-		{"has subscribed!",1}
-	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	try
+	{
+		AudioAnnouncePane *pane=new AudioAnnouncePane({
+			{QString("%1").arg(name),1.5},
+			{"has subscribed!",1}
+		},audioPath,this);
+		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Print(exception.what(),"announce subscription");
+	}
 }
 
 void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const QString &audioPath)
 {
-	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{QString("%1").arg(name),1.5},
-		{"is raiding with",1},
-		{QString("%1").arg(StringConvert::PositiveInteger(viewers)),1.5},
-		{"viewers",1}
-	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	try
+	{
+		AudioAnnouncePane *pane=new AudioAnnouncePane({
+			{QString("%1").arg(name),1.5},
+			{"is raiding with",1},
+			{QString("%1").arg(StringConvert::PositiveInteger(viewers)),1.5},
+			{"viewers",1}
+		},audioPath,this);
+		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Print(exception.what(),"announce raid");
+	}
 }
 
 void Window::AnnounceCheer(const QString &name,const unsigned int count,const QString &message,const QString &videoPath)
@@ -141,11 +165,19 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 
 void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 {
-	AudioAnnouncePane *pane=new AudioAnnouncePane({
-		{message,0.5},
-	},audioPath,this);
-	connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	try
+	{
+		AudioAnnouncePane *pane=new AudioAnnouncePane({
+			{message,0.5},
+		},audioPath,this);
+		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error &exception)
+	{
+		emit Print(exception.what(),"announce wall-of-text");
+	}
 }
 
 void Window::AnnounceDeniedCommand(const QString &videoPath)
