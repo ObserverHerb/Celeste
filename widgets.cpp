@@ -966,13 +966,11 @@ namespace UI
 		{
 			entriesFrame.setUpdatesEnabled(false);
 			std::unordered_map<QString,QStringList> aliases;
-			for (const Command::Entry &pair : commands)
+			for (const auto& [name,command] : commands)
 			{
-				const Command &command=pair.second;
-
 				if (command.Parent())
 				{
-					aliases[command.Parent()->Name()].push_back(command.Name()); // NOTE: This is an assignment, not just a lookup
+					aliases[command.Parent()->Name()].push_back(name); // NOTE: This is an assignment, not just a lookup
 					continue;
 				}
 

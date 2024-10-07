@@ -404,12 +404,12 @@ QString AnnouncePane::BuildParagraph(int width)
 	QFont font=output->font();
 	for (const Line &line : lines)
 	{
-		font.setPointSizeF(output->font().pointSizeF()*line.second);
-		int pointSize=line.first.contains(QChar{32}) ? font.pointSize() : StringConvert::RestrictFontWidth(font,line.first,width-output->margin()*2);
-		if (line.second == 1 && font.pointSizeF() == output->font().pointSizeF())
-			paragraph.append(QString("%1").arg(line.first));
+		font.setPointSizeF(output->font().pointSizeF()*line.size);
+		int pointSize=line.text.contains(QChar{32}) ? font.pointSize() : StringConvert::RestrictFontWidth(font,line.text,width-output->margin()*2);
+		if (line.size == 1 && font.pointSizeF() == output->font().pointSizeF())
+			paragraph.append(QString("%1").arg(line.text));
 		else
-			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.first,StringConvert::Integer(pointSize)));
+			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.text,StringConvert::Integer(pointSize)));
 		paragraph.append("<br>");
 	}
 	return QString(R"(<div style="line-height: 1.25;">%1</div>)").arg(paragraph);

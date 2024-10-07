@@ -48,7 +48,6 @@ class Command
 {
 public:
 	using Lookup=std::unordered_map<QString,Command>;
-	using Entry=std::pair<const QString,Command>;
 	Command() : Command({},{},CommandType::BLANK,false,true,{},{},{},{}) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},{},protect) { }
 	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,const QStringList &viewers,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(std::make_shared<File::List>(path,filters)), message(message), viewers(viewers), parent(nullptr) { }

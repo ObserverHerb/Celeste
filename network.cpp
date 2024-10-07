@@ -26,7 +26,7 @@ namespace Network
 
 	void Request::Send()
 	{
-		for (const Header &header : headers) request.setRawHeader(header.first,header.second);
+		for (const Header &header : headers) request.setRawHeader(header.key,header.value);
 		switch (method)
 		{
 		case Method::GET:

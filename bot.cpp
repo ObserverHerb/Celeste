@@ -213,25 +213,23 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 	NativeCommandFlagLookup mergedNativeCommandFlags;
 	QJsonArray array;
 	std::unordered_map<QString,QStringList> aliases;
-	for (const Command::Entry &entry : entries)
+	for (const auto& [name,command] : entries)
 	{
-		const Command &command=entry.second;
-
 		if (command.Parent())
 		{
-			aliases[command.Parent()->Name()].push_back(command.Name());
+			aliases[command.Parent()->Name()].push_back(name);
 			continue; // if this is just an alias, move on without processing it as a full command
 		}
 
 		QJsonObject object;
-		object.insert(JSON_KEY_COMMAND_NAME,command.Name());
+		object.insert(JSON_KEY_COMMAND_NAME,name);
 
 		switch (command.Type())
 		{
 		case CommandType::BLANK:
 			throw std::logic_error("UI should not allow empty command type");
 		case CommandType::NATIVE:
-			mergedNativeCommandFlags.insert(nativeCommandFlags.extract(command.Name()));
+			mergedNativeCommandFlags.insert(nativeCommandFlags.extract(name));
 			continue;
 		case CommandType::AUDIO:
 			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
@@ -286,13 +284,13 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 	// catch the aliases that were for native commands,
 	// which normally aren't listed in the commands file
-	for (const std::pair<const QString,QStringList> &pair : aliases)
+	for (const auto& [commandName,aliasNames] : aliases)
 	{
-		QJsonArray names;
-		for (const QString &name : pair.second) names.append(name);
+		QJsonArray namesArray;
+		for (const QString &aliasName : aliasNames) namesArray.append(aliasName);
 		array.append(QJsonObject({
-			{JSON_KEY_COMMAND_NAME,pair.first},
-			{JSON_KEY_COMMAND_ALIASES,names}
+			{JSON_KEY_COMMAND_NAME,commandName},
+			{JSON_KEY_COMMAND_ALIASES,namesArray}
 		}));
 	}
 
@@ -391,14 +389,14 @@ void Bot::SaveViewerAttributes(bool reset)
 	if (!viewerAttributesFile.open(QIODevice::WriteOnly)) return; // FIXME: how can we report the error here while closing?
 
 	QJsonObject entries;
-	for (const std::pair<const QString,Viewer::Attributes> &viewer : viewers)
+	for (const auto& [name,attributes] : viewers)
 	{
-		entries.insert(viewer.first,QJsonObject{
-			{JSON_KEY_COMMANDS,viewer.second.commands},
-			{JSON_KEY_WELCOME,reset ? false : viewer.second.welcomed},
-			{JSON_KEY_BOT,viewer.second.bot},
-			{JSON_KEY_LIMIT_COMMANDS,viewer.second.limited},
-			{JSON_KEY_SUBSCRIBED,reset ? false : viewer.second.subscribed}
+		entries.insert(name,QJsonObject{
+			{JSON_KEY_COMMANDS,attributes.commands},
+			{JSON_KEY_WELCOME,reset ? false : attributes.welcomed},
+			{JSON_KEY_BOT,attributes.bot},
+			{JSON_KEY_LIMIT_COMMANDS,attributes.limited},
+			{JSON_KEY_SUBSCRIBED,reset ? false : attributes.subscribed}
 		});
 	}
 
@@ -1028,9 +1026,8 @@ void Bot::DispatchVideo(Command command)
 void Bot::DispatchCommandList()
 {
 	std::vector<std::tuple<QString,QStringList,QString>> descriptions;
-	for (const std::pair<const QString,Command> &pair : commands)
+	for (const auto& [name,command] : commands)
 	{
-		const Command &command=pair.second;
 		if (command.Parent() || command.Protected()) continue;
 		QStringList aliases;
 		const std::vector<Command*> &children=command.Children();

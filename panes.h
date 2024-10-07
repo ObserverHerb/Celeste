@@ -17,7 +17,11 @@
 #include "widgets.h"
 #include "entities.h"
 
-using Line=std::pair<QString,double>;
+struct Line
+{
+	QString text;
+	double size;
+};
 using Lines=std::vector<Line>;
 
 class PersistentPane : public QWidget

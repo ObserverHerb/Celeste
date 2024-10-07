@@ -21,7 +21,11 @@ namespace Network
 		DELETE
 	};
 
-	using Header=std::pair<QByteArray,QByteArray>;
+	struct Header
+	{
+		QByteArray key;
+		QByteArray value;
+	};
 	using Headers=std::vector<Header>;
 	using Callback=std::function<void(QNetworkReply*)>;
 
