@@ -228,6 +228,8 @@ QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
 
 		switch (command.Type())
 		{
+		case CommandType::BLANK:
+			throw std::logic_error("UI should not allow empty command type");
 		case CommandType::NATIVE:
 			mergedNativeCommandFlags.insert(nativeCommandFlags.extract(command.Name()));
 			continue;
