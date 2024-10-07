@@ -1,4 +1,6 @@
 CMakeLists.txt.user*
+CMakeUserPresets.json
+TODO.md
 build/
 html/
 latex/
@@ -13,3 +15,4 @@ obs-studio/
 packaging/*.dll
 packaging/*.lib
 packaging/*.exe
+TODO.md
