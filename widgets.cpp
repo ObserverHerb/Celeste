@@ -978,12 +978,14 @@ namespace UI
 
 				try
 				{
-					Entry *entry=new Entry(command,errorReport,&entriesFrame);
+					auto [entryIterator,inserted]=entries.try_emplace(command.Name(),nullptr);
+					if (!inserted) throw std::runtime_error(QString(R"(Failed to create an entry for "%1" command)").arg(command.Name()).toStdString());
+					auto& [name,entry]=*entryIterator;
+					entry=new Entry(command,errorReport,&entriesFrame);
 					connect(entry,&Entry::Help,&help,&QTextEdit::setText);
 					connect(&errorReport,&Feedback::Error::Clear,&save,&QPushButton::setEnabled);
 					connect(&errorReport,&Feedback::Error::Count,&errorBox,&QGroupBox::setVisible);
 					connect(&errorReport,&Feedback::Error::ReportProblem,&errorMessages,&QLabel::setText);
-					entries.try_emplace(entry->Name(),entry);
 					scrollLayout.addWidget(entry);
 				}
 
@@ -992,32 +994,37 @@ namespace UI
 					statusBar.showMessage(exception.what());
 				}
 			}
-			for (const std::pair<const QString,QStringList> &pair : aliases)
+			for (const auto& [commandName,aliasNames] : aliases)
 			{
-				auto entry=entries.find(pair.first);
-				if (entry != entries.end()) entry->second->Aliases(pair.second);
+				auto entry=entries.find(commandName);
+				if (entry != entries.end()) entry->second->Aliases(aliasNames);
 			}
 			entriesFrame.setUpdatesEnabled(true);
 		}
 
 		void Dialog::Add()
 		{
-			QString name=QInputDialog::getText(this,"New Command","Please provide a name for the new command.");
+			const QString name=QInputDialog::getText(this,"New Command","Please provide a name for the new command.");
 			if (name.isEmpty()) return;
-			Entry *entry=new Entry({
-				name,
-				{},
-				CommandType::VIDEO, // has a type, so no need to catch possible exception here
-				false,
-				true,
-				{},
-				Command::FileListFilters(CommandType::VIDEO),
-				{},
-				{},
-				false
-			},errorReport,this);
-			entries.try_emplace(entry->Name(),entry);
-			scrollLayout.addWidget(entry);
+			auto [entryIterator,inserted]=entries.try_emplace(name,nullptr);
+			if (!inserted) throw std::runtime_error("Failed to create a new entry for the command");
+			entryIterator->second=new Entry(
+				Command{
+					name,
+					{},
+					CommandType::VIDEO, // has a type, so no need to catch possible exception here
+					false,
+					true,
+					{},
+					Command::FileListFilters(CommandType::VIDEO),
+					{},
+					{},
+					false
+				},
+				errorReport,
+				this
+			);
+			scrollLayout.addWidget(entryIterator->second);
 		}
 
 		void Dialog::FilterChanged(int index)
@@ -1025,12 +1032,11 @@ namespace UI
 			switch (static_cast<Filter>(index))
 			{
 			case Filter::ALL:
-				for (std::pair<const QString,Entry*> &pair : entries) pair.second->show();
+				for (auto& [name,entry] : entries) entry->show();
 				break;
 			case Filter::DYNAMIC:
-				for (std::pair<const QString,Entry*> &pair : entries)
+				for (auto& [name,entry] : entries)
 				{
-					Entry *entry=pair.second;
 					CommandType type=entry->Type();
 					if (type == CommandType::AUDIO || type == CommandType::VIDEO)
 						entry->show();
@@ -1039,9 +1045,8 @@ namespace UI
 				}
 				break;
 			case Filter::NATIVE:
-				for (std::pair<const QString,Entry*> &pair : entries)
+				for (auto& [name,entry] : entries)
 				{
-					Entry *entry=pair.second;
 					if (entry->Type() == CommandType::NATIVE)
 						entry->show();
 					else
@@ -1049,9 +1054,8 @@ namespace UI
 				}
 				break;
 			case Filter::PULSAR:
-				for (std::pair<const QString,Entry*> &pair : entries)
+				for (auto& [name,entry] : entries)
 				{
-					Entry *entry=pair.second;
 					if (entry->Type() == CommandType::PULSAR)
 						entry->show();
 					else
@@ -1065,12 +1069,9 @@ namespace UI
 		{
 			Command::Lookup commands;
 
-			for (const std::pair<const QString,Entry*> &pair : entries)
+			for (const auto& [name,entry] : entries)
 			{
-				Entry *entry=pair.second;
-
-				QString name=entry->Name();
-				commands.try_emplace(name,Command{
+				commands.try_emplace(name,
 					entry->Name(),
 					entry->Description(),
 					entry->Type(),
@@ -1081,16 +1082,10 @@ namespace UI
 					entry->Message(),
 					entry->Triggers(),
 					entry->Protected()
-				});
+				);
 
 				const auto aliases=entry->Aliases();
-				for (const QString &alias : aliases)
-				{
-					commands.try_emplace(alias,Command{
-						alias,
-						&commands.at(name)
-					});
-				}
+				for (const QString &alias : aliases) commands.try_emplace(alias,alias,&commands.at(name));
 			}
 
 			emit Save(commands);

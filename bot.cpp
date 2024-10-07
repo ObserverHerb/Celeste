@@ -328,7 +328,7 @@ void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObje
 	std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
 	if (!type) return;
 
-	redemptions.try_emplace(name,Command{
+	redemptions.try_emplace(name,
 		name,
 		jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
 		*type,
@@ -337,9 +337,9 @@ void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObje
 		jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
 		Command::FileListFilters(*type),
 		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
-		{},
+		QStringList(),
 		false
-	});
+	);
 }
 
 const Command::Lookup& Bot::Commands() const

@@ -64,7 +64,7 @@ bool Pulsar::LoadTriggers()
 					continue;
 				}
 
-				dimensions.try_emplace(jsonFieldScene->toString(),QSize{jsonFieldDimensionsX->toInt(),jsonFieldDimensionsY->toInt()});
+				dimensions.try_emplace(jsonFieldScene->toString(),jsonFieldDimensionsX->toInt(),jsonFieldDimensionsY->toInt());
 				continue;
 			}
 		}
