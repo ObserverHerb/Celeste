@@ -360,7 +360,7 @@ AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(L
 
 void AnnouncePane::SingleLine(const QString &text)
 {
-	lines.emplace_back(Line{text,1});
+	lines.emplace_back(text,1);
 }
 
 bool AnnouncePane::event(QEvent *event)

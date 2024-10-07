@@ -747,12 +747,11 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 				if (!left || !right) continue;
 				int start=StringConvert::Integer(left->toString());
 				int end=StringConvert::Integer(right->toString());
-				const Chat::Emote emote {
+				chatMessage.emotes.emplace_back(Chat::Emote{
 					.id=id->toString(),
 					.start=start,
 					.end=end
-				};
-				chatMessage.emotes.push_back(emote);
+				});
 			}
 		}
 		std::sort(chatMessage.emotes.begin(),chatMessage.emotes.end());
@@ -1032,7 +1031,7 @@ void Bot::DispatchCommandList()
 		QStringList aliases;
 		const std::vector<Command*> &children=command.Children();
 		for (const Command *child : children) aliases.append(child->Name());
-		descriptions.push_back({command.Name(),aliases,command.Description()});
+		descriptions.emplace_back(command.Name(),aliases,command.Description());
 	}
 	emit ShowCommandList(descriptions);
 }

@@ -316,9 +316,9 @@ void Window::Shoutout(const QString &name,const QString &description,std::shared
 void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days)
 {
 	Lines lines;
-	lines.push_back({QString("%1").arg(name),1.5});
-	lines.push_back({"has been following the stream for",1});
-	if (years.count() > 0) lines.push_back({QString("%1 %2").arg(StringConvert::Integer(years.count()),StringConvert::NumberAgreement("year","years",NumberConvert::Positive(years.count()))),1.5});
+	lines.emplace_back(name,1.5);
+	lines.emplace_back("has been following the stream for",1);
+	if (years.count() > 0) lines.emplace_back(QString("%1 %2").arg(StringConvert::Integer(years.count()),StringConvert::NumberAgreement("year","years",NumberConvert::Positive(years.count()))),1.5);
 	QString finalLine;
 	if (months.count() > 0)
 	{
@@ -331,7 +331,7 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 		if (years.count() > 0 || months.count() > 0) finalLine.append(" and ");
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
 	}
-	if (!finalLine.isEmpty()) lines.push_back({finalLine,years.count() > 0 ? 1 : 1.5});
+	if (!finalLine.isEmpty()) lines.emplace_back(finalLine,years.count() > 0 ? 1 : 1.5);
 	AnnouncePane *pane=new AnnouncePane(lines,this);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
@@ -345,8 +345,8 @@ void Window::ShowTimezone(const QString &timezone)
 void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds)
 {
 	Lines lines;
-	lines.push_back({"Stream has been live for",1});
-	if (hours.count() > 0) lines.push_back({QString("%1 %2").arg(StringConvert::Integer(hours.count()),StringConvert::NumberAgreement("hour","hours",NumberConvert::Positive(hours.count()))),1.5});
+	lines.emplace_back("Stream has been live for",1);
+	if (hours.count() > 0) lines.emplace_back(QString("%1 %2").arg(StringConvert::Integer(hours.count()),StringConvert::NumberAgreement("hour","hours",NumberConvert::Positive(hours.count()))),1.5);
 	QString finalLine;
 	if (minutes.count() > 0)
 	{
@@ -359,7 +359,7 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 		if (hours.count() > 0 || minutes.count() > 0) finalLine.append(" and ");
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(seconds.count()),StringConvert::NumberAgreement("second","seconds",NumberConvert::Positive(seconds.count()))));
 	}
-	if (!finalLine.isEmpty()) lines.push_back({finalLine,hours.count() > 0 ? 1 : 1.5});
+	if (!finalLine.isEmpty()) lines.emplace_back(finalLine,hours.count() > 0 ? 1 : 1.5);
 	AnnouncePane *pane=new AnnouncePane(lines,this);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	StageEphemeralPane(pane);
