@@ -40,6 +40,7 @@ namespace Network
 		QByteArray payload;
 		QNetworkRequest request;
 		QNetworkReply *reply;
+		static std::unique_ptr<QNetworkAccessManager> networkManager;
 		static std::queue<Request*> queue;
 		void Send();
 		void DeferredSend();

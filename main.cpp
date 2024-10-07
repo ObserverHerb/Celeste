@@ -18,7 +18,6 @@
 #include "globals.h"
 #include "security.h"
 #include "pulsar.h"
-#include "network.h"
 
 const char *ORGANIZATION_NAME="EngineeringDeck";
 const char *APPLICATION_NAME="Celeste";
@@ -178,7 +177,6 @@ int main(int argc,char *argv[])
 	application.setOrganizationName(ORGANIZATION_NAME);
 	application.setApplicationName(APPLICATION_NAME);
 	if constexpr (!Platform::Windows()) application.setWindowIcon(QIcon(Resources::CELESTE));
-	Network::networkManager=new QNetworkAccessManager();
 
 #ifdef DEVELOPER_MODE
 	if (MessageBox(u"DEVELOPER MODE"_s,u"**WARNING** Celeste is currently in developer mode. Sensitive data will be displayed in the main window and written to the log. Only proceed if you know what you are doing. Continue?"_s,QMessageBox::Warning,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::No) return OK;

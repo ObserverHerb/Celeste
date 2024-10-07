@@ -1,11 +1,10 @@
 #include "network.h"
 #include "globals.h"
 
-QNetworkAccessManager networkManager;
-
 namespace Network
 {
 	std::queue<Request*> Request::queue;
+	std::unique_ptr<QNetworkAccessManager> Request::networkManager;
 
 	Request* Request::Send(const QUrl &url,Method method,Callback callback,const QUrlQuery &queryParameters,const Headers &headers,const QByteArray &payload)
 	{
@@ -22,6 +21,7 @@ namespace Network
 		payload(payload),
 		reply(nullptr)
 	{
+		if (!networkManager) networkManager=std::make_unique<QNetworkAccessManager>();
 	}
 
 	void Request::Send()
@@ -39,17 +39,17 @@ namespace Network
 		}
 		case Method::POST:
 			request.setUrl(url);
-			reply=networkManager.post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload);
+			reply=networkManager->post(request,payload.isEmpty() ? StringConvert::ByteArray(queryParameters.query()) : payload);
 			break;
 		case Method::PATCH:
 			url.setQuery(queryParameters);
 			request.setUrl(url);
-			reply=networkManager.sendCustomRequest(request,"PATCH"_ba,payload);
+			reply=networkManager->sendCustomRequest(request,"PATCH"_ba,payload);
 			break;
 		case Method::DELETE:
 			url.setQuery(queryParameters);
 			request.setUrl(url);
-			reply=networkManager.sendCustomRequest(request,"DELETE"_ba,payload);
+			reply=networkManager->sendCustomRequest(request,"DELETE"_ba,payload);
 			break;
 		}
 		connect(reply,&QNetworkReply::finished,this,&Request::Finished);
@@ -57,7 +57,7 @@ namespace Network
 
 	void Request::DeferredSend()
 	{
-		reply=networkManager.get(request);
+		reply=networkManager->get(request);
 		reply->connect(reply,&QNetworkReply::finished,this,&Request::DeferredFinished);
 	}
 
