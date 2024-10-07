@@ -79,7 +79,7 @@ void Window::AnnounceArrival(const QString &name,std::shared_ptr<QImage> profile
 	{
 		MultimediaAnnouncePane *pane=new MultimediaAnnouncePane({
 			{"Please welcome",1},
-			{QString("%1").arg(name),1.5},
+			{name,1.5},
 			{"to the chat",1}
 		},*profileImage,audioPath,this);
 		connect(pane,&MultimediaAnnouncePane::Print,this,PrintLog::of(&Window::Print));
@@ -95,9 +95,9 @@ void Window::AnnounceArrival(const QString &name,std::shared_ptr<QImage> profile
 void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,const QString& message)
 {
 	AnnouncePane *pane=new AnnouncePane({
-		{QString("%1").arg(name),1.5},
+		{name,1.5},
 		{"has redeemed",1},
-		{QString("%1").arg(rewardTitle),1.5},
+		{rewardTitle,1.5},
 		{message,1}
 	},this);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
@@ -110,7 +110,7 @@ void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 	try
 	{
 		AudioAnnouncePane *pane=new AudioAnnouncePane({
-			{QString("%1").arg(name),1.5},
+			{name,1.5},
 			{"has subscribed!",1}
 		},audioPath,this);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
@@ -128,9 +128,9 @@ void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const Q
 	try
 	{
 		AudioAnnouncePane *pane=new AudioAnnouncePane({
-			{QString("%1").arg(name),1.5},
+			{name,1.5},
 			{"is raiding with",1},
-			{QString("%1").arg(StringConvert::PositiveInteger(viewers)),1.5},
+			{StringConvert::PositiveInteger(viewers),1.5},
 			{"viewers",1}
 		},audioPath,this);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
@@ -152,7 +152,7 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 		StageEphemeralPane(pane);
 		StageEphemeralPane(new AnnouncePane({
 			{QString("%1 has cheered").arg(name),0.5},
-			{QString("%1").arg(message),1.5},
+			{message,1.5},
 			{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
 		},this));
 	}
@@ -235,7 +235,7 @@ void Window::PlayAudio(const QString &viewer,const QString &message,const QStrin
 	try
 	{
 		AudioAnnouncePane *pane=new AudioAnnouncePane({
-			{QString("%1").arg(viewer),1.5},
+			{viewer,1.5},
 			{message,1}
 		},path,this);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
@@ -305,7 +305,7 @@ void Window::Shoutout(const QString &name,const QString &description,std::shared
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
 		{"Drop a follow on",1},
-		{QString("%1").arg(name),1.5},
+		{name,1.5},
 		{description,0.5}
 	},*profileImage,this);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
@@ -368,12 +368,12 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
-		{QString("Now playing"),0.5},
-		{QString("%1").arg(song),1.0},
+		{"Now playing",0.5},
+		{song,1.0},
 		{"by",0.5},
-		{QString("%2").arg(artist),0.75},
+		{artist,0.75},
 		{"from the ablum",0.5},
-		{QString("%3").arg(album),0.75}
+		{album,0.75}
 	},coverArt,this);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->LowerPriority();
@@ -383,10 +383,10 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 void Window::ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt)
 {
 	ImageAnnouncePane *pane=new ImageAnnouncePane({
-		{QString("Now playing"),0.5},
-		{QString("%1").arg(song),1.0},
+		{"Now playing",0.5},
+		{song,1.0},
 		{"by",0.5},
-		{QString("%2").arg(artist),0.75}
+		{artist,0.75}
 	},coverArt,this);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->LowerPriority();

@@ -407,7 +407,7 @@ QString AnnouncePane::BuildParagraph(int width)
 		font.setPointSizeF(output->font().pointSizeF()*line.size);
 		int pointSize=line.text.contains(QChar{32}) ? font.pointSize() : StringConvert::RestrictFontWidth(font,line.text,width-output->margin()*2);
 		if (line.size == 1 && font.pointSizeF() == output->font().pointSizeF())
-			paragraph.append(QString("%1").arg(line.text));
+			paragraph.append(line.text);
 		else
 			paragraph.append(QString(R"(<span style="font-size: %2pt;">%1</span>)").arg(line.text,StringConvert::Integer(pointSize)));
 		paragraph.append("<br>");
