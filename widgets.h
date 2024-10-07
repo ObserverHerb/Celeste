@@ -226,9 +226,9 @@ namespace UI
 
 	protected:
 		std::conditional<WidgetIsText<TWidget>,QString,bool>::type value;
-		QString Text() const requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { return this->widget->text(); }
+		QString Text() const requires (WidgetIsText<TWidget> && !WidgetIsRichText<TWidget>) { return this->widget->text(); }
 		QString Text() const requires WidgetIsRichText<TWidget> { return this->widget->toPlainText(); }
-		void Text(const QString &value) requires WidgetIsText<TWidget> && !WidgetIsRichText<TWidget> { if (this->widget) this->widget->setText(value); }
+		void Text(const QString &value) requires (WidgetIsText<TWidget> && !WidgetIsRichText<TWidget>) { if (this->widget) this->widget->setText(value); }
 		void Text(const QString &value) requires WidgetIsRichText<TWidget> { if (this->widget) this->widget->setPlainText(value); }
 	};
 
