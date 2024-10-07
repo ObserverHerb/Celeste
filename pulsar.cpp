@@ -129,9 +129,10 @@ void Pulsar::Data()
 
 	try
 	{
-		const JSON::ParseResult parsedJSON=JSON::Parse(StringConvert::ByteArray(socket->readAll().trimmed()));
+		QByteArray data=socket->readAll().trimmed();
+		emit Print(QString("Data received: ")+data,OPERATION_READ);
+		const JSON::ParseResult parsedJSON=JSON::Parse(data);
 		if (!parsedJSON) throw std::runtime_error("Failed to parse incoming data");
-		emit Print("Data received: "+parsedJSON,OPERATION_READ);
 		const QJsonObject object=parsedJSON().object();
 
 		if (auto scene=object.find(JSON_KEY_SCENE); scene != object.end())
