@@ -85,8 +85,6 @@ protected:
 
 namespace Music
 {
-	const QString SETTINGS_CATEGORY_VOLUME="Volume";
-
 	struct Metadata
 	{
 		QString title;

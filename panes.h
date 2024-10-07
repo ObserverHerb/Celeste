@@ -13,7 +13,6 @@
 #include <QTimer>
 #include <QEvent>
 #include <queue>
-#include <unordered_map>
 #include "settings.h"
 #include "widgets.h"
 #include "entities.h"

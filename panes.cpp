@@ -151,8 +151,9 @@ void ChatPane::Message(std::shared_ptr<Chat::Message> message) const
 {
 	const QString imageTemplate(R"(<img style="vertical-align: middle;" src="%1" />)");
 
+	const QStringList &badgeList=message->badges;
 	QString badges;
-	for (const QString &icon : message->badges) badges.append(QString{"<img style='vertical-align: middle;' src='%1' /> "}.arg(icon));
+	for (const QString &icon : badgeList) badges.append(QString{"<img style='vertical-align: middle;' src='%1' /> "}.arg(icon));
 
 	int reserve=0;
 	for (const Chat::Emote &emote : message->emotes) reserve+=imageTemplate.size()+emote.path.size()-emote.name.size();
@@ -263,7 +264,7 @@ VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : Ephe
 	if (!QFile(path).exists()) throw std::runtime_error(QString{"Video doesn't exist ("+path+")"}.toStdString());
 	videoPlayer->setVideoOutput(viewport);
 	videoPlayer->setSource(QUrl::fromLocalFile(path));
-	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,[this](QMediaPlayer::PlaybackState state) {
+	connect(videoPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
 		if (state == QMediaPlayer::StoppedState) emit Finished();
 	});
 

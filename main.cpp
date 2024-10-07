@@ -223,7 +223,7 @@ int main(int argc,char *argv[])
 		UI::Metrics::Dialog metrics(&window);
 		UI::Status::Window<StatusPane> status(&window);
 
-		security.connect(&security,&Security::TokenRequestFailed,[&application]() {
+		security.connect(&security,&Security::TokenRequestFailed,&security,[&application]() {
 			MessageBox(u"Authentication Failed"_s,u"Attempt to obtain OAuth token failed."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok);
 			application.exit(AUTHENTICATION_ERROR);
 		});
@@ -264,7 +264,7 @@ int main(int argc,char *argv[])
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Parted),&metrics,&UI::Metrics::Dialog::Parted);
-		channel->connect(channel,QOverload<>::of(&Channel::Joined),[&echo,&log,&celeste,&pulsar,&window]() {
+		channel->connect(channel,QOverload<>::of(&Channel::Joined),&window,[&echo,&log,&celeste,&pulsar,&window]() {
 			log.disconnect(echo);
 			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&window,QOverload<const QString&>::of(&Window::Print));
 			window.connect(&window,QOverload<const QString&,const QString&,const QString&>::of(&Window::Print),&log,&Log::Receive);
@@ -272,13 +272,13 @@ int main(int argc,char *argv[])
 			pulsar.connect(&pulsar,&Pulsar::Print,&window,QOverload<const QString&>::of(&Window::Print));
 			window.ShowChat();
 		});
-		channel->connect(channel,&Channel::Disconnected,[channel,&window]() {
+		channel->connect(channel,&Channel::Disconnected,&window,[channel,&window]() {
 			qApp->alert(&window);
 			qApp->beep();
 			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,[&security,&window,&celeste,&log,&application,eventSub]() mutable {
+		channel->connect(channel,&Channel::Connected,eventSub,[&security,&window,&celeste,&log,&application,eventSub]() mutable {
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
@@ -297,7 +297,7 @@ int main(int argc,char *argv[])
 				MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
 			eventSub->connect(eventSub,&EventSub::Connected,eventSub,QOverload<>::of(&EventSub::Subscribe),Qt::QueuedConnection);
-			window.connect(&window,&Window::ConfigureEventSubscriptions,[&window,eventSub]() {
+			window.connect(&window,&Window::ConfigureEventSubscriptions,&window,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
 			});
 			celeste.connect(&celeste,&Bot::Panic,eventSub,&EventSub::deleteLater,Qt::QueuedConnection);
@@ -306,7 +306,7 @@ int main(int argc,char *argv[])
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
 		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);
 		security.connect(&security,&Security::Print,&log,&Log::Receive);
-		application.connect(&application,&QApplication::aboutToQuit,[&log,&socket,channel]() {
+		application.connect(&application,&QApplication::aboutToQuit,&application,[&log,&socket,channel]() {
 			socket.connect(&socket,&IRCSocket::disconnected,&log,&Log::Archive);
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
 			channel->deleteLater();
@@ -314,7 +314,7 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
 		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::show);
-		window.connect(&window,&Window::CloseRequested,[channel,&celeste](QCloseEvent *closeEvent) {
+		window.connect(&window,&Window::CloseRequested,&window,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protection())
 			{
 				if (MessageBox(u"Channel Protection"_s,u"Enable emote-only chat?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::Yes) celeste.EmoteOnly(true);
@@ -322,13 +322,13 @@ int main(int argc,char *argv[])
 			celeste.SaveViewerAttributes(MessageBox(u"Reset Next Session"_s,u"Would you like to reset the session for the next stream?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes);
 			closeEvent->accept();
 		});
-		window.connect(&window,&Window::ConfigureOptions,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
+		window.connect(&window,&Window::ConfigureOptions,&window,[&window,channel,&celeste,&musicPlayer,&log,&security]() {
 			ShowOptions(window,channel,celeste,musicPlayer,log,security);
 		});
-		window.connect(&window,&Window::ConfigureCommands,[&window,&celeste,&botCommands]() {
+		window.connect(&window,&Window::ConfigureCommands,&window,[&window,&celeste,&botCommands]() {
 			ShowCommands(window,celeste,botCommands);
 		});
-		window.connect(&window,&Window::ShowVibePlaylist,[&musicPlaylist,&window,&celeste,&musicPlayer]() {
+		window.connect(&window,&Window::ShowVibePlaylist,&window,[&musicPlaylist,&window,&celeste,&musicPlayer]() {
 			ShowPlaylist(musicPlaylist,window,celeste,musicPlayer);
 		});
 		window.connect(&window,&Window::ShowStatus,[&status]() {

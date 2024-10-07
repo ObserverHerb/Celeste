@@ -3,11 +3,8 @@
 #include <QMainWindow>
 #include <QAction>
 #include <queue>
-#include <unordered_map>
-#include "globals.h"
 #include "panes.h"
 #include "settings.h"
-#include "widgets.h"
 
 class Window : public QMainWindow
 {

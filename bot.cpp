@@ -495,13 +495,15 @@ void Bot::LoadBadgeIconURLs()
 		const QJsonObject object=parsedJSON().object();
 		auto jsonFieldData=object.find(JSON::Keys::DATA);
 		if (jsonFieldData == object.end()) return;
-		for (const QJsonValue &set : jsonFieldData->toArray())
+		const QJsonArray jsonFieldArray=jsonFieldData->toArray();
+		for (const QJsonValue &set : jsonFieldArray)
 		{
 			const QJsonObject objectBadgeSet=set.toObject();
 			auto jsonFieldSetID=objectBadgeSet.find(JSON_KEY_SET_ID);
 			auto jsonFieldVersions=objectBadgeSet.find(JSON_KEY_VERSIONS);
 			if (jsonFieldSetID == objectBadgeSet.end() || jsonFieldVersions == objectBadgeSet.end()) return;
-			for (const QJsonValue &version : jsonFieldVersions->toArray())
+			const QJsonArray jsonFieldVersionsArray=jsonFieldVersions->toArray();
+			for (const QJsonValue &version : jsonFieldVersionsArray)
 			{
 				const QJsonObject objectImageVersions=version.toObject();
 				auto jsonFieldID=objectImageVersions.find(JSON_KEY_ID);

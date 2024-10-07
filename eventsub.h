@@ -62,7 +62,7 @@ protected:
 	const QString BuildResponse(const QString &data=QString()) const;
 	std::optional<QString> ExtractPrompt(SubscriptionType type,const QJsonObject &event) const;
 signals:
-	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub")) const;
+	void Print(const QString &message,const QString &operation=QString(),const QString &subsystem=QString("EventSub"));
 	void EventSubscriptionFailed(const QString &type);
 	void Unauthorized();
 	void RateLimitHit();

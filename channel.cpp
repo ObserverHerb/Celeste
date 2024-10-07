@@ -165,7 +165,7 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 	case static_cast<int>(IRCCommand::RPL_NAMREPLY):
 	{
 		emit Print(QString("User list received:\n%1").arg(finalParameter.replace(' ','\n')));
-		QStringList rows=finalParameter.split(' ');
+		const QStringList rows=finalParameter.split(' ');
 		for (const QString &row : rows)
 		{
 			const QStringList users=row.split('\n'); // Twitch doesn't follow the spec here and returns mutliple names deliminted by \n between each space

@@ -227,7 +227,8 @@ namespace UI
 
 		void Scopes::Save()
 		{
-			for (QListWidgetItem *item : list.selectedItems()) scopes.append(item->text());
+			const auto selectedItems=list.selectedItems();
+			for (QListWidgetItem *item : selectedItems) scopes.append(item->text());
 		}
 	}
 
@@ -1082,7 +1083,8 @@ namespace UI
 					entry->Protected()
 				});
 
-				for (const QString &alias : entry->Aliases())
+				const auto aliases=entry->Aliases();
+				for (const QString &alias : aliases)
 				{
 					commands.try_emplace(alias,Command{
 						alias,
@@ -2083,7 +2085,7 @@ namespace UI
 
 		void Dialog::Parted(const QString &user)
 		{
-			QList<QListWidgetItem*> items=users.findItems(user,Qt::MatchExactly);
+			const auto items=users.findItems(user,Qt::MatchExactly);
 			for (QListWidgetItem *item : items) delete users.takeItem(users.row(item));
 			UpdateTitle();
 		}
@@ -2134,7 +2136,7 @@ namespace UI
 			mediaControlsLayout.addWidget(&volume,1);
 			layout.addWidget(&mediaControls);
 			connect(&volume,&QSlider::valueChanged,this,&Dialog::Volume);
-			connect(&start,&QPushButton::pressed,[this]() {
+			connect(&start,&QPushButton::pressed,this,[this]() {
 				Play(nullptr); // FIXME: there has to be a better way to do this than a while lambda
 			});
 			connect(&stop,&QPushButton::pressed,this,&Dialog::Stop);
@@ -2157,7 +2159,7 @@ namespace UI
 
 		Dialog::Dialog(const File::List &files,const QString currentlyPlayingFile,QWidget *parent): Dialog(files,parent)
 		{
-			QList<QTableWidgetItem*> items=list.findItems(currentlyPlayingFile,Qt::MatchExactly);
+			const auto items=list.findItems(currentlyPlayingFile,Qt::MatchExactly);
 			for (QTableWidgetItem *item : items) list.selectRow(item->row());
 		}
 
@@ -2214,7 +2216,6 @@ namespace UI
 			}
 			if (failurePrompt && !failed.isEmpty())
 			{
-				QString message=failed.join('\n');
 				QMessageBox{QMessageBox::Warning,"Failed to add files",failed.join('\n'),QMessageBox::Ok}.exec();
 			}
 			list.setSortingEnabled(true);

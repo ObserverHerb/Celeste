@@ -43,7 +43,8 @@ namespace File
 		const QFileInfo pathInfo(path);
 		if (pathInfo.isDir())
 		{
-			for (const QFileInfo &fileInfo : QDir(path).entryInfoList(filters))
+			const QFileInfoList fileInfoList=QDir(path).entryInfoList(filters);
+			for (const QFileInfo &fileInfo : fileInfoList)
 			{
 				if (fileInfo.isFile()) files.push_back(fileInfo.absoluteFilePath());
 			}
@@ -120,7 +121,7 @@ namespace Music
 		player(this),
 		output(this),
 		loop(loop),
-		settingSuppressedVolume(SETTINGS_CATEGORY_VOLUME,"SuppressedLevel",10),
+		settingSuppressedVolume("Volume","SuppressedLevel",10),
 		volumeAdjustment(&output,"volume")
 	{
 		player.setAudioOutput(&output);
@@ -292,7 +293,7 @@ namespace Music
 		{
 			if (Next() && loop)
 			{
-				autoPlay=connect(&player,&QMediaPlayer::mediaStatusChanged,[this](QMediaPlayer::MediaStatus status) {
+				autoPlay=connect(&player,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
 					if (status == QMediaPlayer::LoadedMedia) Start();
 				});
 			}
@@ -701,7 +702,6 @@ namespace Viewer
 
 			try
 			{
-				QString message;
 				switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 				{
 				case 400:

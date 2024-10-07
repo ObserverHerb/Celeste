@@ -4,7 +4,6 @@
 #include <QTimer>
 #include "settings.h"
 #include "security.h"
-#include "entities.h"
 
 class IRCSocket : public QTcpSocket
 {

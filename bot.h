@@ -9,7 +9,6 @@
 #include <QDateTime>
 #include <QTimer>
 #include <unordered_map>
-#include <unordered_set>
 #include "entities.h"
 #include "settings.h"
 #include "security.h"

@@ -206,7 +206,7 @@ void EventSub::ParseMessage(QString message)
 
 	if (!parsedJSON)
 	{
-		Print(u"Invalid JSON: %1"_s.arg(parsedJSON.error),OPERATION_PARSE_MESSAGE);
+		emit Print(u"Invalid JSON: %1"_s.arg(parsedJSON.error),OPERATION_PARSE_MESSAGE);
 		return;
 	}
 
@@ -215,7 +215,7 @@ void EventSub::ParseMessage(QString message)
 	auto payload=messageObject.find(JSON_KEY_PAYLOAD);
 	if (metadata == messageObject.end() || payload == messageObject.end())
 	{
-		Print(u"Malformatted message"_s,OPERATION_PARSE_MESSAGE);
+		emit Print(u"Malformatted message"_s,OPERATION_PARSE_MESSAGE);
 		return;
 	}
 
@@ -223,14 +223,14 @@ void EventSub::ParseMessage(QString message)
 	auto type=metadataObject.find(JSON_KEY_METADATA_TYPE);
 	if (type == metadataObject.end())
 	{
-		Print(u"Missing message type"_s,OPERATION_PARSE_MESSAGE);
+		emit Print(u"Missing message type"_s,OPERATION_PARSE_MESSAGE);
 		return;
 	}
 
 	auto messageType=messageTypes.find(type->toString());
 	if (messageType == messageTypes.end())
 	{
-		Print(u"Unknown message type (%1)"_s.arg(type->toString()),OPERATION_PARSE_MESSAGE);
+		emit Print(u"Unknown message type (%1)"_s.arg(type->toString()),OPERATION_PARSE_MESSAGE);
 		return;
 	}
 	switch (messageType->second)
@@ -305,7 +305,7 @@ void EventSub::ParseNotification(QJsonObject notification)
 	auto event=notification.find(JSON_KEY_EVENT);
 	if (event == notification.end())
 	{
-		Print("Event field missing from notification");
+		emit Print("Event field missing from notification");
 		return;
 	}
 
@@ -363,14 +363,15 @@ void EventSub::RequestEventSubscriptionList()
 		const JSON::ParseResult parsedJSON=JSON::Parse(StringConvert::ByteArray(data.trimmed()));
 		if (!parsedJSON)
 		{
-			Print(QString("Invalid JSON: %1").arg(parsedJSON.error),TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
+			emit Print(QString("Invalid JSON: %1").arg(parsedJSON.error),TWITCH_API_OPERATION_SUBSCRIPTION_LIST);
 			return;
 		}
 
 		QJsonObject jsonObject=parsedJSON().object();
 		if (auto subscriptionList=jsonObject.find(JSON::Keys::DATA); subscriptionList != jsonObject.end())
 		{
-			for (const QJsonValue &eventSubscription : subscriptionList->toArray())
+			const QJsonArray subscriptionListArray=subscriptionList->toArray();
+			for (const QJsonValue &eventSubscription : subscriptionListArray)
 			{
 				const QJsonObject entry=eventSubscription.toObject();
 				const QString id=entry.value("id").toString();

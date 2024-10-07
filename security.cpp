@@ -143,7 +143,7 @@ void Security::RewireError(QMqttClient::ClientError error)
 	case QMqttClient::NoError:
 		return;
 	case QMqttClient::InvalidProtocolVersion:
-		Print("The broker does not accept a connection using the specified protocol version.",OPERATION_LISTEN);
+		emit Print("The broker does not accept a connection using the specified protocol version.",OPERATION_LISTEN);
 		break;
 	case QMqttClient::IdRejected:
 		emit Print("The client ID is malformed.",OPERATION_LISTEN);
@@ -309,7 +309,7 @@ void Security::ObtainAdministratorProfile()
 	Viewer::Remote *profile=new Viewer::Remote(*this,settingAdministrator);
 	connect(profile,&Viewer::Remote::Recognized,profile,[this](Viewer::Local profile) {
 		administratorID=profile.ID();
-		emit Initialize();
+		Initialize();
 	});
 	connect(profile,&Viewer::Remote::Unrecognized,this,[this]() {
 		AuthorizeUser();
