@@ -83,7 +83,7 @@ void EventSub::SocketClosed()
 {
 	static const char *TWITCH_API_OPERATION_SOCKET_CLOSED="socket closed";
 
-	switch (socket.closeCode())
+	switch (static_cast<int>(socket.closeCode()))
 	{
 	case QWebSocketProtocol::CloseCodeNormal:
 		break;
