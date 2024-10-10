@@ -309,7 +309,7 @@ void Channel::Authenticate()
 
 void Channel::RequestCapabilities()
 {
-	SendMessage(QString(),"CAP",{"REQ"},"twitch.tv/membership twitch.tv/tags :twitch.tv/commands");
+	SendMessage(QString(),"CAP",{"REQ"},"twitch.tv/membership twitch.tv/tags twitch.tv/commands");
 }
 
 void Channel::RequestJoin()
