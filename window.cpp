@@ -210,6 +210,7 @@ void Window::ShowChat()
 	ChatPane *chatPane=new ChatPane(this);
 	SwapPersistentPane(chatPane);
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
+	connect(this,&Window::DeleteChatMessage,chatPane,&ChatPane::DeleteMessage);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
 	connect(this,&Window::SetAgenda,chatPane,&ChatPane::SetAgenda);
 	connect(chatPane,&ChatPane::ContextMenu,this,&Window::contextMenuEvent);

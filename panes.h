@@ -86,6 +86,7 @@ public slots:
 	void Refresh();
 	void Print(const QString &text) override;
 	void Message(std::shared_ptr<Chat::Message> message) const;
+	void DeleteMessage(const QString &id);
 protected slots:
 	void DismissStatus();
 };

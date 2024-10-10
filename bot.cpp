@@ -57,6 +57,7 @@ const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
 const char16_t *CHAT_TAG_BADGES=u"badges";
 const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
+const char16_t *CHAT_TAG_MESSAGE_ID=u"id";
 const char *FILE_OPERATION_CREATE="create";
 const char *FILE_OPERATION_OPEN="open";
 const char *FILE_OPERATION_PARSE="parse";
@@ -70,6 +71,9 @@ const Bot::CommandTypeLookup Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_AUDIO,CommandType::AUDIO},
 	{COMMAND_TYPE_PULSAR,CommandType::PULSAR}
 };
+
+using StringViewLookup=std::unordered_map<QStringView,QStringView>;
+using StringViewTakeResult=std::optional<QStringView>;
 
 Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
@@ -682,9 +686,6 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	// unused to shut the compiler up for now.
 	Q_UNUSED(parameters)
 
-	using StringViewLookup=std::unordered_map<QStringView,QStringView>;
-	using StringViewTakeResult=std::optional<QStringView>;
-
 	std::optional<QStringView> window;
 
 	QStringView remainingText(message);
@@ -706,6 +707,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	}
 	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
 	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
+	if (auto id=tags.find(CHAT_TAG_MESSAGE_ID); id != tags.end()) chatMessage.id=id->second.toString();
 
 	// badges
 	if (auto tagBadges=tags.find(CHAT_TAG_BADGES); tagBadges != tags.end())
@@ -795,6 +797,47 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	chatMessage.text=remainingText.toString();
 	emit ChatMessage(std::make_shared<Chat::Message>(chatMessage));
 	inactivityClock.start();
+}
+
+void Bot::ParseChatMessageDeletion(const QString &prefix)
+{
+	static const char *OPERATION="delete message";
+
+	std::optional<QStringView> window;
+
+	window=prefix;
+	StringViewLookup tags;
+	while (!window->isEmpty())
+	{
+		StringViewTakeResult pair=StringView::Take(*window,';');
+		if (!pair)
+		{
+			emit Print("Can't delete because a tag was missing a body",OPERATION);
+			return;
+		}
+		StringViewTakeResult key=StringView::Take(*pair,'=');
+		if (!key)
+		{
+			emit Print("Can't delete because a tag had no key no key",OPERATION);
+			return;
+		}
+		StringViewTakeResult value=StringView::Last(*pair,'=');
+		if (!value)
+		{
+			emit Print("Can't delete because a key had no value",OPERATION);
+			return;
+		}
+		tags.try_emplace(*key,*value);
+	}
+
+	auto messageID=tags.find(u"target-msg-id");
+	if (messageID == tags.end())
+	{
+		emit Print("Could not find ID of message to delete",OPERATION);
+		return;
+	}
+
+	emit DeleteChatMessage(messageID->second.toString());
 }
 
 std::optional<QString> Bot::DownloadBadgeIcon(const QString &badge,const QString &version)

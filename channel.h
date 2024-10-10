@@ -69,6 +69,7 @@ signals:
 	void Joined();
 	void Joined(const QString &user);
 	void Parted(const QString &user);
+	void Deleted(const QString &prefix);
 	void Ping(const QString &token);
 protected slots:
 	void DataAvailable();

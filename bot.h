@@ -135,6 +135,7 @@ protected:
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
 	void ChatMessage(std::shared_ptr<Chat::Message> message);
+	void DeleteChatMessage(const QString &id);
 	void RefreshChat();
 	void AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
 	void PlayVideo(const QString &path);
@@ -161,6 +162,7 @@ signals:
 	void Welcomed(const QString &user);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
+	void ParseChatMessageDeletion(const QString &prefix);
 	void DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QString &name,const QString &login);
 	void Ping();
 	void Subscription(const QString &login,const QString &displayName);

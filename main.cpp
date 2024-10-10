@@ -231,6 +231,7 @@ int main(int argc,char *argv[])
 		QMetaObject::Connection echo=log.connect(&log,&Log::Print,&window,QOverload<const QString&>::of(&Window::Print));
 		log.connect(&log,&Log::Print,&status.Pane(),&StatusPane::Print);
 		celeste.connect(&celeste,&Bot::ChatMessage,&window,&Window::ChatMessage);
+		celeste.connect(&celeste,&Bot::DeleteChatMessage,&window,&Window::DeleteChatMessage);
 		celeste.connect(&celeste,&Bot::RefreshChat,&window,&Window::RefreshChat);
 		celeste.connect(&celeste,&Bot::Print,&log,&Log::Receive);
 		celeste.connect(&celeste,&Bot::AnnounceArrival,&window,&Window::AnnounceArrival);
@@ -263,6 +264,7 @@ int main(int argc,char *argv[])
 		pulsar.connect(&pulsar,&Pulsar::Dimensions,&window,&Window::Resize);
 		channel->connect(channel,&Channel::Print,&log,&Log::Receive);
 		channel->connect(channel,&Channel::Dispatch,&celeste,&Bot::ParseChatMessage);
+		channel->connect(channel,&Channel::Deleted,&celeste,&Bot::ParseChatMessageDeletion);
 		channel->connect(channel,&Channel::Ping,&celeste,&Bot::Ping);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Joined),&metrics,&UI::Metrics::Dialog::Joined);
 		channel->connect(channel,QOverload<const QString&>::of(&Channel::Parted),&metrics,&UI::Metrics::Dialog::Parted);

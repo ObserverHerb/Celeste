@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QTextEdit>
+#include <QTextBlockUserData>
 #include <QTimer>
 #include <QPropertyAnimation>
 #include <QLineEdit>
@@ -59,9 +60,20 @@ signals:
 class PinnedTextEdit : public QTextEdit
 {
 	Q_OBJECT
+private:
+	class FrameID : public QTextBlockUserData
+	{
+	public:
+		FrameID(const QString &id) : id(id) { }
+		~FrameID() override { }
+		const QString& ID() const { return id; }
+	protected:
+		QString id;
+	};
 public:
 	PinnedTextEdit(QWidget *parent);
-	void Append(const QString &text);
+	void Append(const QString &text,const QString &id);
+	void Remove(const QString &id);
 protected:
 	QPropertyAnimation scrollTransition;
 	void resizeEvent(QResizeEvent *event) override;

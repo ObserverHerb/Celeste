@@ -348,6 +348,7 @@ namespace Chat
 
 	struct Message
 	{
+		QString id {};
 		QString displayName {};
 		QString text {};
 		QColor color {};

@@ -4,6 +4,7 @@
 #include <QStackedLayout>
 #include <QLabel>
 #include <QResizeEvent>
+#include <QTextBlock>
 
 const QString StatusPane::SETTINGS_CATEGORY="StatusPane";
 
@@ -184,9 +185,14 @@ void ChatPane::Message(std::shared_ptr<Chat::Message> message) const
 	}
 
 	if (message->action)
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span><br></div>").arg(message->displayName,message->text,message->color.isValid() ? message->color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1 <span class='message'>%2</span></div>").arg(message->displayName,message->text,message->color.isValid() ? message->color.name() : settingForegroundColor,badges),message->id);
 	else
-		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2<br></div>").arg(message->displayName,message->text,message->color.isValid() ? message->color.name() : settingForegroundColor,badges));
+		chat->Append(QString("<div>%4</div><div class='user' style='color: %3;'>%1</div><div class='message'>%2</div>").arg(message->displayName,message->text,message->color.isValid() ? message->color.name() : settingForegroundColor,badges),message->id);
+}
+
+void ChatPane::DeleteMessage(const QString &id)
+{
+	chat->Remove(id);
 }
 
 void ChatPane::Print(const QString &text)

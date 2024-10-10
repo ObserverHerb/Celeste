@@ -35,6 +35,7 @@ signals:
 	void Print(const QString &message);
 	void Print(const QString &message,const QString &operation,const QString &subsystem="main window");
 	void ChatMessage(std::shared_ptr<Chat::Message> message);
+	void DeleteChatMessage(const QString &id);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();
 	void SuppressMusic();
