@@ -58,6 +58,7 @@ const char16_t *CHAT_TAG_BADGES=u"badges";
 const char16_t *CHAT_TAG_COLOR=u"color";
 const char16_t *CHAT_TAG_EMOTES=u"emotes";
 const char16_t *CHAT_TAG_MESSAGE_ID=u"id";
+const char16_t *CHAT_TAG_USER_ID=u"user-id";
 const char *FILE_OPERATION_CREATE="create";
 const char *FILE_OPERATION_OPEN="open";
 const char *FILE_OPERATION_PARSE="parse";
@@ -707,7 +708,11 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 	}
 	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
 	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
-	if (auto id=tags.find(CHAT_TAG_MESSAGE_ID); id != tags.end()) chatMessage.id=id->second.toString();
+	if (auto messageID=tags.find(CHAT_TAG_MESSAGE_ID); messageID != tags.end())
+	{
+		chatMessage.id=messageID->second.toString();
+		if (auto userID=tags.find(CHAT_TAG_USER_ID); userID != tags.end()) userMessageCrossReference[userID->second.toString()].push_back(messageID->second.toString());
+	}
 
 	// badges
 	if (auto tagBadges=tags.find(CHAT_TAG_BADGES); tagBadges != tags.end())
@@ -830,14 +835,31 @@ void Bot::ParseChatMessageDeletion(const QString &prefix)
 		tags.try_emplace(*key,*value);
 	}
 
-	auto messageID=tags.find(u"target-msg-id");
-	if (messageID == tags.end())
+	// was this a single message?
+	auto candidate=tags.find(u"target-msg-id");
+	if (candidate != tags.end())
 	{
-		emit Print("Could not find ID of message to delete",OPERATION);
+		emit DeleteChatMessage(candidate->second.toString());
 		return;
 	}
 
-	emit DeleteChatMessage(messageID->second.toString());
+	// was it all of the message from a single user?
+	candidate=tags.find(u"target-user-id");
+	if (candidate != tags.end())
+	{
+		auto messages=userMessageCrossReference.find(candidate->second.toString());
+		if (messages == userMessageCrossReference.end()) return;
+		for (const QString &messageID : messages->second) emit DeleteChatMessage(messageID);
+		userMessageCrossReference.erase(messages);
+		return;
+	}
+
+	// clear the whole room
+	for (const auto &messages : userMessageCrossReference)
+	{
+		for (const QString &messageID : messages.second) emit DeleteChatMessage(messageID);
+	}
+	userMessageCrossReference.clear();
 }
 
 std::optional<QString> Bot::DownloadBadgeIcon(const QString &badge,const QString &version)

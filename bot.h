@@ -66,6 +66,7 @@ protected:
 	Command::Lookup redemptions;
 	NativeCommandFlagLookup nativeCommandFlags;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
+	std::unordered_map<QString,std::vector<QString>> userMessageCrossReference;
 	Music::Player &vibeKeeper;
 	Music::Player roaster;
 	QTimer inactivityClock;

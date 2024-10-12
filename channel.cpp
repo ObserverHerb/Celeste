@@ -34,6 +34,7 @@ enum class IRCCommand
 	JOIN,
 	PART,
 	CLEARMSG,
+	CLEARCHAT,
 	PRIVMSG,
 	NOTICE,
 	USERNOTICE,
@@ -45,6 +46,7 @@ const std::unordered_map<QString,IRCCommand> nonNumericIRCCommands={
 	{IRC_COMMAND_JOIN,IRCCommand::JOIN},
 	{"PART",IRCCommand::PART},
 	{"CLEARMSG",IRCCommand::CLEARMSG},
+	{"CLEARCHAT",IRCCommand::CLEARCHAT},
 	{"PRIVMSG",IRCCommand::PRIVMSG},
 	{"NOTICE",IRCCommand::NOTICE},
 	{"USERNOTICE",IRCCommand::USERNOTICE},
@@ -195,6 +197,9 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 		DispatchPart(source);
 		break;
 	case static_cast<int>(IRCCommand::CLEARMSG):
+		emit Deleted(prefix);
+		break;
+	case static_cast<int>(IRCCommand::CLEARCHAT):
 		emit Deleted(prefix);
 		break;
 	case static_cast<int>(IRCCommand::PRIVMSG):
