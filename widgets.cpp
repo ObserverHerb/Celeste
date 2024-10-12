@@ -77,32 +77,20 @@ void PinnedTextEdit::Append(const QString &text,const QString &id)
 	QTextCursor cursor=document()->rootFrame()->lastCursorPosition();
 	QTextFrameFormat format;
 	format.setBorderStyle(QTextFrameFormat::BorderStyle_None);
-	QTextFrame *frame=cursor.insertFrame(format);
+	frames.try_emplace(id,cursor.insertFrame(format));
 	cursor.insertHtml(text);
-	FrameID *userData=new FrameID(id);
-	frame->firstCursorPosition().block().setUserData(userData);
-	setTextCursor(cursor);
 }
 
 void PinnedTextEdit::Remove(const QString &id)
 {
-	auto frames=document()->rootFrame()->childFrames();
-	auto candidate=frames.begin();
-	while (candidate != frames.end())
-	{
-		QTextFrame *frame=*candidate;
-		FrameID *frameData=dynamic_cast<FrameID*>(frame->firstCursorPosition().block().userData());
-		if (frameData->ID() == id)
-		{
-			QTextCursor cursor=frame->firstCursorPosition();
-			// NOTE: I'm not sure why this is deleting all the blocks
-			// in the frame without me having to loop through them.
-			cursor.select(QTextCursor::BlockUnderCursor);
-			cursor.removeSelectedText();
-			return;
-		}
-		candidate++;
-	}
+	auto frame=frames.find(id);
+	if (frame == frames.end()) return;
+	QTextCursor cursor=frame->second->firstCursorPosition();
+	// NOTE: I'm not sure why this is deleting all the blocks
+	// in the frame without me having to loop through them.
+	cursor.select(QTextCursor::BlockUnderCursor);
+	cursor.removeSelectedText();
+	frames.erase(frame);
 }
 
 const int ScrollingTextEdit::PAUSE=5000;

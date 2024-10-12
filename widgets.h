@@ -60,21 +60,12 @@ signals:
 class PinnedTextEdit : public QTextEdit
 {
 	Q_OBJECT
-private:
-	class FrameID : public QTextBlockUserData
-	{
-	public:
-		FrameID(const QString &id) : id(id) { }
-		~FrameID() override { }
-		const QString& ID() const { return id; }
-	protected:
-		QString id;
-	};
 public:
 	PinnedTextEdit(QWidget *parent);
 	void Append(const QString &text,const QString &id);
 	void Remove(const QString &id);
 protected:
+	std::unordered_map<QString,QTextFrame*> frames;
 	QPropertyAnimation scrollTransition;
 	void resizeEvent(QResizeEvent *event) override;
 	void contextMenuEvent(QContextMenuEvent *event) override;
