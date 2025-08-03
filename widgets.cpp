@@ -826,7 +826,7 @@ namespace UI
 				else
 					candidate=OpenAudio(this);
 			}
-			if (!candidate.isEmpty()) path=candidate;
+			if (!candidate.isEmpty()) (*path)->setText(candidate);
 		}
 
 		void Entry::SelectAliases()
