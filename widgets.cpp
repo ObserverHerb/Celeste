@@ -1649,6 +1649,8 @@ namespace UI
 				selectSubscriptionSound(Text::BROWSE,this),
 				previewSubscriptionSound(Text::PREVIEW,this),
 				raidSound(this),
+				postRaidEventDelay(this),
+				postRaidEventDelayThreshold(this),
 				selectRaidSound(Text::BROWSE,this),
 				previewRaidSound(Text::PREVIEW,this),
 				inactivityCooldown(this),
@@ -1685,6 +1687,10 @@ namespace UI
 				cheerVideo.setText(settings.cheerVideo);
 				subscriptionSound.setText(settings.subscriptionSound);
 				raidSound.setText(settings.raidSound);
+				postRaidEventDelay.setRange(1,std::numeric_limits<int>::max());
+				postRaidEventDelay.setValue(settings.raidInterruptDuration);
+				postRaidEventDelayThreshold.setRange(0,std::numeric_limits<int>::max());
+				postRaidEventDelayThreshold.setValue(settings.raidInterruptDelayThreshold);
 				inactivityCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
 				inactivityCooldown.setValue(settings.inactivityCooldown);
 				helpCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
@@ -1700,9 +1706,10 @@ namespace UI
 					{Label(u"Cheer (Bits) Video"_s),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
 					{Label(u"Subscription Announcement"_s),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
 					{Label(u"Raid Announcement"_s),&raidSound,&selectRaidSound,&previewRaidSound},
+					{Label(u"Post-Raid Greeting Delay"_s),&postRaidEventDelay,Label(u"Threshold"_s),&postRaidEventDelayThreshold},
 					{Label(u"Inactivity Cooldown"_s),&inactivityCooldown},
 					{Label(u"Help Cooldown"_s),&helpCooldown},
-					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(QStringLiteral("Threshold")),&textWallThreshold},
+					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(u"Threshold"_s),&textWallThreshold},
 					{Label(u"Use Pulsar"_s),&pulsarEnabled}
 				});
 			}
@@ -1716,6 +1723,8 @@ namespace UI
 					if (object == &cheerVideo || object == &selectCheerVideo || object == &previewCheerVideo) emit Help(u"A video (mp4) that plays when a chatter cheers bits."_s);
 					if (object == &subscriptionSound || object == &selectSubscriptionSound || object == &previewSubscriptionSound) emit Help(u"This is the sound that plays when a chatter subscribes to the channel."_s);
 					if (object == &raidSound || object == &selectRaidSound || object == &previewRaidSound) emit Help(u"This is the sound that plays when another streamer raids the channel."_s);
+					if (object == &postRaidEventDelay) emit Help(u"How long (in milliseconds) to wait after a raid before allowing additional media to be triggered"_s);
+					if (object == &postRaidEventDelayThreshold) emit Help(u"Under this many viewers, there will not be a delay following the raid"_s);
 					if (object == &inactivityCooldown) emit Help(uR"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"_s);
 					if (object == &helpCooldown) emit Help(uR"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"_s);
 					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s);
@@ -1868,6 +1877,8 @@ namespace UI
 				if (QString text=cheerVideo.text(); !text.isEmpty()) settings.cheerVideo.Set(text);
 				if (QString text=subscriptionSound.text(); !text.isEmpty()) settings.subscriptionSound.Set(text);
 				if (QString text=raidSound.text(); !text.isEmpty()) settings.raidSound.Set(text);
+				settings.raidInterruptDuration.Set(postRaidEventDelay.value());
+				settings.raidInterruptDelayThreshold.Set(postRaidEventDelayThreshold.value());
 				settings.inactivityCooldown.Set(inactivityCooldown.value());
 				settings.helpCooldown.Set(helpCooldown.value());
 				settings.textWallThreshold.Set(textWallThreshold.value());

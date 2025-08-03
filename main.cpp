@@ -90,6 +90,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 		.cheerVideo=bot.CheerVideo(),
 		.subscriptionSound=bot.SubscriptionSound(),
 		.raidSound=bot.RaidSound(),
+		.raidInterruptDuration=bot.RaidInterruptDuration(),
+		.raidInterruptDelayThreshold=bot.RaidInterruptDelayThreshold(),
 		.inactivityCooldown=bot.InactivityCooldown(),
 		.helpCooldown=bot.HelpCooldown(),
 		.textWallThreshold=bot.TextWallThreshold(),

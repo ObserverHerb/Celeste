@@ -94,6 +94,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
 	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
 	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
+	settingRaidInterruptDelayThreshold(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelayThreshold",10),
 	settingDeniedCommandVideo(SETTINGS_CATEGORY_COMMANDS,"Denied"),
 	settingCommandCooldown(SETTINGS_CATEGORY_COMMANDS,"Cooldown",10), // in minutes
 	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0),
@@ -1554,6 +1555,16 @@ ApplicationSetting& Bot::SubscriptionSound()
 ApplicationSetting& Bot::RaidSound()
 {
 	return settingRaidSound;
+}
+
+ApplicationSetting& Bot::RaidInterruptDuration()
+{
+	return settingRaidInterruptDuration;
+}
+
+ApplicationSetting& Bot::RaidInterruptDelayThreshold()
+{
+	return settingRaidInterruptDelayThreshold;
 }
 
 ApplicationSetting& Bot::InactivityCooldown()

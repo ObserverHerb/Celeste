@@ -55,6 +55,8 @@ public:
 	ApplicationSetting& CheerVideo();
 	ApplicationSetting& SubscriptionSound();
 	ApplicationSetting& RaidSound();
+	ApplicationSetting& RaidInterruptDuration();
+	ApplicationSetting& RaidInterruptDelayThreshold();
 	ApplicationSetting& InactivityCooldown();
 	ApplicationSetting& HelpCooldown();
 	ApplicationSetting& TextWallThreshold();
@@ -84,6 +86,7 @@ protected:
 	ApplicationSetting settingSubscriptionSound;
 	ApplicationSetting settingRaidSound;
 	ApplicationSetting settingRaidInterruptDuration;
+	ApplicationSetting settingRaidInterruptDelayThreshold;
 	ApplicationSetting settingDeniedCommandVideo;
 	ApplicationSetting settingCommandCooldown;
 	ApplicationSetting settingUptimeHistory;

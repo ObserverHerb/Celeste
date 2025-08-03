@@ -639,6 +639,8 @@ namespace UI
 					ApplicationSetting &cheerVideo;
 					ApplicationSetting &subscriptionSound;
 					ApplicationSetting &raidSound;
+					ApplicationSetting &raidInterruptDuration;
+					ApplicationSetting &raidInterruptDelayThreshold;
 					ApplicationSetting &inactivityCooldown;
 					ApplicationSetting &helpCooldown;
 					ApplicationSetting &textWallThreshold;
@@ -661,6 +663,8 @@ namespace UI
 				QPushButton selectSubscriptionSound;
 				QPushButton previewSubscriptionSound;
 				QLineEdit raidSound;
+				QSpinBox postRaidEventDelay;
+				QSpinBox postRaidEventDelayThreshold;
 				QPushButton selectRaidSound;
 				QPushButton previewRaidSound;
 				QSpinBox inactivityCooldown;
