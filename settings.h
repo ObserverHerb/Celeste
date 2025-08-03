@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QSize>
 #include <QApplication>
+#include <QUrl>
 #include <memory>
 #include "globals.h"
 
