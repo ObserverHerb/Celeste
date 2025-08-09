@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(Celeste LANGUAGES CXX)
+project(Celeste LANGUAGES CXX VERSION 3.00)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -11,7 +11,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (WIN32)
+if(WIN32)
 	find_package(Qt6 COMPONENTS Widgets Network Mqtt Multimedia MultimediaWidgets WebSockets REQUIRED)
 else()
 	find_package(Qt6 COMPONENTS Widgets Network Mqtt Multimedia MultimediaWidgets WebSockets REQUIRED)
@@ -46,14 +46,14 @@ add_executable(Celeste
 	resources/resources.qrc
 )
 
-if (CMAKE_BUILD_TYPE MATCHES Debug)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
 	target_compile_options(Celeste PRIVATE
 		$<$<CXX_COMPILER_ID:MSVC>:/W4>
 		$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
 	)
 endif()
 
-if (WIN32)
+if(WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 	set_property(TARGET Celeste PROPERTY WIN32_EXECUTABLE true)
 	target_sources(Celeste PRIVATE win32.cpp resources/resources.rc)
@@ -71,9 +71,10 @@ else()
 	install(TARGETS Celeste)
 endif()
 
-if (WITH_PULSAR)
+option(WITH_PULSAR "Compile Pulsar plugin for OBS Studio" OFF)
+if(WITH_PULSAR)
 	add_library(Pulsar MODULE pulsar/pulsar.cpp)
-	if (WIN32)
+	if(WIN32)
 		set(OBS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/obs-studio)
 		set(OBS_LIB_DIR ${OBS_SOURCE_DIR}/build_x64)
 		if(NOT EXISTS ${OBS_SOURCE_DIR})
@@ -118,4 +119,21 @@ if (WITH_PULSAR)
 		target_include_directories(Pulsar SYSTEM PRIVATE ${OBS_INCLUDE_DIR})
 	endif()
 	target_link_libraries(Pulsar ${LIBOBS_LIBRARY} ${OBS_FRONTEND_LIBRARY} Qt::Widgets Qt::Network)
+endif()
+
+option(BUILD_INSTALLER "Build the Windows installer (Requires Inno Setup)" ON)
+if(BUILD_INSTALLER)
+	if(WIN32)
+		find_program(WINDEPLOYQT "windeployqt")
+		find_program(INNO_SETUP "iscc")
+		if(WINDEPLOYQT AND INNO_SETUP)
+			configure_file("${CMAKE_SOURCE_DIR}/setup.iss.in" "${CMAKE_BINARY_DIR}/setup.iss")
+			add_custom_command(TARGET Celeste POST_BUILD COMMAND windeployqt $<IF:$<CONFIG:Debug>,"--debug","--release"> $<TARGET_FILE:Celeste>)
+			add_custom_command(TARGET Celeste POST_BUILD COMMAND iscc "${CMAKE_BINARY_DIR}/setup.iss")
+		else()
+			message(FATAL_ERROR "Could not find tools for building Windows installer.")
+		endif()
+	else()
+		message(WARNING "Building the installer is only supported on Windows.")
+	endif()
 endif()
