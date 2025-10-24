@@ -77,8 +77,10 @@ const std::unordered_map<QString,Notice> notices={
 
 Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject(parent),
 	security(security),
-	settingChannel(SETTINGS_CATEGORY_CHANNEL,"Name",security.Administrator().Value()),
-	settingProtect(SETTINGS_CATEGORY_CHANNEL,"Protect",false),
+	settings{
+		.name{SETTINGS_CATEGORY_CHANNEL,"Name",security.Administrator().Value()},
+		.protect{SETTINGS_CATEGORY_CHANNEL,"Protect",false}
+	},
 	ircSocket(socket)
 {
 	if (!ircSocket) ircSocket=new IRCSocket(this);
@@ -319,7 +321,7 @@ void Channel::RequestCapabilities()
 
 void Channel::RequestJoin()
 {
-	SendMessage(QString(),IRC_COMMAND_JOIN,{QString("#%1").arg(settingChannel ? static_cast<QString>(settingChannel).toLower() : static_cast<QString>(security.Administrator()).toLower())},QString());
+	SendMessage(QString(),IRC_COMMAND_JOIN,{QString("#%1").arg(settings.name ? static_cast<QString>(settings.name).toLower() : static_cast<QString>(security.Administrator()).toLower())},QString());
 }
 
 void Channel::DispatchJoin(const QString &source)
@@ -366,14 +368,14 @@ void Channel::Pong(const QString &token)
 	SendMessage(QString(),"PONG",{},token);
 }
 
-ApplicationSetting& Channel::Name()
+Settings::Channel& Channel::Settings()
 {
-	return settingChannel;
+	return settings;
 }
 
-ApplicationSetting& Channel::Protection()
+bool Channel::Protection()
 {
-	return settingProtect;
+	return settings.protect;
 }
 
 QByteArray IRCSocket::Read()

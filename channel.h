@@ -40,12 +40,11 @@ public:
 	~Channel();
 	void Connect();
 	void Disconnect();
-	ApplicationSetting& Name();
-	ApplicationSetting& Protection();
+	bool Protection();
+	Settings::Channel& Settings();
 protected:
 	Security &security;
-	ApplicationSetting settingChannel;
-	ApplicationSetting settingProtect;
+	Settings::Channel settings;
 	IRCSocket *ircSocket;
 	void ParseMessage(const QString message);
 	void DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParamter);

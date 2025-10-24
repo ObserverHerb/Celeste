@@ -16,10 +16,12 @@ const char *JSON_KEY_DIMENSIONS_Y="height";
 const char *SETTINGS_CATEGORY_PULSAR="Pulsar";
 
 Pulsar::Pulsar() : socket(new QLocalSocket(this)),
-	settingEnabled(SETTINGS_CATEGORY_PULSAR,"Enabled",true),
-	settingReconnectDelay(SETTINGS_CATEGORY_PULSAR,"ReconnectDelay",5000)
+	settings{
+		.enabled{SETTINGS_CATEGORY_PULSAR,"Enabled",true},
+		.reconnectDelay{SETTINGS_CATEGORY_PULSAR,"ReconnectDelay",5000}
+	}
 {
-	reconnectDelay.setInterval(static_cast<int>(settingReconnectDelay));
+	reconnectDelay.setInterval(static_cast<int>(settings.reconnectDelay));
 	connect(&reconnectDelay,&QTimer::timeout,this,&Pulsar::Reconnect);
 
 	connect(socket,&QLocalSocket::readyRead,this,&Pulsar::Data);
@@ -121,7 +123,7 @@ void Pulsar::Error(QLocalSocket::LocalSocketError error)
 
 void Pulsar::Connect()
 {
-	if (settingEnabled) socket->connectToServer(PULSAR_SOCKET_NAME,QIODevice::ReadWrite);
+	if (settings.enabled) socket->connectToServer(PULSAR_SOCKET_NAME,QIODevice::ReadWrite);
 }
 
 void Pulsar::Reconnect()
@@ -185,5 +187,10 @@ void Pulsar::Pulse(const QString &trigger)
 
 ApplicationSetting& Pulsar::Enabled()
 {
-	return settingEnabled;
+	return settings.enabled;
+}
+
+Settings::Pulsar& Pulsar::Settings()
+{
+	return settings;
 }

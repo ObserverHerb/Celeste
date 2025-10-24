@@ -1186,7 +1186,7 @@ namespace UI
 				if (color.isValid()) control.setText(color.name(QColor::HexArgb));
 			}
 
-			Channel::Channel(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Channel")),
+			Channel::Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Channel")),
 				name(this),
 				protection(this),
 				settings(settings),
@@ -1195,7 +1195,7 @@ namespace UI
 				connect(&name,&QLineEdit::textChanged,this,&Channel::ValidateName);
 
 				name.setText(settings.name);
-				protection.setChecked(settings.protection);
+				protection.setChecked(settings.protect);
 
 				Rows({
 					{Label(QStringLiteral("Name")),&name},
@@ -1236,7 +1236,7 @@ namespace UI
 			void Channel::Save()
 			{
 				settings.name.Set(name.text());
-				settings.protection.Set(protection.isChecked());
+				settings.protect.Set(protection.isChecked());
 
 				// only need to do this on one of the settings for all of the categories, because it
 				// is all the same QSettings object under the hood, so it's saving all of the settings
@@ -1635,7 +1635,8 @@ namespace UI
 				settings.suppressedVolume.Set(suppressedVolume.value());
 			}
 
-			Bot::Bot(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Bot Core")),
+			Bot::Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Bot Core")),
+				settings(settings),
 				arrivalSound(this),
 				selectArrivalSound(Text::BROWSE,this),
 				previewArrivalSound(Text::PREVIEW,this),
@@ -1659,8 +1660,6 @@ namespace UI
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
 				textWallThreshold(this),
-				pulsarEnabled(this),
-				settings(settings),
 				errorReport(errorReport)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
@@ -1698,7 +1697,6 @@ namespace UI
 				textWallThreshold.setRange(1,std::numeric_limits<int>::max());
 				textWallThreshold.setValue(settings.textWallThreshold);
 				textWallSound.setText(settings.textWallSound);
-				pulsarEnabled.setChecked(settings.pulsarEnabled);
 
 				Rows({
 					{Label(u"Arrival Announcement Audio"_s),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
@@ -1710,7 +1708,6 @@ namespace UI
 					{Label(u"Inactivity Cooldown"_s),&inactivityCooldown},
 					{Label(u"Help Cooldown"_s),&helpCooldown},
 					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(u"Threshold"_s),&textWallThreshold},
-					{Label(u"Use Pulsar"_s),&pulsarEnabled}
 				});
 			}
 
@@ -1728,7 +1725,6 @@ namespace UI
 					if (object == &inactivityCooldown) emit Help(uR"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"_s);
 					if (object == &helpCooldown) emit Help(uR"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"_s);
 					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s);
-					if (object == &pulsarEnabled) emit Help(u"Check this to enable the Pulsar plugin which allows the bot to communicate with OBS Studio. This will only work if the Pulsar plugin was installed when the bot was installed."_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
@@ -1883,10 +1879,42 @@ namespace UI
 				settings.helpCooldown.Set(helpCooldown.value());
 				settings.textWallThreshold.Set(textWallThreshold.value());
 				if (QString text=textWallSound.text(); !text.isEmpty()) settings.textWallSound.Set(text);
-				settings.pulsarEnabled.Set(pulsarEnabled.isChecked());
 			}
 
-			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Logging")),
+			Pulsar::Pulsar(Settings::Pulsar &settings,QWidget *parent) : Category(parent,u"Pulsar"_s),
+				settings(settings),
+				subsystemEnabled(this),
+				reconnectDelay(this)
+			{
+				subsystemEnabled.setChecked(settings.enabled);
+				reconnectDelay.setRange(1,std::numeric_limits<int>::max());
+				reconnectDelay.setValue(settings.reconnectDelay);
+
+				Rows({
+					{Label(u"Use Pulsar"_s),&subsystemEnabled},
+					{Label(u"Reconnect Delay"_s),&reconnectDelay}
+				});
+			}
+
+			bool Pulsar::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					if (object == &subsystemEnabled) emit Help(u"Check this to enable the Pulsar plugin which allows the bot to communicate with OBS Studio. This will only work if the Pulsar plugin was installed when the bot was installed."_s);
+					if (object == &reconnectDelay) emit Help(u"How long (in milliseconds) to wait until attempting to reconnect to the OBS plugin after a failed attempt"_s);
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
+				return false;
+			}
+
+			void Pulsar::Save()
+			{
+				settings.enabled.Set(subsystemEnabled.isChecked());
+				settings.reconnectDelay.Set(reconnectDelay.value());
+			}
+
+			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,u"Logging"_s),
 				directory(this),
 				selectDirectory(Text::BROWSE,this),
 				settings(settings),

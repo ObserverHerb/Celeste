@@ -57,3 +57,52 @@ public:
 	ApplicationSetting(const QString &category,const QString &name,const QVariant &value=QVariant()) : BasicSetting(qApp->applicationName(),category,name,value) { }
 };
 
+namespace Settings
+{
+	struct Channel
+	{
+		ApplicationSetting name;
+		ApplicationSetting protect;
+	};
+
+	struct Bot
+	{
+		ApplicationSetting inactivityCooldown;
+		ApplicationSetting helpCooldown;
+		ApplicationSetting textWallThreshold;
+		ApplicationSetting textWallSound;
+		ApplicationSetting roasts;
+		ApplicationSetting portraitVideo;
+		ApplicationSetting arrivalSound;
+		ApplicationSetting cheerVideo;
+		ApplicationSetting subscriptionSound;
+		ApplicationSetting raidSound;
+		ApplicationSetting raidInterruptDuration;
+		ApplicationSetting raidInterruptDelayThreshold;
+		ApplicationSetting deniedCommandVideo;
+		ApplicationSetting commandCooldown;
+		ApplicationSetting uptimeHistory;
+		ApplicationSetting commandNameAgenda;
+		ApplicationSetting commandNameStreamCategory;
+		ApplicationSetting commandNameStreamTitle;
+		ApplicationSetting commandNameCommands;
+		ApplicationSetting commandNameEmote;
+		ApplicationSetting commandNameFollowage;
+		ApplicationSetting commandNameHTML;
+		ApplicationSetting commandNameLimit;
+		ApplicationSetting commandNamePanic;
+		ApplicationSetting commandNameShoutout;
+		ApplicationSetting commandNameSong;
+		ApplicationSetting commandNameTimezone;
+		ApplicationSetting commandNameUptime;
+		ApplicationSetting commandNameTotalTime;
+		ApplicationSetting commandNameVibe;
+		ApplicationSetting commandNameVibeVolume;
+	};
+
+	struct Pulsar
+	{
+		ApplicationSetting enabled;
+		ApplicationSetting reconnectDelay;
+	};
+}

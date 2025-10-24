@@ -49,10 +49,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 {
 	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
 	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Channel({
-		.name=channel->Name(),
-		.protection=channel->Protection()
-	},errorReport,configureOptions));
+	configureOptions->AddCategory(new UI::Options::Categories::Channel(channel->Settings(),errorReport,configureOptions));
 	configureOptions->AddCategory(new UI::Options::Categories::Window({
 		.backgroundColor=window.BackgroundColor(),
 		.dimensions=window.Dimensions()
@@ -84,20 +81,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 	configureOptions->AddCategory(new UI::Options::Categories::Music({
 		.suppressedVolume=musicPlayer.SuppressedVolume()
 	},configureOptions));
-	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot({
-		.arrivalSound=bot.ArrivalSound(),
-		.portraitVideo=bot.PortraitVideo(),
-		.cheerVideo=bot.CheerVideo(),
-		.subscriptionSound=bot.SubscriptionSound(),
-		.raidSound=bot.RaidSound(),
-		.raidInterruptDuration=bot.RaidInterruptDuration(),
-		.raidInterruptDelayThreshold=bot.RaidInterruptDelayThreshold(),
-		.inactivityCooldown=bot.InactivityCooldown(),
-		.helpCooldown=bot.HelpCooldown(),
-		.textWallThreshold=bot.TextWallThreshold(),
-		.textWallSound=bot.TextWallSound(),
-		.pulsarEnabled=pulsar.Enabled()
-	},errorReport,configureOptions);
+	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(bot.Settings(),errorReport,configureOptions);
+	configureOptions->AddCategory(new UI::Options::Categories::Pulsar(pulsar.Settings(),configureOptions));
 	configureOptions->AddCategory(optionsCategoryBot);
 	configureOptions->AddCategory(new UI::Options::Categories::Log({
 		.directory=log.Directory()

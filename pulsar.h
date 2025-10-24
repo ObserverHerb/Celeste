@@ -15,14 +15,14 @@ public:
 	bool LoadTriggers();
 	void Connect();
 	ApplicationSetting& Enabled();
+	Settings::Pulsar& Settings();
+	Settings::Pulsar settings;
 protected:
 	std::unordered_map<QString,QJsonArray> triggers;
 	std::unordered_map<QString,QSize> dimensions;
 	std::unordered_map<QString,QString> commandCrossReference;
 	QLocalSocket *socket;
 	QTimer reconnectDelay;
-	ApplicationSetting settingEnabled;
-	ApplicationSetting settingReconnectDelay;
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("Pulsar"));
 	void Dimensions(const QSize &dimensions);

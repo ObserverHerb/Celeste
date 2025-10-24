@@ -462,17 +462,12 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				struct Settings
-				{
-					ApplicationSetting &name;
-					ApplicationSetting &protection;
-				};
-				Channel(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
 				QLineEdit name;
 				QCheckBox protection;
-				Settings settings;
+				Settings::Channel &settings;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
@@ -632,24 +627,10 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				struct Settings
-				{
-					ApplicationSetting &arrivalSound;
-					ApplicationSetting &portraitVideo;
-					ApplicationSetting &cheerVideo;
-					ApplicationSetting &subscriptionSound;
-					ApplicationSetting &raidSound;
-					ApplicationSetting &raidInterruptDuration;
-					ApplicationSetting &raidInterruptDelayThreshold;
-					ApplicationSetting &inactivityCooldown;
-					ApplicationSetting &helpCooldown;
-					ApplicationSetting &textWallThreshold;
-					ApplicationSetting &textWallSound;
-					ApplicationSetting &pulsarEnabled;
-				};
-				Bot(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
 				void Save() override;
 			protected:
+				Settings::Bot &settings;
 				QLineEdit arrivalSound;
 				QPushButton selectArrivalSound;
 				QPushButton previewArrivalSound;
@@ -673,8 +654,6 @@ namespace UI
 				QPushButton selectTextWallSound;
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
-				QCheckBox pulsarEnabled;
-				Settings settings;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
@@ -703,6 +682,19 @@ namespace UI
 				void ValidateSubscriptionSound(const QString &path);
 				void ValidateRaidSound(const QString &path);
 				void ValidateTextWallSound(const QString &path);
+			};
+
+			class Pulsar: public Category
+			{
+				Q_OBJECT
+			public:
+				Pulsar(Settings::Pulsar &settings,QWidget *parent);
+				void Save() override;
+			protected:
+				Settings::Pulsar &settings;
+				QCheckBox subsystemEnabled;
+				QSpinBox reconnectDelay;
+				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Log : public Category

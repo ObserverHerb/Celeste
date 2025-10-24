@@ -83,61 +83,63 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	vibeKeeper(musicPlayer),
 	roaster(false,100,this),
 	security(security),
-	settingInactivityCooldown(SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000),
-	settingHelpCooldown(SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000),
-	settingTextWallThreshold(SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400),
-	settingTextWallSound(SETTINGS_CATEGORY_EVENTS,"TextWallSound"),
-	settingRoasts(SETTINGS_CATEGORY_EVENTS,"Roasts"),
-	settingPortraitVideo(SETTINGS_CATEGORY_EVENTS,"Portrait"),
-	settingArrivalSound(SETTINGS_CATEGORY_EVENTS,"Arrival"),
-	settingCheerVideo(SETTINGS_CATEGORY_EVENTS,"Cheer"),
-	settingSubscriptionSound(SETTINGS_CATEGORY_EVENTS,"Subscription"),
-	settingRaidSound(SETTINGS_CATEGORY_EVENTS,"Raid"),
-	settingRaidInterruptDuration(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000),
-	settingRaidInterruptDelayThreshold(SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelayThreshold",10),
-	settingDeniedCommandVideo(SETTINGS_CATEGORY_COMMANDS,"Denied"),
-	settingCommandCooldown(SETTINGS_CATEGORY_COMMANDS,"Cooldown",10), // in minutes
-	settingUptimeHistory(SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0),
-	settingCommandNameAgenda(SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"),
-	settingCommandNameStreamCategory(SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"),
-	settingCommandNameStreamTitle(SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"),
-	settingCommandNameCommands(SETTINGS_CATEGORY_COMMANDS,"Commands","commands"),
-	settingCommandNameEmote(SETTINGS_CATEGORY_COMMANDS,"EmoteOnly","emote"),
-	settingCommandNameFollowage(SETTINGS_CATEGORY_COMMANDS,"Followage","followage"),
-	settingCommandNameHTML(SETTINGS_CATEGORY_COMMANDS,"HTML","html"),
-	settingCommandNameLimit(SETTINGS_CATEGORY_COMMANDS,"Limit","limit"),
-	settingCommandNamePanic(SETTINGS_CATEGORY_COMMANDS,"Panic","panic"),
-	settingCommandNameShoutout(SETTINGS_CATEGORY_COMMANDS,"Shoutout","so"),
-	settingCommandNameSong(SETTINGS_CATEGORY_COMMANDS,"Song","song"),
-	settingCommandNameTimezone(SETTINGS_CATEGORY_COMMANDS,"Timezone","timezone"),
-	settingCommandNameUptime(SETTINGS_CATEGORY_COMMANDS,"Uptime","uptime"),
-	settingCommandNameTotalTime(SETTINGS_CATEGORY_COMMANDS,"TotalTime","totaltime"),
-	settingCommandNameVibe(SETTINGS_CATEGORY_COMMANDS,"Vibe","vibe"),
-	settingCommandNameVibeVolume(SETTINGS_CATEGORY_COMMANDS,"VibeVolume","volume")
+	settings{
+		.inactivityCooldown{SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000},
+		.helpCooldown{SETTINGS_CATEGORY_EVENTS,"HelpCooldown",300000},
+		.textWallThreshold{SETTINGS_CATEGORY_EVENTS,"TextWallThreshold",400},
+		.textWallSound{SETTINGS_CATEGORY_EVENTS,"TextWallSound"},
+		.roasts{SETTINGS_CATEGORY_EVENTS,"Roasts"},
+		.portraitVideo{SETTINGS_CATEGORY_EVENTS,"Portrait"},
+		.arrivalSound{SETTINGS_CATEGORY_EVENTS,"Arrival"},
+		.cheerVideo{SETTINGS_CATEGORY_EVENTS,"Cheer"},
+		.subscriptionSound{SETTINGS_CATEGORY_EVENTS,"Subscription"},
+		.raidSound{SETTINGS_CATEGORY_EVENTS,"Raid"},
+		.raidInterruptDuration{SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelay",60000},
+		.raidInterruptDelayThreshold{SETTINGS_CATEGORY_EVENTS,"RaidInterruptDelayThreshold",10},
+		.deniedCommandVideo{SETTINGS_CATEGORY_COMMANDS,"Denied"},
+		.commandCooldown{SETTINGS_CATEGORY_COMMANDS,"Cooldown",10}, // in minutes
+		.uptimeHistory{SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0},
+		.commandNameAgenda{SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"},
+		.commandNameStreamCategory{SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"},
+		.commandNameStreamTitle{SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"},
+		.commandNameCommands{SETTINGS_CATEGORY_COMMANDS,"Commands","commands"},
+		.commandNameEmote{SETTINGS_CATEGORY_COMMANDS,"EmoteOnly","emote"},
+		.commandNameFollowage{SETTINGS_CATEGORY_COMMANDS,"Followage","followage"},
+		.commandNameHTML{SETTINGS_CATEGORY_COMMANDS,"HTML","html"},
+		.commandNameLimit{SETTINGS_CATEGORY_COMMANDS,"Limit","limit"},
+		.commandNamePanic{SETTINGS_CATEGORY_COMMANDS,"Panic","panic"},
+		.commandNameShoutout{SETTINGS_CATEGORY_COMMANDS,"Shoutout","so"},
+		.commandNameSong{SETTINGS_CATEGORY_COMMANDS,"Song","song"},
+		.commandNameTimezone{SETTINGS_CATEGORY_COMMANDS,"Timezone","timezone"},
+		.commandNameUptime{SETTINGS_CATEGORY_COMMANDS,"Uptime","uptime"},
+		.commandNameTotalTime{SETTINGS_CATEGORY_COMMANDS,"TotalTime","totaltime"},
+		.commandNameVibe{SETTINGS_CATEGORY_COMMANDS,"Vibe","vibe"},
+		.commandNameVibeVolume{SETTINGS_CATEGORY_COMMANDS,"VibeVolume","volume"}
+	}
 {
-	DeclareCommand({settingCommandNameAgenda,"Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
-	DeclareCommand({settingCommandNameStreamCategory,"Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
-	DeclareCommand({settingCommandNameStreamTitle,"Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
-	DeclareCommand({settingCommandNameCommands,"List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
-	DeclareCommand({settingCommandNameEmote,"Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
-	DeclareCommand({settingCommandNameFollowage,"Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
-	DeclareCommand({settingCommandNameHTML,"Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
-	DeclareCommand({settingCommandNameLimit,"Limit frequency of viewer's commands with a cooldown",CommandType::NATIVE,true},NativeCommandFlag::LIMIT);
-	DeclareCommand({settingCommandNamePanic,"Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
-	DeclareCommand({settingCommandNameShoutout,"Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
-	DeclareCommand({settingCommandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
-	DeclareCommand({settingCommandNameTimezone,"Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
-	DeclareCommand({settingCommandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
-	DeclareCommand({settingCommandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
-	DeclareCommand({settingCommandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
-	DeclareCommand({settingCommandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
+	DeclareCommand({settings.commandNameAgenda,"Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
+	DeclareCommand({settings.commandNameStreamCategory,"Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
+	DeclareCommand({settings.commandNameStreamTitle,"Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
+	DeclareCommand({settings.commandNameCommands,"List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
+	DeclareCommand({settings.commandNameEmote,"Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
+	DeclareCommand({settings.commandNameFollowage,"Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
+	DeclareCommand({settings.commandNameHTML,"Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
+	DeclareCommand({settings.commandNameLimit,"Limit frequency of viewer's commands with a cooldown",CommandType::NATIVE,true},NativeCommandFlag::LIMIT);
+	DeclareCommand({settings.commandNamePanic,"Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
+	DeclareCommand({settings.commandNameShoutout,"Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
+	DeclareCommand({settings.commandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
+	DeclareCommand({settings.commandNameTimezone,"Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
+	DeclareCommand({settings.commandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
+	DeclareCommand({settings.commandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
+	DeclareCommand({settings.commandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
+	DeclareCommand({settings.commandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	LoadViewerAttributes();
 
-	if (settingRoasts) LoadRoasts();
+	if (settings.roasts) LoadRoasts();
 	LoadBadgeIconURLs();
 	StartClocks();
 
-	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settingRaidInterruptDuration));
+	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settings.raidInterruptDuration));
 
 	connect(&vibeKeeper,&Music::Player::Print,this,&Bot::Print);
 }
@@ -382,7 +384,7 @@ bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather t
 			.bot=Container::Resolve(attributes,JSON_KEY_BOT,false).toBool(),
 			.limited=Container::Resolve(attributes,JSON_KEY_LIMIT_COMMANDS,false).toBool(),
 			.subscribed=Container::Resolve(attributes,JSON_KEY_SUBSCRIBED,false).toBool(),
-			.commandTimestamp=std::chrono::system_clock::now()-std::chrono::minutes(static_cast<qint64>(settingCommandCooldown))
+			.commandTimestamp=std::chrono::system_clock::now()-std::chrono::minutes(static_cast<qint64>(settings.commandCooldown))
 		};
 	}
 
@@ -478,7 +480,7 @@ bool Bot::SaveVibePlaylist(const QJsonDocument &json)
 void Bot::LoadRoasts()
 {
 	connect(&roaster,&Music::Player::Print,this,&Bot::Print);
-	roaster.Sources(File::List{static_cast<QString>(settingRoasts),Command::FileListFilters(CommandType::AUDIO)});
+	roaster.Sources(File::List{static_cast<QString>(settings.roasts),Command::FileListFilters(CommandType::AUDIO)});
 }
 
 void Bot::LoadBadgeIconURLs()
@@ -524,19 +526,19 @@ void Bot::LoadBadgeIconURLs()
 
 void Bot::StartClocks()
 {
-	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingInactivityCooldown)));
-	if (settingRoasts) connect(&inactivityClock,&QTimer::timeout,&roaster,QOverload<>::of(&Music::Player::Start));
+	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settings.inactivityCooldown)));
+	if (settings.roasts) connect(&inactivityClock,&QTimer::timeout,&roaster,QOverload<>::of(&Music::Player::Start));
 	inactivityClock.start();
 
-	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settingHelpCooldown)));
+	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settings.helpCooldown)));
 	connect(&helpClock,&QTimer::timeout,this,&Bot::DispatchHelpText);
 	helpClock.start();
 }
 
 void Bot::Ping()
 {
-	if (settingPortraitVideo)
-		emit ShowPortraitVideo(settingPortraitVideo);
+	if (settings.portraitVideo)
+		emit ShowPortraitVideo(settings.portraitVideo);
 	else
 		emit Print("Letting Twitch server know we're still here...");
 }
@@ -579,29 +581,29 @@ void Bot::Subscription(const QString &login,const QString &displayName)
 		viewer=inserted.first;
 	}
 
-	if (static_cast<QString>(settingSubscriptionSound).isEmpty())
+	if (static_cast<QString>(settings.subscriptionSound).isEmpty())
 	{
 		emit Print("No audio path set for subscriptions","announce subscription");
 		return;
 	}
-	emit AnnounceSubscription(displayName,settingSubscriptionSound);
+	emit AnnounceSubscription(displayName,settings.subscriptionSound);
 	viewer->second.subscribed=true;
 }
 
 void Bot::Raid(const QString &viewer,const unsigned int viewers)
 {
 	lastRaid=QDateTime::currentDateTime();
-	if (settingRaidSound) emit AnnounceRaid(viewer,viewers,settingRaidSound);
+	if (settings.raidSound) emit AnnounceRaid(viewer,viewers,settings.raidSound);
 }
 
 void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &message)
 {
-	if (static_cast<QString>(settingCheerVideo).isEmpty())
+	if (static_cast<QString>(settings.cheerVideo).isEmpty())
 	{
 		emit Print("No video path set for cheers","announce cheer");
 		return;
 	}
-	emit AnnounceCheer(viewer,count,message,settingCheerVideo);
+	emit AnnounceCheer(viewer,count,message,settings.cheerVideo);
 }
 
 void Bot::SuppressMusic()
@@ -635,11 +637,11 @@ void Bot::DispatchArrival(const QString &login)
 	Viewer::Remote *viewer=new Viewer::Remote(security,login);
 	connect(viewer,&Viewer::Remote::Print,this,&Bot::Print);
 	connect(viewer,&Viewer::Remote::Recognized,viewer,[this](const Viewer::Local &viewer) {
-		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settingRaidInterruptDuration)) return;
+		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settings.raidInterruptDuration)) return;
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](std::shared_ptr<QImage> profileImage) {
 			// Do we have a sound configured to announce them with? If so, fire the signal.
-			if (settingArrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settingArrivalSound).Random());
+			if (settings.arrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settings.arrivalSound).Random());
 
 			// Do we have any commands that are triggered by the viewers we've seen?
 			for (const Command &candidateCommand : commands | std::views::values | std::views::filter([](const Command &command) {
@@ -798,7 +800,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 
 	// download emotes (which will set emote names in the process) and check for wall of text
 	int emoteCharacterCount=ParseEmoteNamesAndDownloadImages(chatMessage.emotes,remainingText);
-	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settingTextWallThreshold) && settingTextWallSound) emit AnnounceTextWall(message,settingTextWallSound);
+	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settings.textWallThreshold) && settings.textWallSound) emit AnnounceTextWall(message,settings.textWallSound);
 
 	chatMessage.text=remainingText.toString();
 	emit ChatMessage(std::make_shared<Chat::Message>(chatMessage));
@@ -962,7 +964,7 @@ bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMe
 	// deny command if user must be a mod and isn't
 	if (command.Protected() && !chatMessage.Privileged())
 	{
-		if (const QString file=File::List(settingDeniedCommandVideo).Random(); QFile(file).exists())
+		if (const QString file=File::List(settings.deniedCommandVideo).Random(); QFile(file).exists())
 			emit AnnounceDeniedCommand(file);
 		else
 			emit Print("Denial video doesn't exist ("+file+")");
@@ -975,9 +977,9 @@ bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMe
 	if (auto viewerCandidate=viewers.find(login); viewerCandidate != viewers.end())
 	{
 		Viewer::Attributes &viewer=viewerCandidate->second;
-		if (viewer.limited && std::chrono::duration_cast<std::chrono::minutes>(std::chrono::system_clock::now()-viewer.commandTimestamp) < std::chrono::minutes(static_cast<qint64>(settingCommandCooldown)) && !chatMessage.Privileged())
+		if (viewer.limited && std::chrono::duration_cast<std::chrono::minutes>(std::chrono::system_clock::now()-viewer.commandTimestamp) < std::chrono::minutes(static_cast<qint64>(settings.commandCooldown)) && !chatMessage.Privileged())
 		{
-			emit AnnounceDeniedCommand(File::List(settingDeniedCommandVideo).Random());
+			emit AnnounceDeniedCommand(File::List(settings.deniedCommandVideo).Random());
 			return false;
 		}
 		viewer.commandTimestamp=std::chrono::system_clock::now();
@@ -1264,7 +1266,7 @@ void Bot::DispatchUptime(bool total)
 
 		const QDateTime start=QDateTime::fromString(jsonFieldStartDate->toString(),Qt::ISODate);
 		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
-		if (total) duration+=std::chrono::minutes(static_cast<qint64>(settingUptimeHistory));
+		if (total) duration+=std::chrono::minutes(static_cast<qint64>(settings.uptimeHistory));
 		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
 		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
 		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-hours-minutes);
@@ -1532,57 +1534,7 @@ std::optional<CommandType> Bot::ValidCommandType(const QString &type)
 	return candidate->second;
 }
 
-ApplicationSetting& Bot::ArrivalSound()
+Settings::Bot& Bot::Settings()
 {
-	return settingArrivalSound;
-}
-
-ApplicationSetting& Bot::PortraitVideo()
-{
-	return settingPortraitVideo;
-}
-
-ApplicationSetting& Bot::CheerVideo()
-{
-	return settingCheerVideo;
-}
-
-ApplicationSetting& Bot::SubscriptionSound()
-{
-	return settingSubscriptionSound;
-}
-
-ApplicationSetting& Bot::RaidSound()
-{
-	return settingRaidSound;
-}
-
-ApplicationSetting& Bot::RaidInterruptDuration()
-{
-	return settingRaidInterruptDuration;
-}
-
-ApplicationSetting& Bot::RaidInterruptDelayThreshold()
-{
-	return settingRaidInterruptDelayThreshold;
-}
-
-ApplicationSetting& Bot::InactivityCooldown()
-{
-	return settingInactivityCooldown;
-}
-
-ApplicationSetting& Bot::HelpCooldown()
-{
-	return settingHelpCooldown;
-}
-
-ApplicationSetting& Bot::TextWallThreshold()
-{
-	return settingTextWallThreshold;
-}
-
-ApplicationSetting& Bot::TextWallSound()
-{
-	return settingTextWallSound;
+	return settings;
 }
