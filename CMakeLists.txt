@@ -124,12 +124,33 @@ endif()
 option(BUILD_INSTALLER "Build the Windows installer (Requires Inno Setup)" ON)
 if(BUILD_INSTALLER)
 	if(WIN32)
+		find_program(NASM "nasm")
+		if(NASM)
+			include(ExternalProject)
+			ExternalProject_Add(
+				openssl
+				URL "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.5.1.zip"
+				BUILD_IN_SOURCE ON
+				CONFIGURE_COMMAND perl Configure --prefix=${CMAKE_BINARY_DIR} --openssldir=${CMAKE_BINARY_DIR}
+				BUILD_COMMAND nmake
+				INSTALL_COMMAND nmake install
+				USES_TERMINAL_DOWNLOAD TRUE
+				USES_TERMINAL_UPDATE TRUE
+				USES_TERMINAL_CONFIGURE TRUE
+				USES_TERMINAL_BUILD TRUE
+				USES_TERMINAL_INSTALL TRUE
+				USES_TERMINAL_TEST TRUE
+			)
+		else()
+			message(FATAL_ERROR "nasm is required to build OpenSSL")
+		endif()
+
 		find_program(WINDEPLOYQT "windeployqt")
 		find_program(INNO_SETUP "iscc")
 		if(WINDEPLOYQT AND INNO_SETUP)
 			configure_file("${CMAKE_SOURCE_DIR}/setup.iss.in" "${CMAKE_BINARY_DIR}/setup.iss")
-			add_custom_command(TARGET Celeste POST_BUILD COMMAND windeployqt $<IF:$<CONFIG:Debug>,"--debug","--release"> $<TARGET_FILE:Celeste>)
-			add_custom_command(TARGET Celeste POST_BUILD COMMAND iscc "${CMAKE_BINARY_DIR}/setup.iss")
+			add_custom_command(TARGET Celeste POST_BUILD USES_TERMINAL COMMAND windeployqt $<IF:$<CONFIG:Debug>,"--debug","--release"> $<TARGET_FILE:Celeste>)
+			add_custom_command(TARGET Celeste POST_BUILD USES_TERMINAL COMMAND iscc "${CMAKE_BINARY_DIR}/setup.iss")
 		else()
 			message(FATAL_ERROR "Could not find tools for building Windows installer.")
 		endif()
