@@ -8,16 +8,6 @@
 #include "security.h"
 #include "entities.h"
 
-inline const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
-inline const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_reward_redemption.add";
-inline const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
-inline const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
-inline const char *SUBSCRIPTION_TYPE_SUBSCRIPTION="channel.subscribe";
-inline const char *SUBSCRIPTION_TYPE_RESUBSCRIPTION="channel.subscription.message";
-inline const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_START="channel.hype_train.begin";
-inline const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS="channel.hype_train.progress";
-inline const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_END="channel.hype_train.end";
-
 enum class MessageType
 {
 	WELCOME,
