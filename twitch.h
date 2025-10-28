@@ -17,6 +17,7 @@ namespace Twitch
 	inline const char *ENDPOINT_USERS="users";
 	inline const char *ENDPOINT_EVENTSUB="eventsub/subscriptions";
 	inline const char *ENDPOINT_EVENTSUB_SUBSCRIPTIONS="eventsub/subscriptions";
+	inline const char *ENDPOINT_AD_SCHEDULE="channels/ads";
 
 	inline QString Endpoint(const QString &path)
 	{

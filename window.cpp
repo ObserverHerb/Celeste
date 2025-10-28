@@ -205,6 +205,36 @@ void Window::AnnounceHypeTrainProgress(int level,double progress)
 	StageEphemeralPane(pane);
 }
 
+void Window::AnnounceAdBreakStarting(const QString& videoPath)
+{
+	try
+	{
+		VideoPane *pane=new VideoPane(videoPath,this);
+		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error& exception)
+	{
+		emit Print(exception.what(),"play ad break starting video");
+	}
+}
+
+void Window::AnnounceAdBreakFinished(const QString& videoPath)
+{
+	try
+	{
+		VideoPane *pane=new VideoPane(videoPath,this);
+		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
+		StageEphemeralPane(pane);
+	}
+
+	catch (const std::runtime_error& exception)
+	{
+		emit Print(exception.what(),"play finished ad break video");
+	}
+}
+
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);

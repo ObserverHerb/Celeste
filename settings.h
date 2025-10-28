@@ -82,6 +82,10 @@ namespace Settings
 		ApplicationSetting deniedCommandVideo;
 		ApplicationSetting commandCooldown;
 		ApplicationSetting uptimeHistory;
+		ApplicationSetting adWarningVideo;
+		ApplicationSetting adFinishedVideo;
+		ApplicationSetting adWarningLeadTime;
+		ApplicationSetting adScheduleRefreshInterval;
 		ApplicationSetting commandNameAgenda;
 		ApplicationSetting commandNameStreamCategory;
 		ApplicationSetting commandNameStreamTitle;

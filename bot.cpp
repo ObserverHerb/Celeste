@@ -40,6 +40,7 @@ const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
+const char *SETTINGS_CATEGORY_ADS="Ads";
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
@@ -47,10 +48,12 @@ const char *TWITCH_API_OPERATION_STREAM_TITLE="stream title";
 const char *TWITCH_API_OPERATION_STREAM_CATEGORY="stream category";
 const char *TWITCH_API_OPERATION_LOAD_BADGES="badges";
 const char *TWITCH_API_OPERATION_SHOUTOUT="shoutout";
+const char *TWITCH_API_OPERATION_AD_SCHEDULE="ad schedule";
 const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 was incomplete";
 const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
 const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
 const char *TWITCH_API_ERROR_AUTH="Auth token or client ID missing or invalid";
+const char *TWITCH_API_ERROR_INTERNAL_SERVER="Internal server error";
 const char16_t *CHAT_BADGE_BROADCASTER=u"broadcaster";
 const char16_t *CHAT_BADGE_MODERATOR=u"moderator";
 const char16_t *CHAT_TAG_DISPLAY_NAME=u"display-name";
@@ -82,6 +85,7 @@ std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObject(parent),
 	vibeKeeper(musicPlayer),
 	roaster(false,100,this),
+	adBreakDuration(0),
 	security(security),
 	settings{
 		.inactivityCooldown{SETTINGS_CATEGORY_EVENTS,"InactivityCooldown",1800000},
@@ -99,6 +103,10 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.deniedCommandVideo{SETTINGS_CATEGORY_COMMANDS,"Denied"},
 		.commandCooldown{SETTINGS_CATEGORY_COMMANDS,"Cooldown",10}, // in minutes
 		.uptimeHistory{SETTINGS_CATEGORY_COMMANDS,"UptimeHistory",0},
+		.adWarningVideo{SETTINGS_CATEGORY_ADS,"WarningVideo"},
+		.adFinishedVideo{SETTINGS_CATEGORY_ADS,"FinishedVideo"},
+		.adWarningLeadTime{SETTINGS_CATEGORY_ADS,"WarningLeadTime",5}, // in seconds
+		.adScheduleRefreshInterval{SETTINGS_CATEGORY_ADS,"ScheduleRefreshInterval",30}, // in seconds
 		.commandNameAgenda{SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"},
 		.commandNameStreamCategory{SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"},
 		.commandNameStreamTitle{SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"},
@@ -533,6 +541,95 @@ void Bot::StartClocks()
 	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settings.helpCooldown)));
 	connect(&helpClock,&QTimer::timeout,this,&Bot::DispatchHelpText);
 	helpClock.start();
+
+	adScheduleClock.setInterval(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(settings.adScheduleRefreshInterval)).count());
+	connect(&adScheduleClock,&QTimer::timeout,this,&Bot::RequestAdSchedule); // FIXME: because this is a network request that passes up administrator ID, we can call this too soon
+	adScheduleClock.start();
+	adStartingClock.setSingleShot(true);
+	connect(&adStartingClock,&QTimer::timeout,this,&Bot::AdsStarting);
+	adFinishedClock.setSingleShot(true);
+	connect(&adFinishedClock,&QTimer::timeout,this,&Bot::AdsFinished);
+}
+
+void Bot::RequestAdSchedule()
+{
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_AD_SCHEDULE)},Network::Method::GET,[this](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(u"Broadcaster ID is invalid"_s,TWITCH_API_OPERATION_AD_SCHEDULE);
+			return;
+		case 500:
+			emit Print(TWITCH_API_ERROR_INTERNAL_SERVER,TWITCH_API_OPERATION_AD_SCHEDULE);
+			return;
+		}
+
+		if (reply->error())
+		{
+			emit Print("Failed to obtain ad schedule",TWITCH_API_OPERATION_AD_SCHEDULE);
+			return;
+		}
+
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_AD_SCHEDULE,parsedJSON.error));
+			return;
+		}
+
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
+		if (jsonFieldData == object.end())
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_AD_SCHEDULE));
+			return;
+		}
+
+		const QJsonArray jsonEntries=jsonFieldData->toArray();
+		if (jsonEntries.size() < 1)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_AD_SCHEDULE));
+			return;
+		}
+
+		const QJsonObject jsonEntryFields=jsonEntries.at(0).toObject();
+		auto jsonNextAdTime=jsonEntryFields.find("next_ad_at");
+		auto jsonAdDuration=jsonEntryFields.find("duration");
+		if (jsonNextAdTime == jsonEntryFields.end() || jsonAdDuration == jsonEntryFields.end())
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_AD_SCHEDULE));
+			return;
+		}
+
+		if (adStartingClock.isActive())
+		{
+			QDateTime remoteNextAd=QDateTime::fromSecsSinceEpoch(jsonNextAdTime->toInteger()); // NOTE: Twitch messed up, docs say RFC 3339 format but it's actually Unix epoch (https://discuss.dev.twitch.com/t/get-ad-schedule/61440/7)
+			if (nextAd != remoteNextAd)
+			{
+				nextAd=remoteNextAd;
+				QDateTime announceTime=nextAd.addSecs(-static_cast<int>(settings.adWarningLeadTime));
+				adStartingClock.stop();
+				adStartingClock.setInterval(QDateTime::currentDateTimeUtc().msecsTo(announceTime));
+				adStartingClock.start();
+			}
+		}
+		else
+		{
+			nextAd=QDateTime::fromSecsSinceEpoch(jsonNextAdTime->toInteger());
+			QDateTime announceTime=nextAd.addSecs(-static_cast<int>(settings.adWarningLeadTime));
+			adStartingClock.setInterval(QDateTime::currentDateTimeUtc().msecsTo(announceTime));
+			adStartingClock.start();
+		}
+		QDateTime announceTime=nextAd.addSecs(-static_cast<int>(settings.adWarningLeadTime));
+		adBreakDuration=jsonAdDuration->toInt();
+		adFinishedClock.setInterval(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(adBreakDuration)+std::chrono::seconds(settings.adWarningLeadTime)).count());
+	}, {
+		{"broadcaster_id",security.AdministratorID()}
+	}, {
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
+	});
 }
 
 void Bot::Ping()
@@ -604,6 +701,29 @@ void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &me
 		return;
 	}
 	emit AnnounceCheer(viewer,count,message,settings.cheerVideo);
+}
+
+void Bot::AdsStarting()
+{
+	if (static_cast<QString>(settings.adWarningVideo).isEmpty())
+	{
+		emit Print("No video path set for ad break warning","ad break starting");
+		return;
+	}
+	emit AnnounceAdBreakStarting(settings.adWarningVideo);
+	adScheduleClock.stop();
+	adFinishedClock.start();
+}
+
+void Bot::AdsFinished()
+{
+	if (static_cast<QString>(settings.adFinishedVideo).isEmpty())
+	{
+		emit Print("No video path set for finished ad break","ad break finished");
+		return;
+	}
+	emit AnnounceAdBreakFinished(settings.adFinishedVideo);
+	adScheduleClock.start();
 }
 
 void Bot::SuppressMusic()

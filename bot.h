@@ -63,6 +63,11 @@ protected:
 	Music::Player roaster;
 	QTimer inactivityClock;
 	QTimer helpClock;
+	QTimer adScheduleClock;
+	QTimer adStartingClock;
+	QTimer adFinishedClock;
+	QDateTime nextAd;
+	int adBreakDuration;
 	QDateTime lastRaid;
 	Security &security;
 	Settings::Bot settings;
@@ -123,16 +128,21 @@ signals:
 	void AnnounceCheer(const QString &viewer,const unsigned int count,const QString &message,const QString &videoPath);
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void AnnounceDeniedCommand(const QString &videoPath);
+	void AnnounceAdBreakStarting(const QString &videoPath);
+	void AnnounceAdBreakFinished(const QString &videoPath);
 	void Welcomed(const QString &user);
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void ParseChatMessageDeletion(const QString &prefix);
 	void DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QString &name,const QString &login);
+	void RequestAdSchedule();
 	void Ping();
 	void Subscription(const QString &login,const QString &displayName);
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);
 	void Raid(const QString &viewer,const unsigned int viewers);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
+	void AdsStarting();
+	void AdsFinished();
 	void SuppressMusic();
 	void RestoreMusic();
 	QJsonDocument SerializeCommands(const Command::Lookup &entries);

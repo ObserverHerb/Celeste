@@ -228,6 +228,8 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::AnnounceCheer,&window,&Window::AnnounceCheer);
 		celeste.connect(&celeste,&Bot::AnnounceTextWall,&window,&Window::AnnounceTextWall);
 		celeste.connect(&celeste,&Bot::AnnounceDeniedCommand,&window,&Window::AnnounceDeniedCommand);
+		celeste.connect(&celeste,&Bot::AnnounceAdBreakStarting,&window,&Window::AnnounceAdBreakStarting);
+		celeste.connect(&celeste,&Bot::AnnounceAdBreakFinished,&window,&Window::AnnounceAdBreakFinished);
 		celeste.connect(&celeste,&Bot::SetAgenda,&window,&Window::SetAgenda);
 		celeste.connect(&celeste,&Bot::ShowPortraitVideo,&window,&Window::ShowPortraitVideo);
 		celeste.connect(&celeste,QOverload<const QString&,const QString&,const QString&,const QImage>::of(&Bot::ShowCurrentSong),&window,QOverload<const QString&,const QString&,const QString&,const QImage>::of(&Window::ShowCurrentSong));

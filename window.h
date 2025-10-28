@@ -57,6 +57,8 @@ public slots:
 	void AnnounceTextWall(const QString &message,const QString &audioPath);
 	void AnnounceDeniedCommand(const QString &videoPath);
 	void AnnounceHypeTrainProgress(int level,double progress);
+	void AnnounceAdBreakStarting(const QString& videoPath);
+	void AnnounceAdBreakFinished(const QString& videoPath);
 	void PlayVideo(const QString &path);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);
