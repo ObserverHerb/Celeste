@@ -198,7 +198,7 @@ namespace Music
 		),"volume fade");
 
 		if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.stop();
-		volumeAdjustment.setDuration(TimeConvert::Milliseconds(duration).count());
+		volumeAdjustment.setDuration(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 		volumeAdjustment.setStartValue(player.audioOutput()->volume());
 		volumeAdjustment.setEndValue(TranslateVolume(targetVolume));
 		volumeAdjustment.start();

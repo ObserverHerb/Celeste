@@ -1418,7 +1418,7 @@ namespace UI
 				fontSize.setValue(settings.fontSize);
 				foregroundColor.setText(settings.foregroundColor);
 				backgroundColor.setText(settings.backgroundColor);
-				statusInterval.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				statusInterval.setRange(TimeConvert::ONE_SECOND_IN_MILLISECONDS.count(),std::numeric_limits<int>::max());
 
 				Rows({
 					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
@@ -1522,7 +1522,7 @@ namespace UI
 				foregroundColor.setText(settings.foregroundColor);
 				backgroundColor.setText(settings.backgroundColor);
 				accentColor.setText(settings.accentColor);
-				duration.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				duration.setRange(TimeConvert::ONE_SECOND_IN_MILLISECONDS.count(),std::numeric_limits<int>::max());
 				duration.setValue(settings.duration);
 
 				Rows({
@@ -1704,9 +1704,9 @@ namespace UI
 				postRaidEventDelay.setValue(settings.raidInterruptDuration);
 				postRaidEventDelayThreshold.setRange(0,std::numeric_limits<int>::max());
 				postRaidEventDelayThreshold.setValue(settings.raidInterruptDelayThreshold);
-				inactivityCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				inactivityCooldown.setRange(TimeConvert::ONE_SECOND_IN_MILLISECONDS.count(),std::numeric_limits<int>::max());
 				inactivityCooldown.setValue(settings.inactivityCooldown);
-				helpCooldown.setRange(TimeConvert::Milliseconds(TimeConvert::OneSecond()).count(),std::numeric_limits<int>::max());
+				helpCooldown.setRange(TimeConvert::ONE_SECOND_IN_MILLISECONDS.count(),std::numeric_limits<int>::max());
 				helpCooldown.setValue(settings.helpCooldown);
 				textWallThreshold.setRange(1,std::numeric_limits<int>::max());
 				textWallThreshold.setValue(settings.textWallThreshold);

@@ -534,11 +534,11 @@ void Bot::LoadBadgeIconURLs()
 
 void Bot::StartClocks()
 {
-	inactivityClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settings.inactivityCooldown)));
+	inactivityClock.setInterval(std::chrono::milliseconds(settings.inactivityCooldown).count());
 	if (settings.roasts) connect(&inactivityClock,&QTimer::timeout,&roaster,QOverload<>::of(&Music::Player::Start));
 	inactivityClock.start();
 
-	helpClock.setInterval(TimeConvert::Interval(std::chrono::milliseconds(settings.helpCooldown)));
+	helpClock.setInterval(std::chrono::milliseconds(settings.helpCooldown).count());
 	connect(&helpClock,&QTimer::timeout,this,&Bot::DispatchHelpText);
 	helpClock.start();
 

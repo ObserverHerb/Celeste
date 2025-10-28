@@ -115,12 +115,9 @@ namespace StringConvert
 
 namespace TimeConvert
 {
-	constexpr std::chrono::seconds Seconds(const std::chrono::milliseconds &value) { return std::chrono::duration_cast<std::chrono::seconds>(value); }
-	constexpr std::chrono::milliseconds Milliseconds(const std::chrono::seconds &value) { return std::chrono::duration_cast<std::chrono::milliseconds>(value); }
-	constexpr int Interval(const std::chrono::seconds &value) { return value.count(); }
-	constexpr int Interval(const std::chrono::milliseconds &value) { return value.count(); }
-	constexpr std::chrono::seconds OneSecond() { return static_cast<std::chrono::seconds>(1); }
-	inline const std::chrono::milliseconds Now() { return std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch(); }
+	constexpr auto ONE_SECOND=std::chrono::seconds(1);
+	constexpr auto ONE_SECOND_IN_MILLISECONDS=std::chrono::duration_cast<std::chrono::milliseconds>(ONE_SECOND);
+	constexpr std::chrono::milliseconds Now() { return std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch(); }
 }
 
 namespace StringView

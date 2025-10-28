@@ -111,7 +111,7 @@ ChatPane::ChatPane(QWidget *parent) : PersistentPane(parent),
 	status->hide();
 	layout()->addWidget(status);
 
-	statusClock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingStatusInterval)));
+	statusClock.setInterval(static_cast<std::chrono::milliseconds>(settingStatusInterval).count());
 	connect(&statusClock,&QTimer::timeout,this,&ChatPane::DismissStatus);
 
 	Format();
@@ -377,7 +377,7 @@ bool AnnouncePane::event(QEvent *event)
 
 void AnnouncePane::showEvent(QShowEvent *event)
 {
-	clock.setInterval(TimeConvert::Interval(static_cast<std::chrono::milliseconds>(settingDuration)));
+	clock.setInterval(static_cast<std::chrono::milliseconds>(settingDuration).count());
 	clock.start();
 	QWidget::showEvent(event);
 }
