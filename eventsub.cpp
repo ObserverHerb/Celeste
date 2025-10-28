@@ -35,15 +35,15 @@ const char *MESSAGE_TYPE_WELCOME="session_welcome";
 const char *MESSAGE_TYPE_KEEPALIVE="session_keepalive";
 const char *MESSAGE_TYPE_NOTIFICATION="notification";
 
-const char* SUBSCRIPTION_TYPE_FOLLOW = "channel.follow";
-const char* SUBSCRIPTION_TYPE_REDEMPTION = "channel.channel_points_custom_reward_redemption.add";
-const char* SUBSCRIPTION_TYPE_CHEER = "channel.cheer";
-const char* SUBSCRIPTION_TYPE_RAID = "channel.raid";
-const char* SUBSCRIPTION_TYPE_SUBSCRIPTION = "channel.subscribe";
-const char* SUBSCRIPTION_TYPE_RESUBSCRIPTION = "channel.subscription.message";
-const char* SUBSCRIPTION_TYPE_HYPE_TRAIN_START = "channel.hype_train.begin";
-const char* SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS = "channel.hype_train.progress";
-const char* SUBSCRIPTION_TYPE_HYPE_TRAIN_END = "channel.hype_train.end";
+const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
+const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_reward_redemption.add";
+const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
+const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
+const char *SUBSCRIPTION_TYPE_SUBSCRIPTION="channel.subscribe";
+const char *SUBSCRIPTION_TYPE_RESUBSCRIPTION="channel.subscription.message";
+const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_START="channel.hype_train.begin";
+const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS="channel.hype_train.progress";
+const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_END="channel.hype_train.end";
 
 const char *EventSub::SETTINGS_CATEGORY_EVENTS="Events";
 

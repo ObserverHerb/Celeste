@@ -1268,7 +1268,7 @@ void Bot::DispatchFollowage(const Viewer::Local &viewer)
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	});
 }
 
@@ -1399,7 +1399,7 @@ void Bot::DispatchUptime(bool total)
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	});
 }
 
@@ -1526,7 +1526,7 @@ void Bot::ToggleEmoteOnly()
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	});
 }
 
@@ -1544,7 +1544,7 @@ void Bot::EmoteOnly(bool enable)
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({{"emote_mode",enable}})).toJson(QJsonDocument::Compact));
 }
 
@@ -1576,7 +1576,7 @@ void Bot::StreamTitle(const QString &title)
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},
 	{
 		QJsonDocument(QJsonObject({{"title",title}})).toJson(QJsonDocument::Compact)
@@ -1629,7 +1629,7 @@ void Bot::StreamCategory(const QString &category)
 		},{
 			{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 			{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+			{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 		},
 		{
 			QJsonDocument(QJsonObject({{"game_id",categoryID}})).toJson(QJsonDocument::Compact)
@@ -1639,7 +1639,7 @@ void Bot::StreamCategory(const QString &category)
 	},{
 		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
-		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	});
 }
 
