@@ -654,6 +654,14 @@ namespace UI
 				QPushButton selectTextWallSound;
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
+				QLineEdit adBreakWarningVideo;
+				QPushButton selectAdBreakWarningVideo;
+				QPushButton previewAdBreakWarningVideo;
+				QSpinBox adBreakWarningLeadTime;
+				QLineEdit adBreakFinishedVideo;
+				QPushButton selectAdBreakFinishedVideo;
+				QPushButton previewAdBreakFinishedVideo;
+				QSpinBox adScheduleRefreshInterval;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
@@ -663,6 +671,8 @@ namespace UI
 				void PlaySubscriptionSound(const QString &chatter,const QString &path);
 				void PlayRaidSound(const QString &chatter,const unsigned int raiders,const QString &path);
 				void PlayTextWallSound(const QString &message,const QString &path);
+				void PlayAdBreakWarningVideo(const QString &path);
+				void PlayAdBreakFinishedVideo(const QString &path);
 			protected slots:
 				void OpenArrivalSound();
 				void PlayArrivalSound();
@@ -676,12 +686,18 @@ namespace UI
 				void PlayRaidSound();
 				void OpenTextWallSound();
 				void PlayTextWallSound();
+				void OpenAdBreakWarningVideo();
+				void PlayAdBreakWarningVideo();
+				void OpenAdBreakFinishedVideo();
+				void PlayAdBreakFinishedVideo();
 				void ValidateArrivalSound(const QString &path);
 				void ValidatePortraitVideo(const QString &path);
 				void ValidateCheerVideo(const QString &path);
 				void ValidateSubscriptionSound(const QString &path);
 				void ValidateRaidSound(const QString &path);
 				void ValidateTextWallSound(const QString &path);
+				void ValidateAdBreakWarningVideo(const QString &path);
+				void ValidateAdBreakFinishedVideo(const QString &path);
 			};
 
 			class Pulsar: public Category

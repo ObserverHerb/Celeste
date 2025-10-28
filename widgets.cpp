@@ -1660,6 +1660,14 @@ namespace UI
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
 				textWallThreshold(this),
+				adBreakWarningVideo(this),
+				selectAdBreakWarningVideo(Text::BROWSE,this),
+				previewAdBreakWarningVideo(Text::PREVIEW,this),
+				adBreakWarningLeadTime(this),
+				adBreakFinishedVideo(this),
+				selectAdBreakFinishedVideo(Text::BROWSE,this),
+				previewAdBreakFinishedVideo(Text::PREVIEW,this),
+				adScheduleRefreshInterval(this),
 				errorReport(errorReport)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
@@ -1680,6 +1688,12 @@ namespace UI
 				connect(&textWallSound,&QLineEdit::textChanged,this,&Bot::ValidateTextWallSound);
 				connect(&selectTextWallSound,&QPushButton::clicked,this,&Bot::OpenTextWallSound);
 				connect(&previewTextWallSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayTextWallSound));
+				connect(&adBreakWarningVideo,&QLineEdit::textChanged,this,&Bot::ValidateAdBreakWarningVideo);
+				connect(&selectAdBreakWarningVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakWarningVideo);
+				connect(&previewAdBreakWarningVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakWarningVideo));
+				connect(&adBreakFinishedVideo,&QLineEdit::textChanged,this,&Bot::ValidateAdBreakFinishedVideo);
+				connect(&selectAdBreakFinishedVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakFinishedVideo);
+				connect(&previewAdBreakFinishedVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakFinishedVideo));
 
 				arrivalSound.setText(settings.arrivalSound);
 				portraitVideo.setText(settings.portraitVideo);
@@ -1697,6 +1711,12 @@ namespace UI
 				textWallThreshold.setRange(1,std::numeric_limits<int>::max());
 				textWallThreshold.setValue(settings.textWallThreshold);
 				textWallSound.setText(settings.textWallSound);
+				adBreakWarningVideo.setText(settings.adWarningVideo);
+				adBreakWarningLeadTime.setRange(1,std::numeric_limits<int>::max());
+				adBreakWarningLeadTime.setValue(settings.adWarningLeadTime);
+				adBreakFinishedVideo.setText(settings.adFinishedVideo);
+				adScheduleRefreshInterval.setRange(30,std::numeric_limits<int>::max());
+				adScheduleRefreshInterval.setValue(settings.adScheduleRefreshInterval);
 
 				Rows({
 					{Label(u"Arrival Announcement Audio"_s),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
@@ -1708,6 +1728,8 @@ namespace UI
 					{Label(u"Inactivity Cooldown"_s),&inactivityCooldown},
 					{Label(u"Help Cooldown"_s),&helpCooldown},
 					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(u"Threshold"_s),&textWallThreshold},
+					{Label(u"Ad Break Warning Video"_s),&adBreakWarningVideo,&selectAdBreakWarningVideo,&previewAdBreakWarningVideo,Label(u"Lead Time"_s),&adBreakWarningLeadTime},
+					{Label(u"Ad Break Finished Video"_s),&adBreakFinishedVideo,&selectAdBreakFinishedVideo,&previewAdBreakFinishedVideo,Label(u"Refresh Interval"_s),&adScheduleRefreshInterval}
 				});
 			}
 
@@ -1725,6 +1747,10 @@ namespace UI
 					if (object == &inactivityCooldown) emit Help(uR"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"_s);
 					if (object == &helpCooldown) emit Help(uR"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"_s);
 					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s);
+					if (object == &adBreakWarningVideo || object == &selectAdBreakWarningVideo || object == &previewAdBreakWarningVideo) emit Help(u"A video (mp4) that plays when an ad break is about to begin"_s);
+					if (object == &adBreakWarningLeadTime) emit Help(u"How many seconds to warn in advance that an ad break is about to begin"_s);
+					if (object == &adBreakFinishedVideo || object == &selectAdBreakFinishedVideo || object == &previewAdBreakFinishedVideo) emit Help(u"A video (mp4) that plays when an break has finished"_s);
+					if (object == &adScheduleRefreshInterval) emit Help(u"How often (in seconds) to ask Twitch for the ad manager schedule"_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
@@ -1800,6 +1826,28 @@ namespace UI
 				emit PlayTextWallSound(message,textWallSound.text());
 			}
 
+			void Bot::OpenAdBreakWarningVideo()
+			{
+				QString candidate=OpenVideo(this,adBreakWarningVideo.text());
+				if (!candidate.isEmpty()) adBreakWarningVideo.setText(candidate);
+			}
+
+			void Bot::PlayAdBreakWarningVideo()
+			{
+				emit PlayAdBreakWarningVideo(adBreakWarningVideo.text());
+			}
+
+			void Bot::OpenAdBreakFinishedVideo()
+			{
+				QString candidate=OpenVideo(this,adBreakFinishedVideo.text());
+				if (!candidate.isEmpty()) adBreakFinishedVideo.setText(candidate);
+			}
+
+			void Bot::PlayAdBreakFinishedVideo()
+			{
+				emit PlayAdBreakFinishedVideo(adBreakFinishedVideo.text());
+			}
+
 			void Bot::ValidateArrivalSound(const QString &path)
 			{
 				QFileInfo candidate(path);
@@ -1866,6 +1914,28 @@ namespace UI
 				textWallSound.setEnabled(valid);
 			}
 
+			void Bot::ValidateAdBreakWarningVideo(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
+				if (valid)
+					errorReport->Valid(&adBreakWarningVideo);
+				else
+					errorReport->Invalid(&adBreakWarningVideo);
+				previewAdBreakWarningVideo.setEnabled(valid);
+			}
+
+			void Bot::ValidateAdBreakFinishedVideo(const QString &path)
+			{
+				QFileInfo candidate(path);
+				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
+				if (valid)
+					errorReport->Valid(&adBreakFinishedVideo);
+				else
+					errorReport->Invalid(&adBreakFinishedVideo);
+				previewAdBreakFinishedVideo.setEnabled(valid);
+			}
+
 			void Bot::Save()
 			{
 				if (QString text=arrivalSound.text(); !text.isEmpty()) settings.arrivalSound.Set(text);
@@ -1879,6 +1949,10 @@ namespace UI
 				settings.helpCooldown.Set(helpCooldown.value());
 				settings.textWallThreshold.Set(textWallThreshold.value());
 				if (QString text=textWallSound.text(); !text.isEmpty()) settings.textWallSound.Set(text);
+				if (QString text=adBreakWarningVideo.text(); !text.isEmpty()) settings.adWarningVideo.Set(text);
+				settings.adWarningLeadTime.Set(adBreakWarningLeadTime.value());
+				if (QString text=adBreakFinishedVideo.text(); !text.isEmpty()) settings.adFinishedVideo.Set(text);
+				settings.adScheduleRefreshInterval.Set(adScheduleRefreshInterval.value());
 			}
 
 			Pulsar::Pulsar(Settings::Pulsar &settings,QWidget *parent) : Category(parent,u"Pulsar"_s),
