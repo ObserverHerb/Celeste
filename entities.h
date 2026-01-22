@@ -30,17 +30,28 @@ namespace File
 		List() : currentIndex(0) { }
 		List(const QString &path,const QStringList &filter={});
 		List(const QStringList &files);
+		List(const std::unordered_map<QString,QStringList> &lists);
+		List(const File::List &other);
+		List& operator=(const File::List &other);
 		const QString File(const int index) const;
-		const QString First();
+		const QString First() const;
 		const QString Random();
 		const QString Unique();
 		int RandomIndex();
+		QStringList ListNames() const;
+		bool ListName(const QString &name);
+		QString ListName() const;
 		const QStringList& operator()() const;
+		operator const std::unordered_map<QString,QStringList>&() const;
 	protected:
-		QStringList files;
+		std::unordered_map<QString,QStringList> files;
+		std::unordered_map<QString,QStringList>::iterator selectedList;
 		int currentIndex;
 		void Shuffle();
 		void Reshuffle();
+		const QString& SelectedListName() const;
+		QStringList& SelectedFiles() const;
+		QStringList& BuildDefaultList();
 	};
 }
 
@@ -105,6 +116,7 @@ namespace Music
 		QString Filename() const;
 		void Sources(const File::List &sources);
 		const File::List& Sources();
+		bool ChangePlaylist(const QString &name);
 		ApplicationSetting& SuppressedVolume();
 	protected:
 		QMediaPlayer player;

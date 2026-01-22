@@ -7,6 +7,8 @@
 #include <QFileDialog>
 #include <QFontDialog>
 #include <QVideoWidget>
+#include <QTableView>
+#include <QHeaderView>
 #include <QWindow>
 #include <QScreen>
 #include <QMessageBox>
@@ -2227,46 +2229,54 @@ namespace UI
 	{
 		Dialog::Dialog(const File::List &files,QWidget *parent) : QDialog(parent),
 			layout(this),
-			list(0,static_cast<int>(Columns::MAX),this),
+			tabs(this),
+			newPlaylist(style()->standardIcon(QStyle::SP_FileDialogNewFolder),"New Playlist",this),
 			buttons(this),
 			add(Text::BUTTON_ADD,this),
 			remove(Text::BUTTON_REMOVE,this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
+			options(this),
+			optionsLayout(&options),
 			mediaControls(this),
 			mediaControlsLayout(&mediaControls),
 			volume(Qt::Horizontal,&mediaControls),
-			start("\u23F5",&mediaControls),
-			stop("\u23F9",&mediaControls),
-			files(files)
+			start(style()->standardIcon(QStyle::SP_MediaPlay),"Play",&mediaControls),
+			stop(style()->standardIcon(QStyle::SP_MediaPause),"Pause",&mediaControls),
+			playlistNames(this),
+			initialAddFilesPath(Filesystem::HomePath().absolutePath())
 		{
 			setLayout(&layout);
-
-			list.setHorizontalHeaderLabels({"Artist","Album","Title","Path"});
-			list.setSelectionBehavior(QAbstractItemView::SelectRows);
-			list.setSelectionMode(QAbstractItemView::ExtendedSelection);
-			const QStringList paths=files();
-			if (!paths.empty())
+			
+			for (const auto &[name,paths] : static_cast<const std::unordered_map<QString,QStringList>&>(files))
 			{
-				initialAddFilesPath={paths.first()};
-				Add(paths,false);
+				AddTab(name,paths);
+				if (name == files.ListName() && !paths.empty()) initialAddFilesPath={paths.first()};
 			}
-			else
-			{
-				initialAddFilesPath={Filesystem::HomePath().absolutePath()};
-			}
-			list.setSortingEnabled(true);
-			layout.addWidget(&list);
+			tabs.setCurrentWidget(tabs.findChild<QWidget*>(files.ListName()));
+			tabs.setCornerWidget(&newPlaylist);
+			tabs.setTabsClosable(true);
+			connect(&tabs,&QTabWidget::tabCloseRequested,this,&Dialog::RemoveTab);
+			connect(&newPlaylist,&QPushButton::pressed,this,&Dialog::AddPlaylist);
+			layout.addWidget(&tabs);
 
 			mediaControlsLayout.addWidget(&stop,0);
 			mediaControlsLayout.addWidget(&start,0);
+			QPushButton *volumeIndicator=new QPushButton(style()->standardIcon(QStyle::SP_MediaVolumeMuted),{},&mediaControls);
+			volumeIndicator->setFlat(true);
+			mediaControlsLayout.addWidget(volumeIndicator);
 			mediaControlsLayout.addWidget(&volume,1);
-			layout.addWidget(&mediaControls);
+			volumeIndicator=new QPushButton(style()->standardIcon(QStyle::SP_MediaVolume),{},&mediaControls);
+			volumeIndicator->setFlat(true);
+			mediaControlsLayout.addWidget(volumeIndicator);
+			optionsLayout.addWidget(&mediaControls);
 			connect(&volume,&QSlider::valueChanged,this,&Dialog::Volume);
-			connect(&start,&QPushButton::pressed,this,[this]() {
-				Play(nullptr); // FIXME: there has to be a better way to do this than a while lambda
-			});
+			connect(&start,&QPushButton::pressed,this,QOverload<>::of(&Dialog::Play));
 			connect(&stop,&QPushButton::pressed,this,&Dialog::Stop);
+			optionsLayout.addWidget(new QLabel(u"Live Playlist"_s));
+			optionsLayout.addWidget(&playlistNames);
+			playlistNames.setCurrentIndex(playlistNames.findText(files.ListName()));
+			layout.addWidget(&options);
 
 			buttons.addButton(&save,QDialogButtonBox::AcceptRole);
 			buttons.addButton(&discard,QDialogButtonBox::RejectRole);
@@ -2275,19 +2285,22 @@ namespace UI
 			connect(&buttons,&QDialogButtonBox::accepted,this,&QDialog::accept);
 			connect(&buttons,&QDialogButtonBox::rejected,this,&QDialog::reject);
 			connect(this,&QDialog::accepted,this,QOverload<>::of(&Dialog::Save));
-			connect(&add,&QPushButton::clicked,this,QOverload<>::of(&Dialog::Add));
-			connect(&remove,&QPushButton::clicked,this,&Dialog::Remove);
+			connect(&add,&QPushButton::clicked,this,QOverload<>::of(&Dialog::AddFiles));
+			connect(&remove,&QPushButton::clicked,this,&Dialog::RemoveFiles);
 			layout.addWidget(&buttons);
-
-			connect(&list,&QTableWidget::itemDoubleClicked,this,QOverload<QTableWidgetItem*>::of(&Dialog::Play));
 
 			setSizeGripEnabled(true);
 		}
 
 		Dialog::Dialog(const File::List &files,const QString currentlyPlayingFile,QWidget *parent): Dialog(files,parent)
 		{
-			const auto items=list.findItems(currentlyPlayingFile,Qt::MatchExactly);
-			for (QTableWidgetItem *item : items) list.selectRow(item->row());
+			auto table=qobject_cast<QTableView*>(tabs.currentWidget());
+			auto model=table->model();
+			QModelIndexList matches=model->match(model->index(0,static_cast<int>(Columns::PATH)),Qt::DisplayRole,currentlyPlayingFile,1,Qt::MatchExactly);
+			if (matches.isEmpty()) return;
+			QModelIndex index=matches.first();
+			table->selectRow(index.row());
+			table->scrollTo(index,QAbstractItemView::PositionAtCenter);
 		}
 
 		void Dialog::showEvent(QShowEvent *event)
@@ -2296,45 +2309,80 @@ namespace UI
 			QDialog::showEvent(event);
 		}
 
-		void Dialog::Save()
+		void Dialog::AddTab(const QString &name,const QStringList &paths)
 		{
-			QStringList paths;
-			for (int row=0; row < list.rowCount(); row++) paths.append(list.item(row,static_cast<int>(Columns::MAX)-1)->text());
-			emit Save({paths});
+			QTableView *table=new QTableView();
+			table->setObjectName(name);
+			table->setSelectionBehavior(QAbstractItemView::SelectRows);
+			table->setSelectionMode(QAbstractItemView::ExtendedSelection);
+			table->setSortingEnabled(true);
+			table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+			table->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+			table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+			QStandardItemModel *model=new QStandardItemModel(table);
+			model->setHorizontalHeaderLabels({"Artist","Album","Title","Path"});
+			table->setModel(model);
+			tabs.addTab(table,name);
+			AddFiles(paths,*table,false);
+			playlistNames.addItem(name);
+			connect(table,&QTableView::doubleClicked,this,QOverload<const QModelIndex&>::of(&Dialog::Play));
 		}
 
-		void Dialog::Add()
+		void Dialog::Save()
+		{
+			std::unordered_map<QString,QStringList> files;
+			QStringList failed;
+			for (int tabIndex=0; tabIndex < tabs.count(); tabIndex++)
+			{
+				auto table=qobject_cast<QTableView*>(tabs.widget(tabIndex));
+				auto model=table->model();
+				QStringList paths;
+				for (int modelIndex= 0; modelIndex < model->rowCount(); modelIndex++) paths.append(model->index(modelIndex,static_cast<int>(Columns::PATH)).data().toString());
+				auto [insertedItem,insertionResult]=files.try_emplace(table->objectName(),paths);
+				if (!insertionResult) failed.append(table->objectName());
+			}
+			if (!failed.isEmpty())
+			{
+				QMessageBox{QMessageBox::Warning,"Failed to add lists",failed.join('\n'),QMessageBox::Ok}.exec();
+				return;
+			}
+			File::List lists(files);
+			lists.ListName(playlistNames.currentText());
+			emit Save(lists);
+		}
+
+		void Dialog::AddFiles()
 		{
 			const QStringList paths=QFileDialog::getOpenFileNames(this,Text::DIALOG_TITLE_FILE,initialAddFilesPath.absolutePath(),QString("Songs (*.%1)").arg(Text::FILE_TYPE_AUDIO));
 			if (paths.isEmpty()) return;
 			initialAddFilesPath={paths.front()};
-			Add(paths,true);
+			AddFiles(paths,*qobject_cast<QTableView*>(tabs.currentWidget()),true);
 		}
 
-		void Dialog::Add(const QString &path)
+		void Dialog::AddFile(const QString &path,QStandardItemModel &model)
 		{
 			Music::ID3::Tag tag=Music::ID3::Tag{path};
 			auto artist=tag.Artist();
 			auto title=tag.Title();
 			if (!title || !artist) return;
 			auto album=tag.AlbumTitle();
-			list.insertRow(list.rowCount());
-			int row=list.rowCount()-1;
-			list.setItem(row,0,ReadOnlyItem(*artist));
-			list.setItem(row,1,ReadOnlyItem(album ? *album : QString{}));
-			list.setItem(row,2,ReadOnlyItem(*title));
-			list.setItem(row,static_cast<int>(Columns::PATH),ReadOnlyItem(path));
+			model.appendRow({
+				new QStandardItem(*artist),
+				new QStandardItem(album ? *album : QString{}),
+				new QStandardItem(*title),
+				new QStandardItem(path)
+			});
 		}
 
-		void Dialog::Add(const QStringList &paths,bool failurePrompt)
+		void Dialog::AddFiles(const QStringList &paths,QTableView &table,bool failurePrompt)
 		{
-			list.setSortingEnabled(false);
+			table.setSortingEnabled(false);
 			QStringList failed;
 			for (const QString &file : paths)
 			{
 				try
 				{
-					Add(file);
+					AddFile(file,*qobject_cast<QStandardItemModel*>(table.model()));
 				}
 				catch (const std::runtime_error &exception)
 				{
@@ -2345,28 +2393,61 @@ namespace UI
 			{
 				QMessageBox{QMessageBox::Warning,"Failed to add files",failed.join('\n'),QMessageBox::Ok}.exec();
 			}
-			list.setSortingEnabled(true);
-			list.resizeColumnsToContents();
+			table.setSortingEnabled(true);
+			table.resizeColumnsToContents();
 		}
 
-		void Dialog::Remove()
+		void Dialog::AddPlaylist()
 		{
-			QList<QTableWidgetItem*> items=list.selectedItems();
-			for (QList<QTableWidgetItem*>::iterator candidate=items.begin(); candidate != items.end(); candidate+=static_cast<int>(Columns::MAX))
+			bool ok=false;
+			QString playlistName=QInputDialog::getText(this,u"New Playlist"_s,u"Playlist name:"_s,QLineEdit::Normal,{},&ok);
+			if (!ok || playlistName.isEmpty()) return;
+			AddTab(playlistName,{});
+		}
+
+		void Dialog::RemoveFiles()
+		{
+			QTableView &table=*qobject_cast<QTableView*>(tabs.currentWidget());
+			QModelIndexList selectedRows=table.selectionModel()->selectedRows();
+
+			// sort in descending order to avoid index shifting
+			std::sort(selectedRows.begin(),selectedRows.end(),[](const QModelIndex &a,const QModelIndex &b) {
+				return a.row() > b.row();
+			});
+
+			for (const QModelIndex &index : selectedRows)
 			{
-				list.removeRow(list.row(*candidate));
+				table.model()->removeRow(index.row());
 			}
 		}
 
-		void Dialog::Play(QTableWidgetItem *item)
+		void Dialog::RemoveTab(int index)
 		{
-			if (!item)
+			auto tab=tabs.widget(index);
+			auto confirmation=QMessageBox::question(this,"Confirm Removal",QString(R"(Are you sure you wish to remove playlist "%1")").arg(tab->objectName()),QMessageBox::Yes|QMessageBox::No,QMessageBox::No);
+			if (confirmation == QMessageBox::No) return;
+			tabs.removeTab(index);
+			int playlistNameIndex=playlistNames.findText(tab->objectName());
+			delete tab;
+			if (playlistNameIndex < 0) return;
+			playlistNames.removeItem(playlistNameIndex);
+		}
+
+		void Dialog::Play()
+		{
+			const QModelIndex frontIndex=qobject_cast<QTableView*>(tabs.currentWidget())->model()->index(0,0);
+			if (!frontIndex.isValid()) return;
+			emit Play(QUrl::fromLocalFile(frontIndex.data().toString()));
+		}
+
+		void Dialog::Play(const QModelIndex &index)
+		{
+			if (!index.isValid())
 			{
-				if (list.selectedItems().empty()) return;
-				item=list.selectedItems().front();
+				Play();
+				return;
 			}
-			QTableWidgetItem *candidate=item->column() == static_cast<int>(Columns::PATH) ? item : list.item(item->row(),static_cast<int>(Columns::PATH));
-			if (candidate) emit Play(QUrl::fromLocalFile(candidate->text()));
+			emit Play(QUrl::fromLocalFile(index.siblingAtColumn(static_cast<int>(Columns::PATH)).data().toString()));
 		}
 
 	}

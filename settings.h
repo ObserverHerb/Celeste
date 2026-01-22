@@ -95,6 +95,7 @@ namespace Settings
 		ApplicationSetting commandNameHTML;
 		ApplicationSetting commandNameLimit;
 		ApplicationSetting commandNamePanic;
+		ApplicationSetting commandNamePlaylist;
 		ApplicationSetting commandNameShoutout;
 		ApplicationSetting commandNameSong;
 		ApplicationSetting commandNameTimezone;

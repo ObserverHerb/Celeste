@@ -36,6 +36,8 @@ const char *JSON_KEY_WELCOME="welcomed";
 const char *JSON_KEY_BOT="bot";
 const char *JSON_KEY_LIMIT_COMMANDS="limited";
 const char *JSON_KEY_SUBSCRIBED="subscribed";
+const char *JSON_KEY_LIVE_PLAYLIST="live";
+const char *JSON_KEY_PLAYLISTS="playlists";
 const char *JSON_ARRAY_EMPTY="[]";
 const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
@@ -116,6 +118,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.commandNameHTML{SETTINGS_CATEGORY_COMMANDS,"HTML","html"},
 		.commandNameLimit{SETTINGS_CATEGORY_COMMANDS,"Limit","limit"},
 		.commandNamePanic{SETTINGS_CATEGORY_COMMANDS,"Panic","panic"},
+		.commandNamePlaylist{SETTINGS_CATEGORY_COMMANDS,"Playlist","playlist"},
 		.commandNameShoutout{SETTINGS_CATEGORY_COMMANDS,"Shoutout","so"},
 		.commandNameSong{SETTINGS_CATEGORY_COMMANDS,"Song","song"},
 		.commandNameTimezone{SETTINGS_CATEGORY_COMMANDS,"Timezone","timezone"},
@@ -134,6 +137,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	DeclareCommand({settings.commandNameHTML,"Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
 	DeclareCommand({settings.commandNameLimit,"Limit frequency of viewer's commands with a cooldown",CommandType::NATIVE,true},NativeCommandFlag::LIMIT);
 	DeclareCommand({settings.commandNamePanic,"Crash Celeste",CommandType::NATIVE,true},NativeCommandFlag::PANIC);
+	DeclareCommand({settings.commandNamePlaylist,"Set the current vibe playlist",CommandType::NATIVE,true},NativeCommandFlag::PLAYLIST);
 	DeclareCommand({settings.commandNameShoutout,"Call attention to another streamer's channel",CommandType::NATIVE,false},NativeCommandFlag::SHOUTOUT);
 	DeclareCommand({settings.commandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
 	DeclareCommand({settings.commandNameTimezone,"Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
@@ -421,7 +425,34 @@ void Bot::SaveViewerAttributes(bool reset)
 
 File::List Bot::DeserializeVibePlaylist(const QJsonDocument &json)
 {
-	return {json.toVariant().toStringList()};
+	if (json.isArray())
+	{
+		// this is probably the older format, a single array of strings
+		// File::List will automatically "upgrade" by creating a "Default" list
+		auto variant=json.toVariant();
+		if (!variant.canConvert<QStringList>()) throw std::runtime_error("Playlist is corrupted");
+		return {json.toVariant().toStringList()}; // File::List will create the "Default" playlist and set it as live automatically
+	}
+	else
+	{
+		if (!json.isObject()) throw std::runtime_error("Playlist is corrupted."); // it's not an array or an object, so what is it?
+		auto object=json.object();
+		auto livePlaylist=object.find(JSON_KEY_LIVE_PLAYLIST);
+		if (livePlaylist == object.end()) throw std::runtime_error("No live playlist was set");
+		auto playlistsObject=object.find(JSON_KEY_PLAYLISTS);
+		if (playlistsObject == object.end()) throw std::runtime_error("Could not find any playlists");
+		std::unordered_map<QString,QStringList> playlists;
+		for (auto [listName,list] : playlistsObject->toObject().asKeyValueRange())
+		{
+			auto variant=list.toVariant();
+			if (!variant.canConvert<QStringList>()) throw std::runtime_error("One of the playlists is corrupted");
+			auto [insertedItem,insertionResult]=playlists.try_emplace(listName.toString(),variant.toStringList());
+			if (!insertionResult) throw std::runtime_error("Failed to load playlist");
+		}
+		File::List fileList(playlists);
+		fileList.ListName(livePlaylist->toString());
+		return fileList;
+	}
 }
 
 const File::List& Bot::SetVibePlaylist(const File::List &files)
@@ -459,9 +490,17 @@ QJsonDocument Bot::LoadVibePlaylist()
 	return parsedJSON();
 }
 
-QJsonDocument Bot::SerializeVibePlaylist(const File::List &songs)
+QJsonDocument Bot::SerializeVibePlaylist(const File::List &files)
 {
-	return QJsonDocument::fromVariant(songs());
+	QJsonObject playlistsObject;
+	for (const auto &[name,list] : static_cast<const std::unordered_map<QString,QStringList>&>(files))
+	{
+		playlistsObject.insert(name,QJsonArray::fromStringList(list));
+	}
+	return QJsonDocument{{
+		{JSON_KEY_LIVE_PLAYLIST,files.ListName()},
+		{JSON_KEY_PLAYLISTS,playlistsObject}
+	}};
 }
 
 bool Bot::SaveVibePlaylist(const QJsonDocument &json)
@@ -1160,11 +1199,15 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 				break;
 			case NativeCommandFlag::LIMIT:
 				ToggleLimitViewer(command.Message());
+				break;
 			case NativeCommandFlag::HTML:
 				emit Print("HTML was processed as a command rather than a chat message. This shouldn't happen!");
 				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());
+				break;
+			case NativeCommandFlag::PLAYLIST:
+				ChangeVibePlaylist(command.Message());
 				break;
 			case NativeCommandFlag::SHOUTOUT:
 				DispatchShoutout(command);
@@ -1465,6 +1508,11 @@ void Bot::AdjustVibeVolume(Command command)
 	{
 		emit Print(QString("%1: %2").arg("Failed to adjust volume",exception.what()));
 	}
+}
+
+void Bot::ChangeVibePlaylist(const QString &name)
+{
+	if (!vibeKeeper.ChangePlaylist(name)) emit Print("Playlist couldn't be found");
 }
 
 void Bot::ToggleEmoteOnly()

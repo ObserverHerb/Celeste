@@ -23,6 +23,7 @@ enum class NativeCommandFlag
 	HTML,
 	LIMIT,
 	PANIC,
+	PLAYLIST,
 	SHOUTOUT,
 	SONG,
 	TIMEZONE,
@@ -99,6 +100,7 @@ protected:
 	void ToggleLimitViewer(const QString &target);
 	void ToggleVibeKeeper();
 	void AdjustVibeVolume(Command command);
+	void ChangeVibePlaylist(const QString &name);
 	void StreamTitle(const QString &title);
 	void StreamCategory(const QString &category);
 signals:
@@ -147,6 +149,6 @@ public slots:
 	void RestoreMusic();
 	QJsonDocument SerializeCommands(const Command::Lookup &entries);
 	bool SaveDynamicCommands(const QJsonDocument &json);
-	QJsonDocument SerializeVibePlaylist(const File::List &songs);
+	QJsonDocument SerializeVibePlaylist(const File::List &files);
 	bool SaveVibePlaylist(const QJsonDocument &json);
 };

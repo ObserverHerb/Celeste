@@ -7,6 +7,8 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QTableWidget>
+#include <QStandardItemModel>
+#include <QTabWidget>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QPushButton>
@@ -816,22 +818,27 @@ namespace UI
 			Dialog(const File::List &files,const QString currentlyPlayingFile,QWidget *parent);
 		protected:
 			QVBoxLayout layout;
-			QTableWidget list;
+			QTabWidget tabs;
+			QPushButton newPlaylist;
 			QDialogButtonBox buttons;
 			QPushButton add;
 			QPushButton remove;
 			QPushButton discard;
 			QPushButton save;
+			QFrame options;
+			QHBoxLayout optionsLayout;
 			QFrame mediaControls;
 			QHBoxLayout mediaControlsLayout;
 			QSlider volume;
 			QPushButton start;
 			QPushButton stop;
-			const File::List &files;
-			QDir initialAddFilesPath;
+			QComboBox playlistNames;
+			QDir initialAddFilesPath; // "initial" in that this is the first place we look when we open the browse dialog
+			void AddTab(const QString &name,const QStringList &paths);
 			void Save();
-			void Add(const QString &path);
-			void Add(const QStringList &paths,bool failurePrompt);
+			void AddFile(const QString &path,QStandardItemModel &model);
+			void AddFiles(const QStringList &paths,QTableView &table,bool failurePrompt);
+			void AddPlaylist();
 			void showEvent(QShowEvent *event) override;
 			static const int COLUMN_COUNT;
 		signals:
@@ -840,9 +847,11 @@ namespace UI
 			void Stop();
 			void Volume(int value);
 		protected slots:
-			void Add();
-			void Remove();
-			void Play(QTableWidgetItem *item);
+			void AddFiles();
+			void RemoveFiles();
+			void RemoveTab(int index);
+			void Play();
+			void Play(const QModelIndex &index);
 		};
 	}
 

@@ -38,77 +38,153 @@ const QString Command::File()
 
 namespace File
 {
-	List::List(const QString &path,const QStringList &filters) : currentIndex(0)
+	List::List(const QString &path,const QStringList &filters): currentIndex(0)
 	{
+		auto &defaultList=BuildDefaultList();
 		const QFileInfo pathInfo(path);
 		if (pathInfo.isDir())
 		{
 			const QFileInfoList fileInfoList=QDir(path).entryInfoList(filters);
 			for (const QFileInfo &fileInfo : fileInfoList)
 			{
-				if (fileInfo.isFile()) files.push_back(fileInfo.absoluteFilePath());
+				if (fileInfo.isFile()) defaultList.push_back(fileInfo.absoluteFilePath());
 			}
 		}
 		else
 		{
-			files.push_back(pathInfo.absoluteFilePath());
+			defaultList.push_back(pathInfo.absoluteFilePath());
 		}
 		Shuffle();
 	}
 
-	List::List(const QStringList &list) : currentIndex(0)
+	List::List(const QStringList &list): currentIndex(0)
 	{
-		files=list;
+		auto &defaultList=BuildDefaultList();
+		SelectedFiles()=list;
 		Shuffle();
+	}
+
+	List::List(const std::unordered_map<QString,QStringList> &lists): currentIndex(0)
+	{
+		files=lists;
+		for (auto list=files.begin(); list != files.end(); list++)
+		{
+			selectedList=list;
+			Shuffle();
+		}
+	}
+
+	List::List(const File::List &other)
+	{
+		this->files=other.files;
+		this->currentIndex=other.currentIndex;
+		this->selectedList=this->files.find(other.SelectedListName());
+	}
+
+	List& List::operator=(const File::List &other)
+	{
+		if (this != &other)
+		{
+			this->files=other.files;
+			this->currentIndex=other.currentIndex;
+			this->selectedList=this->files.find(other.SelectedListName());
+		}
+		return *this;
 	}
 
 	const QString List::File(const int index) const
 	{
 		if (index < 0 || index >= files.size()) throw std::out_of_range("Index not valid for file list");
-		return files.at(index);
+		return SelectedFiles().at(index);
 	}
 
-	const QString List::First()
+	const QString List::First() const
 	{
 		if (files.size() < 1) throw std::out_of_range("File list has no first item");
-		return files.front();
+		return SelectedFiles().front();
 	}
 
 	const QString List::Random()
 	{
-		if (files.isEmpty()) throw std::out_of_range("Cannot select random item from empty list");
+		if (SelectedFiles().isEmpty()) throw std::out_of_range("Cannot select random item from empty list");
 		return File(RandomIndex());
 	}
 
 	const QString List::Unique()
 	{
-		if (files.isEmpty()) throw std::out_of_range("Cannot select unique item from empty list");
-		const QString candidate=files.at(currentIndex);
-		if (++currentIndex == files.size()) Reshuffle();
+		auto &selectedFiles=SelectedFiles();
+		if (selectedFiles.isEmpty()) throw std::out_of_range("Cannot select unique item from empty list");
+		const QString candidate=selectedFiles.at(currentIndex);
+		if (++currentIndex == selectedFiles.size()) Reshuffle();
 		return candidate;
 	}
 
 	int List::RandomIndex()
 	{
-		return Random::Bounded(files);
+		return Random::Bounded(SelectedFiles());
+	}
+
+	QStringList List::ListNames() const
+	{
+		QStringList keys;
+		for (auto candidate=files.begin(); candidate != files.end(); candidate++) keys.append(candidate->first);
+		return keys;
+	}
+
+	bool List::ListName(const QString &name)
+	{
+		auto candidate=files.find(name);
+		if (candidate == files.end()) return false;
+		selectedList=candidate;
+		Shuffle();
+		return true;
+	}
+
+	QString List::ListName() const
+	{
+		return SelectedListName();
 	}
 
 	const QStringList& List::operator()() const
+	{
+		return SelectedFiles();
+	}
+
+	List::operator const std::unordered_map<QString,QStringList>&() const
 	{
 		return files;
 	}
 
 	void List::Shuffle()
 	{
-		Random::Shuffle(files);
+		Random::Shuffle(SelectedFiles());
 		currentIndex=0;
 	}
 
 	void List::Reshuffle()
 	{
-		QString last=files.takeLast();
+		auto &selectedFiles=SelectedFiles();
+		QString last=selectedFiles.takeLast();
 		Shuffle();
-		files.append(last);
+		selectedFiles.append(last);
+	}
+
+	const QString& List::SelectedListName() const
+	{
+		return selectedList->first;
+	}
+
+	QStringList& List::SelectedFiles() const
+	{
+		return selectedList->second;
+	}
+
+	QStringList& List::BuildDefaultList()
+	{
+		auto [defaultEntry,insertionResult]=files.try_emplace("Default",QStringList{});
+		if (!insertionResult) throw std::runtime_error("Failed to create default list");
+		selectedList=defaultEntry;
+		return defaultEntry->second;
 	}
 }
 
@@ -256,6 +332,14 @@ namespace Music
 		return sources;
 	}
 
+	bool Player::ChangePlaylist(const QString &name)
+	{
+		bool changed=sources.ListName(name);
+		if (!changed) return false;
+		Next();
+		return true;
+	}
+
 	void Player::StateChanged(QMediaPlayer::PlaybackState state)
 	{
 		switch (state)
@@ -294,7 +378,7 @@ namespace Music
 			if (Next() && loop)
 			{
 				autoPlay=connect(&player,&QMediaPlayer::mediaStatusChanged,this,[this](QMediaPlayer::MediaStatus status) {
-					if (status == QMediaPlayer::LoadedMedia) Start();
+					if (status == QMediaPlayer::LoadedMedia) Start(); // because the media isn't reloaded, the playlist will not loop if it only has one song
 				});
 			}
 		}
