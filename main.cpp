@@ -141,12 +141,28 @@ void ShowPlaylist(const File::List &files,ApplicationWindow &window,Bot &bot,Mus
 {
 	UI::VibePlaylist::Dialog *configurePlaylist=new UI::VibePlaylist::Dialog(files,player.Filename(),&window);
 	configurePlaylist->connect(configurePlaylist,QOverload<const File::List&>::of(&UI::VibePlaylist::Dialog::Save),&bot,[&window,&bot](const File::List &files) {
+		static const QString OPERATION=u"Save Vibe Playlist Failed"_s;
+
 		if (!bot.SaveVibePlaylist(bot.SerializeVibePlaylist(files)))
 		{
-			MessageBox(u"Save vibe playlist Failed"_s,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
+			MessageBox(OPERATION,u"Something went wrong saving the vibe playlist to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 			return;
 		}
-		bot.SetVibePlaylist(files);
+
+		try
+		{
+			bot.SetVibePlaylist(files);
+		}
+
+		catch (const std::out_of_range &exception)
+		{
+			MessageBox(OPERATION,u"A memory error occurred saving the file.\n\n"_s+exception.what(),QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
+		}
+
+		catch (const std::exception &exception)
+		{
+			MessageBox(OPERATION,u"An unknown error occurred saving the file."_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
+		}
 	});
 	configurePlaylist->connect(configurePlaylist,&UI::VibePlaylist::Dialog::finished,[configurePlaylist](int result) {
 		Q_UNUSED(result)
@@ -342,6 +358,12 @@ int main(int argc,char *argv[])
 	catch (const std::runtime_error &exception)
 	{
 		MessageBox(u"Critial Error"_s,QString(exception.what())+u"\n\nApplication will exit."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
+		return FATAL_ERROR;
+	}
+
+	catch (const std::out_of_range &exception)
+	{
+		MessageBox(u"Memory Error"_s,QString(exception.what())+u"\n\nApplication will exit."_s,QMessageBox::Critical,QMessageBox::Ok,QMessageBox::Ok);
 		return FATAL_ERROR;
 	}
 

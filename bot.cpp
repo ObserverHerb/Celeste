@@ -777,6 +777,8 @@ void Bot::RestoreMusic()
 
 void Bot::DispatchArrival(const QString &login)
 {
+	static const QString OPERATION=u"announce arrival"_s;
+
 	if (auto viewer=viewers.find(login); viewer != viewers.end())
 	{
 		// if the viewer is a bot or is already welcomed, bail
@@ -787,7 +789,7 @@ void Bot::DispatchArrival(const QString &login)
 		// we've never seen this person before, so add a new object to represent them
 		if (!viewers.insert({login,{}}).second)
 		{
-			emit Print(VIEWER_ATTRIBUTES_ERROR,u"announce arrival"_s);
+			emit Print(VIEWER_ATTRIBUTES_ERROR,OPERATION);
 			return;
 		}
 	}
@@ -799,43 +801,56 @@ void Bot::DispatchArrival(const QString &login)
 		if (security.Administrator() == viewer.Name() || QDateTime::currentDateTime().toMSecsSinceEpoch()-lastRaid.toMSecsSinceEpoch() < static_cast<qint64>(settings.raidInterruptDuration)) return;
 		Viewer::ProfileImage::Remote *profileImage=viewer.ProfileImage();
 		connect(profileImage,&Viewer::ProfileImage::Remote::Retrieved,profileImage,[this,viewer](std::shared_ptr<QImage> profileImage) {
-			// Do we have a sound configured to announce them with? If so, fire the signal.
-			if (settings.arrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settings.arrivalSound).Random());
-
-			// Do we have any commands that are triggered by the viewers we've seen?
-			for (const Command &candidateCommand : commands | std::views::values | std::views::filter([](const Command &command) {
-				return !command.Viewers().isEmpty();
-			}))
+			try
 			{
-				// look through the list of viewers attached to the command
-				// we're looking for when all of the viewers in the list have been welcomed _except_ the one that just arrived
-				bool triggerViewerIsCandidate=false;
-				if (std::all_of(candidateCommand.Viewers().begin(),candidateCommand.Viewers().end(),[&triggerViewerIsCandidate,&triggerViewer=viewer,this](const QString &name) {
-					auto candidateViewer=viewers.find(name);
-					if (candidateViewer != viewers.end()) // if the name from the command is in the list of names we've seen in the channel
-					{
-						// is this the triggering viewer?
-						if (triggerViewer.Name() == candidateViewer->first)
+				// Do we have a sound configured to announce them with? If so, fire the signal.
+				if (settings.arrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settings.arrivalSound).Random());
+
+				// Do we have any commands that are triggered by the viewers we've seen?
+				for (const Command &candidateCommand : commands | std::views::values | std::views::filter([](const Command &command) {
+					return !command.Viewers().isEmpty();
+				}))
+				{
+					// look through the list of viewers attached to the command
+					// we're looking for when all of the viewers in the list have been welcomed _except_ the one that just arrived
+					bool triggerViewerIsCandidate=false;
+					if (std::all_of(candidateCommand.Viewers().begin(),candidateCommand.Viewers().end(),[&triggerViewerIsCandidate,&triggerViewer=viewer,this](const QString &name) {
+						auto candidateViewer=viewers.find(name);
+						if (candidateViewer != viewers.end()) // if the name from the command is in the list of names we've seen in the channel
 						{
-							// if so, we only want to act if they haven't been welcomed yet
-							if (candidateViewer->second.welcomed) return false;
-							triggerViewerIsCandidate=true;
+							// is this the triggering viewer?
+							if (triggerViewer.Name() == candidateViewer->first)
+							{
+								// if so, we only want to act if they haven't been welcomed yet
+								if (candidateViewer->second.welcomed) return false;
+								triggerViewerIsCandidate=true;
+							}
+							else
+							{
+								// otherwise, we want to make sure this person has been welcomed already
+								if (!candidateViewer->second.welcomed) return false;
+							}
+							return true;
 						}
-						else
-						{
-							// otherwise, we want to make sure this person has been welcomed already
-							if (!candidateViewer->second.welcomed) return false;
-						}
-						return true;
-					}
-					return false;
-				}) && triggerViewerIsCandidate) emit DispatchCommandViaCommandObject(candidateCommand,security.Administrator());
+						return false;
+					}) && triggerViewerIsCandidate) emit DispatchCommandViaCommandObject(candidateCommand,security.Administrator());
+				}
+
+				// save the viewer object and its attributes, marking it as welcomed
+				viewers.at(viewer.Name()).welcomed=true;
+				SaveViewerAttributes(false);
+				emit Welcomed(viewer.Name());
 			}
 
-			// save the viewer object and its attributes, marking it as welcomed
-			viewers.at(viewer.Name()).welcomed=true;
-			SaveViewerAttributes(false);
-			emit Welcomed(viewer.Name());
+			catch (const std::out_of_range &exception)
+			{
+				emit Print(u"Arrival announcement failed: %1"_s.arg(exception.what()),OPERATION);
+			}
+
+			catch (const std::exception &exception)
+			{
+				emit Print(u"Unknown error announcing arrival"_s,OPERATION);
+			}
 		});
 		connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
 	});
@@ -843,127 +858,142 @@ void Bot::DispatchArrival(const QString &login)
 
 void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message)
 {
-	// As of right now, Twitch doesn't use parameters in front of the chat message
-	// so it's always the final parameter, and the final paramater is always the
-	// only parameter. This may change in the future, so passing it in and marking it
-	// unused to shut the compiler up for now.
-	Q_UNUSED(parameters)
+	static const char *OPERATION="chat message";
 
-	std::optional<QStringView> window;
-
-	QStringView remainingText(message);
-	QStringView login;
-	Chat::Message chatMessage;
-
-	// parse tags
-	window=prefix;
-	StringViewLookup tags;
-	while (!window->isEmpty())
+	try
 	{
-		StringViewTakeResult pair=StringView::Take(*window,';');
-		if (!pair) continue; // skip malformated badges rather than making a visible fuss
-		StringViewTakeResult key=StringView::Take(*pair,'=');
-		if (!key) continue; // same as above
-		StringViewTakeResult value=StringView::Last(*pair,'=');
-		if (!value) continue; // I'll rely on "missing" to represent an empty value
-		tags.try_emplace(*key,*value);
-	}
-	if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
-	if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
-	if (auto messageID=tags.find(CHAT_TAG_MESSAGE_ID); messageID != tags.end())
-	{
-		chatMessage.id=messageID->second.toString();
-		if (auto userID=tags.find(CHAT_TAG_USER_ID); userID != tags.end()) userMessageCrossReference[userID->second.toString()].push_back(messageID->second.toString());
-	}
+		// As of right now, Twitch doesn't use parameters in front of the chat message
+		// so it's always the final parameter, and the final paramater is always the
+		// only parameter. This may change in the future, so passing it in and marking it
+		// unused to shut the compiler up for now.
+		Q_UNUSED(parameters)
 
-	// badges
-	if (auto tagBadges=tags.find(CHAT_TAG_BADGES); tagBadges != tags.end())
-	{
-		StringViewLookup badges;
-		QStringView &versions=tagBadges->second;
-		while (!versions.isEmpty())
+		std::optional<QStringView> window;
+
+		QStringView remainingText(message);
+		QStringView login;
+		Chat::Message chatMessage;
+
+		// parse tags
+		window=prefix;
+		StringViewLookup tags;
+		while (!window->isEmpty())
 		{
-			StringViewTakeResult pair=StringView::Take(versions,',');
-			if (!pair) continue;
-			StringViewTakeResult name=StringView::Take(*pair,'/');
-			if (!name) continue;
-			StringViewTakeResult version=StringView::Last(*pair,'/');
-			if (!version) continue; // a badge must have a version
-			badges.insert({*name,*version});
-			std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
-			if (!badgeIconPath) continue;
-			chatMessage.badges.append(*badgeIconPath);
+			StringViewTakeResult pair=StringView::Take(*window,';');
+			if (!pair) continue; // skip malformated badges rather than making a visible fuss
+			StringViewTakeResult key=StringView::Take(*pair,'=');
+			if (!key) continue; // same as above
+			StringViewTakeResult value=StringView::Last(*pair,'=');
+			if (!value) continue; // I'll rely on "missing" to represent an empty value
+			tags.try_emplace(*key,*value);
 		}
-		if (auto badgeBroadcaster=badges.find(CHAT_BADGE_BROADCASTER); badgeBroadcaster != badges.end() && badgeBroadcaster->second == u"1") chatMessage.broadcaster=true;
-		if (auto badgeModerator=badges.find(CHAT_BADGE_MODERATOR); badgeModerator != badges.end() && badgeModerator->second == u"1") chatMessage.moderator=true;
-	}
-
-	// emotes
-	if (auto tagEmotes=tags.find(CHAT_TAG_EMOTES); tagEmotes != tags.end())
-	{
-		QStringView &entries=tagEmotes->second;
-		while (!entries.isEmpty())
+		if (auto displayName=tags.find(CHAT_TAG_DISPLAY_NAME); displayName != tags.end()) chatMessage.displayName=displayName->second.toString();
+		if (auto tagColor=tags.find(CHAT_TAG_COLOR); tagColor != tags.end()) chatMessage.color=tagColor->second.toString();
+		if (auto messageID=tags.find(CHAT_TAG_MESSAGE_ID); messageID != tags.end())
 		{
-			StringViewTakeResult entry=StringView::Take(entries,'/');
-			if (!entry) continue;
-			StringViewTakeResult id=StringView::Take(*entry,':');
-			if (!id) continue;
-			while (!entry->isEmpty())
+			chatMessage.id=messageID->second.toString();
+			if (auto userID=tags.find(CHAT_TAG_USER_ID); userID != tags.end()) userMessageCrossReference[userID->second.toString()].push_back(messageID->second.toString());
+		}
+
+		// badges
+		if (auto tagBadges=tags.find(CHAT_TAG_BADGES); tagBadges != tags.end())
+		{
+			StringViewLookup badges;
+			QStringView &versions=tagBadges->second;
+			while (!versions.isEmpty())
 			{
-				StringViewTakeResult occurrence=StringView::Take(*entry,',');
-				StringViewTakeResult left=StringView::First(*occurrence,'-');
-				StringViewTakeResult right=StringView::Last(*occurrence,'-');
-				if (!left || !right) continue;
-				int start=StringConvert::Integer(left->toString());
-				int end=StringConvert::Integer(right->toString());
-				chatMessage.emotes.emplace_back(Chat::Emote{
-					.id=id->toString(),
-					.start=start,
-					.end=end
-				});
+				StringViewTakeResult pair=StringView::Take(versions,',');
+				if (!pair) continue;
+				StringViewTakeResult name=StringView::Take(*pair,'/');
+				if (!name) continue;
+				StringViewTakeResult version=StringView::Last(*pair,'/');
+				if (!version) continue; // a badge must have a version
+				badges.insert({*name,*version});
+				std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
+				if (!badgeIconPath) continue;
+				chatMessage.badges.append(*badgeIconPath);
 			}
+			if (auto badgeBroadcaster=badges.find(CHAT_BADGE_BROADCASTER); badgeBroadcaster != badges.end() && badgeBroadcaster->second == u"1") chatMessage.broadcaster=true;
+			if (auto badgeModerator=badges.find(CHAT_BADGE_MODERATOR); badgeModerator != badges.end() && badgeModerator->second == u"1") chatMessage.moderator=true;
 		}
-		std::sort(chatMessage.emotes.begin(),chatMessage.emotes.end());
+
+		// emotes
+		if (auto tagEmotes=tags.find(CHAT_TAG_EMOTES); tagEmotes != tags.end())
+		{
+			QStringView &entries=tagEmotes->second;
+			while (!entries.isEmpty())
+			{
+				StringViewTakeResult entry=StringView::Take(entries,'/');
+				if (!entry) continue;
+				StringViewTakeResult id=StringView::Take(*entry,':');
+				if (!id) continue;
+				while (!entry->isEmpty())
+				{
+					StringViewTakeResult occurrence=StringView::Take(*entry,',');
+					StringViewTakeResult left=StringView::First(*occurrence,'-');
+					StringViewTakeResult right=StringView::Last(*occurrence,'-');
+					if (!left || !right) continue;
+					int start=StringConvert::Integer(left->toString());
+					int end=StringConvert::Integer(right->toString());
+					chatMessage.emotes.emplace_back(Chat::Emote{
+						.id=id->toString(),
+						.start=start,
+						.end=end
+					});
+				}
+			}
+			std::sort(chatMessage.emotes.begin(),chatMessage.emotes.end());
+		}
+
+		window=source;
+
+		// hostmask
+		// TODO: break these down in the Channel class, not here
+		StringViewTakeResult hostmask=StringView::Take(*window,' ');
+		if (!hostmask) return;
+		StringViewTakeResult user=StringView::Take(*hostmask,'!');
+		if (!user) return;
+		login=*user;
+
+		// determine if this is a command, and if so, process it as such
+		// and if it's valid, we're done
+		window=message;
+		std::optional<QString> command=ParseCommandIfExists(*window);
+		if (command)
+		{
+			chatMessage.text=window->toString().trimmed();
+			DispatchCommandViaChatMessage(*command,chatMessage,login.toString());
+			return;
+		}
+
+		if (!chatMessage.broadcaster) DispatchArrival(login.toString());
+
+		// determine if the message is an action
+		remainingText=remainingText.trimmed();
+		if (const QString ACTION("\001ACTION"); remainingText.startsWith(ACTION))
+		{
+			remainingText=remainingText.mid(ACTION.size(),remainingText.lastIndexOf('\001')-ACTION.size()).trimmed();
+			chatMessage.action=true;
+		}
+
+		// download emotes (which will set emote names in the process) and check for wall of text
+		int emoteCharacterCount=ParseEmoteNamesAndDownloadImages(chatMessage.emotes,remainingText);
+		if (remainingText.size()-emoteCharacterCount > static_cast<int>(settings.textWallThreshold) && settings.textWallSound) emit AnnounceTextWall(message,settings.textWallSound);
+
+		chatMessage.text=remainingText.toString();
+		emit ChatMessage(std::make_shared<Chat::Message>(chatMessage));
+		inactivityClock.start();
 	}
 
-	window=source;
-
-	// hostmask
-	// TODO: break these down in the Channel class, not here
-	StringViewTakeResult hostmask=StringView::Take(*window,' ');
-	if (!hostmask) return;
-	StringViewTakeResult user=StringView::Take(*hostmask,'!');
-	if (!user) return;
-	login=*user;
-
-	// determine if this is a command, and if so, process it as such
-	// and if it's valid, we're done
-	window=message;
-	std::optional<QString> command=ParseCommandIfExists(*window);
-	if (command)
+	catch (const std::out_of_range &exception)
 	{
-		chatMessage.text=window->toString().trimmed();
-		DispatchCommandViaChatMessage(*command,chatMessage,login.toString());
-		return;
+		emit Print(u"Chat dispatch failed: %1"_s.arg(exception.what()),OPERATION);
 	}
 
-	if (!chatMessage.broadcaster) DispatchArrival(login.toString());
-
-	// determine if the message is an action
-	remainingText=remainingText.trimmed();
-	if (const QString ACTION("\001ACTION"); remainingText.startsWith(ACTION))
+	catch (const std::exception &exception)
 	{
-		remainingText=remainingText.mid(ACTION.size(),remainingText.lastIndexOf('\001')-ACTION.size()).trimmed();
-		chatMessage.action=true;
+		emit Print(u"Unknown error dispatching chat"_s,OPERATION);
 	}
-
-	// download emotes (which will set emote names in the process) and check for wall of text
-	int emoteCharacterCount=ParseEmoteNamesAndDownloadImages(chatMessage.emotes,remainingText);
-	if (remainingText.size()-emoteCharacterCount > static_cast<int>(settings.textWallThreshold) && settings.textWallSound) emit AnnounceTextWall(message,settings.textWallSound);
-
-	chatMessage.text=remainingText.toString();
-	emit ChatMessage(std::make_shared<Chat::Message>(chatMessage));
-	inactivityClock.start();
 }
 
 void Bot::ParseChatMessageDeletion(const QString &prefix)
@@ -1093,24 +1123,40 @@ void Bot::DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QStrin
 	// We use the SignalPayload here as a traffic controller to handle the
 	// back-and-forth communication between the subsystems since Qt's signals
 	// and slots are one-way.
-	const QString message=response->context.toString();
-	if (!message.isNull())
+
+	static const QString OPERATION=u"subsystem-to-subsystem chat message"_s;
+
+	try
 	{
-		QStringView window{message};
-		std::optional<QString> command=ParseCommandIfExists(window);
-		if (command)
+		const QString message=response->context.toString();
+		if (!message.isNull())
 		{
-			// NOTE: there is chat/color for chat color and moderation/moderators for privileged commands if I ever want to implement this
-			Chat::Message message{
-				.displayName=name,
-				.text=window.toString()
-			};
-			DispatchCommandViaChatMessage(*command,message,login);
-			response->context.setValue(message);
+			QStringView window{message};
+			std::optional<QString> command=ParseCommandIfExists(window);
+			if (command)
+			{
+				// NOTE: there is chat/color for chat color and moderation/moderators for privileged commands if I ever want to implement this
+				Chat::Message message{
+					.displayName=name,
+					.text=window.toString()
+				};
+				DispatchCommandViaChatMessage(*command,message,login);
+				response->context.setValue(message);
+			}
 		}
+
+		response->Dispatch();
 	}
 
-	response->Dispatch();
+	catch (const std::out_of_range &exception)
+	{
+		emit Print(u"Cross-subsystem chat dispatch failed: %1"_s.arg(exception.what()),OPERATION);
+	}
+
+	catch (const std::exception &exception)
+	{
+		emit Print(u"Unknown error dispatching cross-subsystem chat"_s,OPERATION);
+	}
 }
 
 bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMessage,const QString &login) // build a command object from a command name and a chat message and forward

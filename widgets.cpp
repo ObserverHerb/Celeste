@@ -1767,8 +1767,23 @@ namespace UI
 
 			void Bot::PlayArrivalSound()
 			{
-				const QString filename=arrivalSound.text();
-				emit PlayArrivalSound(qApp->applicationName(),std::make_shared<QImage>(Resources::CELESTE),QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
+				static const QString OPERATION="Audio Preview Failed";
+
+				try
+				{
+					const QString filename=arrivalSound.text();
+					emit PlayArrivalSound(qApp->applicationName(),std::make_shared<QImage>(Resources::CELESTE),QFileInfo(filename).isDir() ? File::List(filename).Random() : filename);
+				}
+
+				catch (const std::out_of_range &exception)
+				{
+					QMessageBox{QMessageBox::Warning,OPERATION,u"Memory error: "_s+exception.what(),QMessageBox::Ok}.exec();
+				}
+
+				catch (const std::exception &exception)
+				{
+					QMessageBox{QMessageBox::Warning,OPERATION,u"Unknown error"_s,QMessageBox::Ok}.exec();
+				}
 			}
 
 			void Bot::OpenPortraitVideo()
@@ -2330,25 +2345,40 @@ namespace UI
 
 		void Dialog::Save()
 		{
-			std::unordered_map<QString,QStringList> files;
-			QStringList failed;
-			for (int tabIndex=0; tabIndex < tabs.count(); tabIndex++)
+			static const QString OPERATION=u"Save Playlist Failed"_s;
+
+			try
 			{
-				auto table=qobject_cast<QTableView*>(tabs.widget(tabIndex));
-				auto model=table->model();
-				QStringList paths;
-				for (int modelIndex= 0; modelIndex < model->rowCount(); modelIndex++) paths.append(model->index(modelIndex,static_cast<int>(Columns::PATH)).data().toString());
-				auto [insertedItem,insertionResult]=files.try_emplace(table->objectName(),paths);
-				if (!insertionResult) failed.append(table->objectName());
+				std::unordered_map<QString,QStringList> files;
+				QStringList failed;
+				for (int tabIndex=0; tabIndex < tabs.count(); tabIndex++)
+				{
+					auto table=qobject_cast<QTableView*>(tabs.widget(tabIndex));
+					auto model=table->model();
+					QStringList paths;
+					for (int modelIndex= 0; modelIndex < model->rowCount(); modelIndex++) paths.append(model->index(modelIndex,static_cast<int>(Columns::PATH)).data().toString());
+					auto [insertedItem,insertionResult]=files.try_emplace(table->objectName(),paths);
+					if (!insertionResult) failed.append(table->objectName());
+				}
+				if (!failed.isEmpty())
+				{
+					QMessageBox{QMessageBox::Warning,OPERATION,u"The follow files were not added: \n\n"_s+failed.join('\n'),QMessageBox::Ok}.exec();
+					return;
+				}
+				File::List lists(files);
+				lists.ListName(playlistNames.currentText());
+				emit Save(lists);
 			}
-			if (!failed.isEmpty())
+
+			catch (const std::out_of_range &exception)
 			{
-				QMessageBox{QMessageBox::Warning,"Failed to add lists",failed.join('\n'),QMessageBox::Ok}.exec();
-				return;
+				QMessageBox{QMessageBox::Warning,OPERATION,u"Memory error: "_s+exception.what(),QMessageBox::Ok}.exec();
 			}
-			File::List lists(files);
-			lists.ListName(playlistNames.currentText());
-			emit Save(lists);
+
+			catch (const std::exception &exception)
+			{
+				QMessageBox{QMessageBox::Warning,OPERATION,u"Unknown error: "_s,QMessageBox::Ok}.exec();
+			}
 		}
 
 		void Dialog::AddFiles()
