@@ -649,6 +649,7 @@ void Bot::RequestAdSchedule()
 			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_AD_SCHEDULE));
 			return;
 		}
+		if (jsonNextAdTime->toString().isEmpty()) return; // broadcaster is not live
 
 		if (adStartingClock.isActive())
 		{
