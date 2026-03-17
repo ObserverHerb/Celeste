@@ -16,6 +16,8 @@
 enum class NativeCommandFlag
 {
 	AGENDA,
+	BLEEP,
+	BLOOP,
 	CATEGORY,
 	COMMANDS,
 	EMOTE,
@@ -103,6 +105,7 @@ protected:
 	void ChangeVibePlaylist(const QString &name);
 	void StreamTitle(const QString &title);
 	void StreamCategory(const QString &category);
+	void MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,const QString &note);
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
 	void ChatMessage(std::shared_ptr<Chat::Message> message);

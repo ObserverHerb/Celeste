@@ -86,7 +86,14 @@ namespace Settings
 		ApplicationSetting adFinishedVideo;
 		ApplicationSetting adWarningLeadTime;
 		ApplicationSetting adScheduleRefreshInterval;
+		ApplicationSetting monkeyKeyboardVolume;
+		ApplicationSetting monkeyKeyboardBleepLength;
+		ApplicationSetting monkeyKeyboardBleepRootFrequency;
+		ApplicationSetting monkeyKeyboardBloopLength;
+		ApplicationSetting monkeyKeyboardBloopRootFrequency;
 		ApplicationSetting commandNameAgenda;
+		ApplicationSetting commandNameBleep;
+		ApplicationSetting commandNameBloop;
 		ApplicationSetting commandNameStreamCategory;
 		ApplicationSetting commandNameStreamTitle;
 		ApplicationSetting commandNameCommands;

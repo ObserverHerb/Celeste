@@ -451,6 +451,7 @@ namespace UI
 				QFrame *details;
 				QGridLayout detailsLayout;
 				QLabel* Label(const QString &text);
+				QLabel* Subheading(const QString &text);
 				void Rows(std::vector<std::vector<QWidget*>> widgets);
 				virtual bool eventFilter(QObject *object,QEvent *event) override=0;
 			signals:
@@ -664,6 +665,12 @@ namespace UI
 				QPushButton selectAdBreakFinishedVideo;
 				QPushButton previewAdBreakFinishedVideo;
 				QSpinBox adScheduleRefreshInterval;
+				QSpinBox monkeyKeyboardBleepRootFrequency;
+				QSpinBox monkeyKeyboardBleepLength;
+				QSpinBox monkeyKeyboardBloopRootFrequency;
+				QSpinBox monkeyKeyboardBloopLength;
+				QSlider monkeyKeyboardVolume;
+				QLabel monkeyKeyboardVolumeValue;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
@@ -692,6 +699,7 @@ namespace UI
 				void PlayAdBreakWarningVideo();
 				void OpenAdBreakFinishedVideo();
 				void PlayAdBreakFinishedVideo();
+				void MonkeyKeyboardVolumeChanged(int value);
 				void ValidateArrivalSound(const QString &path);
 				void ValidatePortraitVideo(const QString &path);
 				void ValidateCheerVideo(const QString &path);

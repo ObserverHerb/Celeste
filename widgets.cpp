@@ -14,6 +14,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTextFrame>
+#include <algorithm>
 #include "globals.h"
 #include "widgets.h"
 
@@ -1142,37 +1143,48 @@ namespace UI
 				return label;
 			}
 
+			QLabel* Category::Subheading(const QString &text)
+			{
+				QLabel *label=new QLabel(text,this);
+				label->setAlignment(Qt::AlignHCenter|Qt::AlignVCenter);
+				label->setStyleSheet("font-size: 150%; font-weight: bold; border-bottom: 1px solid palette(text); margin-top: 0.5em;");
+				return label;
+			}
+
 			void Category::Rows(std::vector<std::vector<QWidget*>> widgets)
 			{
-				// find longest vector
+				// find longest row (searching through vector of rows of widgets)
 				int maxColumns=2;
 				for (const std::vector<QWidget*> &row : widgets)
 				{
-					if (std::ssize(row) > maxColumns) maxColumns=row.size();
+					maxColumns=std::max(static_cast<int>(std::ssize(row)),maxColumns);
 				}
 
 				for (int rowIndex=0; rowIndex < std::ssize(widgets); rowIndex++)
 				{
 					int columns=widgets[rowIndex].size();
-					if (columns < 2) continue;
-
-					QWidget *widget=widgets[rowIndex][0];
-					detailsLayout.addWidget(widget,rowIndex,0,1,1);
-					widget->installEventFilter(this); // NOTE: this will not fire for labels because they do not fire an enterEvent for mouse hovers
-
-					widget=widgets[rowIndex][1];
-					int columnSpan=maxColumns-columns+1; // +1 because spans are not zero-indexed
-					detailsLayout.addWidget(widget,rowIndex,1,1,columnSpan);
-					widget->installEventFilter(this);
-
-					if (columns > 2)
+					int columnIndexOffset=0;
+					for (int columnIndex=0; columnIndex < columns; columnIndex++)
 					{
-						for (int columnIndex=2; columnIndex < columns; columnIndex++)
+						int columnSpan=1;
+						if (columnIndex < 2 && columns < maxColumns)
 						{
-							widget=widgets[rowIndex][columnIndex];
-							detailsLayout.addWidget(widget,rowIndex,columnIndex+(columnSpan-1),1,1); // -1 on columnSpan to move back to zero-indexed
-							widget->installEventFilter(this);
+							if (columnIndex < 1)
+							{
+								if (columns < 2)
+								{
+									columnSpan=maxColumns; // only widget, so span all columns
+								}
+							}
+							else
+							{
+								columnSpan=maxColumns-columns+1; // second widget, so span difference between this row's length and the longest row's length
+							}
 						}
+						QWidget *widget=widgets[rowIndex][columnIndex];
+						detailsLayout.addWidget(widget,rowIndex,columnIndex+columnIndexOffset,1,columnSpan);
+						if (columnSpan > 1) columnIndexOffset=columnSpan-1;
+						widget->installEventFilter(this); // NOTE: this will not fire for labels because they do not fire an enterEvent for mouse hovers
 					}
 				}
 			}
@@ -1670,6 +1682,12 @@ namespace UI
 				selectAdBreakFinishedVideo(Text::BROWSE,this),
 				previewAdBreakFinishedVideo(Text::PREVIEW,this),
 				adScheduleRefreshInterval(this),
+				monkeyKeyboardBleepRootFrequency(this),
+				monkeyKeyboardBleepLength(this),
+				monkeyKeyboardBloopRootFrequency(this),
+				monkeyKeyboardBloopLength(this),
+				monkeyKeyboardVolume(Qt::Horizontal,this),
+				monkeyKeyboardVolumeValue(this),
 				errorReport(errorReport)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
@@ -1696,6 +1714,7 @@ namespace UI
 				connect(&adBreakFinishedVideo,&QLineEdit::textChanged,this,&Bot::ValidateAdBreakFinishedVideo);
 				connect(&selectAdBreakFinishedVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakFinishedVideo);
 				connect(&previewAdBreakFinishedVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakFinishedVideo));
+				connect(&monkeyKeyboardVolume,&QSlider::valueChanged,this,&Bot::MonkeyKeyboardVolumeChanged);
 
 				arrivalSound.setText(settings.arrivalSound);
 				portraitVideo.setText(settings.portraitVideo);
@@ -1719,6 +1738,17 @@ namespace UI
 				adBreakFinishedVideo.setText(settings.adFinishedVideo);
 				adScheduleRefreshInterval.setRange(30,std::numeric_limits<int>::max());
 				adScheduleRefreshInterval.setValue(settings.adScheduleRefreshInterval);
+				monkeyKeyboardBleepRootFrequency.setRange(Natural::MINIMUM_AUDIBLE_FREQUENCY,Natural::MAXIMUM_AUDIBLE_FREQUENCY);
+				monkeyKeyboardBleepRootFrequency.setValue(settings.monkeyKeyboardBleepRootFrequency);
+				monkeyKeyboardBleepLength.setRange(1,std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(1)).count());
+				monkeyKeyboardBleepLength.setValue(settings.monkeyKeyboardBleepLength);
+				monkeyKeyboardBloopRootFrequency.setRange(Natural::MINIMUM_AUDIBLE_FREQUENCY,Natural::MAXIMUM_AUDIBLE_FREQUENCY);
+				monkeyKeyboardBloopRootFrequency.setValue(settings.monkeyKeyboardBloopRootFrequency);
+				monkeyKeyboardBloopLength.setRange(1,std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(1)).count());
+				monkeyKeyboardBloopLength.setValue(settings.monkeyKeyboardBloopLength);
+				monkeyKeyboardVolume.setRange(0,100);
+				monkeyKeyboardVolume.setValue(settings.monkeyKeyboardVolume);
+				monkeyKeyboardVolumeValue.setText(QString::number(monkeyKeyboardVolume.value())+"%");
 
 				Rows({
 					{Label(u"Arrival Announcement Audio"_s),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
@@ -1730,8 +1760,12 @@ namespace UI
 					{Label(u"Inactivity Cooldown"_s),&inactivityCooldown},
 					{Label(u"Help Cooldown"_s),&helpCooldown},
 					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(u"Threshold"_s),&textWallThreshold},
+					{Subheading(u"Ads"_s)},
 					{Label(u"Ad Break Warning Video"_s),&adBreakWarningVideo,&selectAdBreakWarningVideo,&previewAdBreakWarningVideo,Label(u"Lead Time"_s),&adBreakWarningLeadTime},
-					{Label(u"Ad Break Finished Video"_s),&adBreakFinishedVideo,&selectAdBreakFinishedVideo,&previewAdBreakFinishedVideo,Label(u"Refresh Interval"_s),&adScheduleRefreshInterval}
+					{Label(u"Ad Break Finished Video"_s),&adBreakFinishedVideo,&selectAdBreakFinishedVideo,&previewAdBreakFinishedVideo,Label(u"Refresh Interval"_s),&adScheduleRefreshInterval},
+					{Subheading(u"Monkey Keyboard"_s)},
+					{Label(u"Bleep Root Frequency"_s),&monkeyKeyboardBleepRootFrequency,Label(u"Bleep Length"_s),&monkeyKeyboardBleepLength,Label(u"Bloop Root Frequency"_s),&monkeyKeyboardBloopRootFrequency,Label(u"Bloopp Length"_s),&monkeyKeyboardBloopLength},
+					{Label(u"Volume"_s),&monkeyKeyboardVolume,&monkeyKeyboardVolumeValue}
 				});
 			}
 
@@ -1753,6 +1787,11 @@ namespace UI
 					if (object == &adBreakWarningLeadTime) emit Help(u"How many seconds to warn in advance that an ad break is about to begin"_s);
 					if (object == &adBreakFinishedVideo || object == &selectAdBreakFinishedVideo || object == &previewAdBreakFinishedVideo) emit Help(u"A video (mp4) that plays when an break has finished"_s);
 					if (object == &adScheduleRefreshInterval) emit Help(u"How often (in seconds) to ask Twitch for the ad manager schedule"_s);
+					if (object == &monkeyKeyboardBleepRootFrequency) emit Help(u"This will be the frequency that will be treated as A. The notes B through G will be calculated based off of this one. It is common convention for A4 to be 440Hz. Halve this to drop an octave (A3 = 220Hz), double it to raise an octave (A5 = 880Hz). While this is the international standard, you are not required to follow it. You can set this to any value between 20Hz and 20kHz. Also note that bleep is intended to be the higher note, but this is also not a requirement."_s);
+					if (object == &monkeyKeyboardBleepLength) emit Help(u"The length, in milliseconds, of the note. Bleep is intended to be the short note, but this is not required or enforced. Set it to any length you like between 1 millisecond and 1 full second."_s);
+					if (object == &monkeyKeyboardBloopRootFrequency) emit Help(u"This will be the frequency that will be treated as A. The notes B through G will be calculated based off of this one. It is common convention for A4 to be 440Hz. Halve this to drop an octave (A3 = 220Hz), double it to raise an octave (A5 = 880Hz). While this is the international standard, you are not required to follow it. You can set this to any value between 20Hz and 20kHz. Also note that bloop is intended to be the lower note, but this is also not a requirement."_s);
+					if (object == &monkeyKeyboardBloopLength) emit Help(u"The length, in milliseconds, of the note. Bloop is intended to be the long note, but this is not required or enforced. Set it to any length you like between 1 millisecond and 1 full second."_s);
+					if (object == &monkeyKeyboardVolume) emit Help(u"How loud a monkey keyboard note is."_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
@@ -1865,6 +1904,11 @@ namespace UI
 				emit PlayAdBreakFinishedVideo(adBreakFinishedVideo.text());
 			}
 
+			void Bot::MonkeyKeyboardVolumeChanged(int value)
+			{
+				monkeyKeyboardVolumeValue.setText(QString::number(value)+"%");
+			}
+
 			void Bot::ValidateArrivalSound(const QString &path)
 			{
 				QFileInfo candidate(path);
@@ -1970,6 +2014,11 @@ namespace UI
 				settings.adWarningLeadTime.Set(adBreakWarningLeadTime.value());
 				if (QString text=adBreakFinishedVideo.text(); !text.isEmpty()) settings.adFinishedVideo.Set(text);
 				settings.adScheduleRefreshInterval.Set(adScheduleRefreshInterval.value());
+				settings.monkeyKeyboardBleepRootFrequency.Set(monkeyKeyboardBleepRootFrequency.value());
+				settings.monkeyKeyboardBleepLength.Set(monkeyKeyboardBleepLength.value());
+				settings.monkeyKeyboardBloopRootFrequency.Set(monkeyKeyboardBloopRootFrequency.value());
+				settings.monkeyKeyboardBloopLength.Set(monkeyKeyboardBloopLength.value());
+				settings.monkeyKeyboardVolume.Set(monkeyKeyboardVolume.value());
 			}
 
 			Pulsar::Pulsar(Settings::Pulsar &settings,QWidget *parent) : Category(parent,u"Pulsar"_s),

@@ -4,9 +4,12 @@
 #include <QImage>
 #include <QUrl>
 #include <QMediaPlayer>
+#include <QMediaDevices>
 #include <QMediaMetaData>
 #include <QAudioOutput>
+#include <QAudioSink>
 #include <QPropertyAnimation>
+#include <QBuffer>
 #include <QFile>
 #include <QJsonObject>
 #include <memory>
@@ -129,8 +132,6 @@ namespace Music
 		static const char *ERROR_LOADING;
 		static const char *OPERATION_LOADING;
 		bool Next(QUrl source={});
-		int TranslateVolume(qreal volume);
-		qreal TranslateVolume(int volume);
 		bool Empty();
 	signals:
 		void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("music player")) const;
@@ -283,6 +284,22 @@ namespace Music
 			void Destroy();
 		};
 	}
+
+	class MonkeyKeyboardNote: public QObject
+	{
+		Q_OBJECT
+	public:
+		MonkeyKeyboardNote(std::chrono::microseconds duration,int frequency,qreal volume);
+		void StateChanged(QtAudio::State state);
+		QByteArray data;
+		QBuffer buffer;
+		QAudioSink sink;
+	signals:
+		void Print(const QString &message,const QString &operation,const QString &subsystem);
+		void Finished();
+	public slots:
+		void Play();
+	};
 }
 
 namespace Viewer

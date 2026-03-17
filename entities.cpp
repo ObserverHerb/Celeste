@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <algorithm>
 #include <cstring>
+#include <numbers>
 #include "entities.h"
 #include "globals.h"
 #include "network.h"
@@ -201,7 +202,7 @@ namespace Music
 		volumeAdjustment(&output,"volume")
 	{
 		player.setAudioOutput(&output);
-		player.audioOutput()->setVolume(TranslateVolume(initialVolume));
+		player.audioOutput()->setVolume(NumberConvert::Normalize(initialVolume));
 
 		connect(&player,&QMediaPlayer::errorOccurred,this,&Player::MediaError);
 		connect(&player,&QMediaPlayer::playbackStateChanged,this,&Player::StateChanged);
@@ -242,13 +243,13 @@ namespace Music
 
 	void Player::DuckVolume(bool duck)
 	{
-		if (TranslateVolume(player.audioOutput()->volume()) < static_cast<int>(settingSuppressedVolume)) return;
+		if (NumberConvert::Denormalize(player.audioOutput()->volume()) < static_cast<int>(settingSuppressedVolume)) return;
 
 		if (duck)
 		{
 			if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.pause();
 			volumeAdjustment.setStartValue(player.audioOutput()->volume());
-			player.audioOutput()->setVolume(TranslateVolume(static_cast<int>(settingSuppressedVolume)));
+			player.audioOutput()->setVolume(NumberConvert::Normalize(static_cast<int>(settingSuppressedVolume)));
 		}
 		else
 		{
@@ -260,7 +261,7 @@ namespace Music
 
 	void Player::Volume(int volume)
 	{
-		player.audioOutput()->setVolume(TranslateVolume(volume));
+		player.audioOutput()->setVolume(NumberConvert::Normalize(volume));
 	}
 
 	void Player::Volume(int targetVolume,std::chrono::seconds duration)
@@ -268,7 +269,7 @@ namespace Music
 		if (volumeAdjustment.state() == QAbstractAnimation::Paused) return;
 
 		emit Print(QString("Adjusting volume from %1% to %2% over %3 seconds").arg(
-			StringConvert::Integer(TranslateVolume(player.audioOutput()->volume())),
+			StringConvert::Integer(NumberConvert::Denormalize(player.audioOutput()->volume())),
 			StringConvert::Integer(targetVolume),
 			StringConvert::Integer(duration.count())
 		),"volume fade");
@@ -276,7 +277,7 @@ namespace Music
 		if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.stop();
 		volumeAdjustment.setDuration(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 		volumeAdjustment.setStartValue(player.audioOutput()->volume());
-		volumeAdjustment.setEndValue(TranslateVolume(targetVolume));
+		volumeAdjustment.setEndValue(NumberConvert::Normalize(targetVolume));
 		volumeAdjustment.start();
 	}
 
@@ -412,16 +413,6 @@ namespace Music
 		}
 
 		return true;
-	}
-
-	int Player::TranslateVolume(qreal volume)
-	{
-		return static_cast<int>(std::clamp(volume,0.0,1.0)*100);
-	}
-
-	qreal Player::TranslateVolume(int volume)
-	{
-		return static_cast<qreal>(std::clamp(volume,0,100))/100;
 	}
 
 	ApplicationSetting& Player::SuppressedVolume()
@@ -729,6 +720,103 @@ namespace Music
 			{
 				return title;
 			}
+		}
+	}
+
+	MonkeyKeyboardNote::MonkeyKeyboardNote(std::chrono::microseconds duration,int frequency,qreal volume): sink(QMediaDevices::defaultAudioOutput(),QMediaDevices::defaultAudioOutput().preferredFormat())
+	{
+		if (sink.isNull()) throw std::runtime_error("Could not find audio output");
+		sink.setVolume(volume);
+		connect(&sink,&QAudioSink::stateChanged,this,&MonkeyKeyboardNote::StateChanged);
+
+		qint64 microseconds=duration.count();
+		qint64 bytes=sink.format().bytesForDuration(microseconds);
+
+		// generate samples
+		data.resize(bytes);
+		auto samplePositionInBuffer=data.begin();
+		double normalizedRadianFrequency=2.0*std::numbers::pi*frequency/sink.format().sampleRate();
+		double filterCoefficient=2.0*qCos(normalizedRadianFrequency);
+		double initialPhase=0.0;
+		double previousY=qSin(initialPhase-normalizedRadianFrequency);
+		double nextPreviousY=qSin(initialPhase-2.0*normalizedRadianFrequency);
+		while (samplePositionInBuffer != data.end())
+		{
+			// generate sample for sine wave using second order infinite impulse response filter
+			// a fancy term for it using the previous two samples to calculate the next sample
+			double y=filterCoefficient*previousY-nextPreviousY;
+			nextPreviousY=previousY;
+			previousY=y;
+			double value=std::clamp(y,-1.0,1.0);
+
+			// convert to triangle wave
+			if (value < 0.25)
+			{
+				value=4.0*value; // rise from 0 to 1
+			}
+			else if (value < 0.75)
+			{
+				value=2.0-4.0*value; // fall from 1 to -1
+			}
+			else
+			{
+				value=4.0*value-4.0; // rise from -1 to 0
+			}
+
+			// modify the sample in the buffer
+			switch (sink.format().sampleFormat())
+			{
+			case QAudioFormat::Int32:
+				*reinterpret_cast<qint32*>(samplePositionInBuffer)=qint32(value*double(std::numeric_limits<qint32>::max()));
+				break;
+			case QAudioFormat::Float:
+				*reinterpret_cast<float*>(samplePositionInBuffer)=value;
+				break;
+			default:
+				throw std::runtime_error("Unrecognized audio format");
+			}
+
+			samplePositionInBuffer+=sink.format().bytesPerSample(); // advance iterator by size of sample
+		}
+
+		buffer.setData(data);
+	}
+
+	void MonkeyKeyboardNote::Play()
+	{
+		buffer.open(QIODevice::ReadOnly);
+		sink.start(&buffer);
+	}
+
+	void MonkeyKeyboardNote::StateChanged(QtAudio::State state)
+	{
+		try
+		{
+			switch (sink.error())
+			{
+			case QtAudio::NoError:
+				break;
+			case QtAudio::OpenError:
+				throw std::runtime_error("Failed to open the audio output");
+			case QtAudio::IOError:
+				throw std::runtime_error("Problem reading from the audio buffer");
+			case QtAudio::UnderrunError:
+				throw std::runtime_error("Buffer couldn't keep up with output");
+			case QtAudio::FatalError:
+				throw std::runtime_error("A serious problem occurred in audio subsystem");
+			}
+
+			if (buffer.isOpen() && state == QtAudio::IdleState)
+			{
+				emit Finished();
+				deleteLater();
+			}
+		}
+
+		catch (const std::runtime_error &exception)
+		{
+			emit Print(exception.what(),"play keyboard note","monkey keyboard");
+			deleteLater();
 		}
 	}
 }

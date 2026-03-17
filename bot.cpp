@@ -43,6 +43,7 @@ const char *SETTINGS_CATEGORY_VIBE="Vibe";
 const char *SETTINGS_CATEGORY_COMMANDS="Commands";
 const char *SETTINGS_CATEGORY_EVENTS="Events";
 const char *SETTINGS_CATEGORY_ADS="Ads";
+const char *SETTINGS_CATEGORY_MONKEY_KEYBOARD="MonkeyKeybord";
 const char *TWITCH_API_OPERATION_STREAM_INFORMATION="stream information";
 const char *TWITCH_API_OPERATION_USER_FOLLOWS="user follow details";
 const char *TWITCH_API_OPERATION_EMOTE_ONLY="emote only";
@@ -109,7 +110,14 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.adFinishedVideo{SETTINGS_CATEGORY_ADS,"FinishedVideo"},
 		.adWarningLeadTime{SETTINGS_CATEGORY_ADS,"WarningLeadTime",5}, // in seconds
 		.adScheduleRefreshInterval{SETTINGS_CATEGORY_ADS,"ScheduleRefreshInterval",30}, // in seconds
+		.monkeyKeyboardVolume{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"Volume",50},
+		.monkeyKeyboardBleepLength{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BleepLength",250}, // in milliseconds
+		.monkeyKeyboardBleepRootFrequency{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BleepRootFrequency",220},
+		.monkeyKeyboardBloopLength{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BloopLength",500},
+		.monkeyKeyboardBloopRootFrequency{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BloopRootFrequency",110},
 		.commandNameAgenda{SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"},
+		.commandNameBleep{SETTINGS_CATEGORY_COMMANDS,"Bleep","bleep"},
+		.commandNameBloop{SETTINGS_CATEGORY_COMMANDS,"Bloop","bloop"},
 		.commandNameStreamCategory{SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"},
 		.commandNameStreamTitle{SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"},
 		.commandNameCommands{SETTINGS_CATEGORY_COMMANDS,"Commands","commands"},
@@ -129,6 +137,8 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	}
 {
 	DeclareCommand({settings.commandNameAgenda,"Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
+	DeclareCommand({settings.commandNameBleep,"Play a high, short note",CommandType::NATIVE,false},NativeCommandFlag::BLEEP);
+	DeclareCommand({settings.commandNameBloop,"Play a low, long note",CommandType::NATIVE,false},NativeCommandFlag::BLOOP);
 	DeclareCommand({settings.commandNameStreamCategory,"Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
 	DeclareCommand({settings.commandNameStreamTitle,"Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
 	DeclareCommand({settings.commandNameCommands,"List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
@@ -1231,6 +1241,12 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 			case NativeCommandFlag::AGENDA:
 				emit SetAgenda(command.Message());
 				break;
+			case NativeCommandFlag::BLEEP:
+				MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBleepLength),settings.monkeyKeyboardBleepRootFrequency,command.Message());
+				break;
+			case NativeCommandFlag::BLOOP:
+				MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,command.Message());
+				break;
 			case NativeCommandFlag::CATEGORY:
 				StreamCategory(command.Message());
 				break;
@@ -1735,6 +1751,68 @@ void Bot::StreamCategory(const QString &category)
 		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	});
+}
+
+void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,const QString &noteMessage)
+{
+	if (noteMessage.isEmpty()) return;
+
+	Music::MonkeyKeyboardNote *previousNote=nullptr;
+	for (auto noteCandidate : QStringTokenizer(noteMessage,u' '))
+	{
+		auto noteLetter=noteCandidate.front().toUpper();
+		static const QChar a('A');
+		int noteSemitones=noteLetter.toLatin1()-a.toLatin1();
+		if (noteSemitones < 0 || noteSemitones > QChar('G').toLatin1()-a.toLatin1()) return; // out of range
+		int offset=0;
+		if (noteSemitones > QChar('B').toLatin1()-a.toLatin1()) // B -> C is only 1 semitone
+		{
+			offset-=1;
+			if (noteSemitones > QChar('E').toLatin1()-a.toLatin1()) // E -> F is only 1 semitone
+			{
+				offset-=1;
+			}
+		}
+		if (noteCandidate.size() > 1) // we might have a sharp or flat in the remainder of the message
+		{
+			noteLetter=noteCandidate.at(1);
+			if (noteLetter == '#')
+			{
+				offset+=1; // add a semitone for sharp
+			}
+			if (noteLetter == 'b')
+			{
+				offset-=1; // reduce by a semitone for flat
+			}
+		}
+
+		int frequency=rootFrequency;
+		if (noteSemitones > 0 || offset > 0)
+		{
+			double semitoneRatio=std::pow(2.0,(noteSemitones*2+offset)/12.0);
+			frequency*=semitoneRatio;
+		}
+
+		try
+		{
+			auto note=new Music::MonkeyKeyboardNote(duration,frequency,NumberConvert::Normalize(settings.monkeyKeyboardVolume));
+			connect(note,&Music::MonkeyKeyboardNote::Print,this,&Bot::Print);
+			if (previousNote)
+			{
+				connect(previousNote,&Music::MonkeyKeyboardNote::Finished,note,&Music::MonkeyKeyboardNote::Play);
+			}
+			else
+			{
+				note->Play();
+			}
+			previousNote=note;
+		}
+
+		catch (const std::runtime_error &excpetion)
+		{
+			emit Print("Failed to set up keyboard note","monkey keyboard");
+		}
+	}
 }
 
 std::optional<CommandType> Bot::ValidCommandType(const QString &type)

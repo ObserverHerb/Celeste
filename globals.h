@@ -46,6 +46,17 @@ namespace NumberConvert
 		if (static_cast<std::size_t>(std::abs(value)) > static_cast<std::size_t>(std::numeric_limits<unsigned int>::max())) throw std::range_error("Overflow converting to positive integer");
 		return value >= 0 ? static_cast<unsigned int>(value) : 0;
 	}
+
+	inline qreal Normalize(int volume,int minimum=0,int maximum=100)
+	{
+		if (maximum <= minimum) throw std::out_of_range("Maximum cannot be less than or equal to minimum");
+		return static_cast<qreal>(std::clamp(volume,minimum,maximum)-minimum)/(maximum-minimum);
+	}
+
+	inline int Denormalize(qreal volume,int minimum=0,int maximum=100)
+	{
+		return (static_cast<int>(std::clamp(volume,0.0,1.0))*(maximum-minimum))+minimum;
+	}
 }
 
 namespace StringConvert
@@ -253,6 +264,12 @@ namespace Container
 		auto candidate=container.find(key);
 		return candidate == container.end() ? value : *candidate;
 	}
+}
+
+namespace Natural
+{
+	constexpr int MINIMUM_AUDIBLE_FREQUENCY=20;
+	constexpr int MAXIMUM_AUDIBLE_FREQUENCY=20000;
 }
 
 namespace Platform
