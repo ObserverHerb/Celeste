@@ -35,15 +35,15 @@ const char *MESSAGE_TYPE_WELCOME="session_welcome";
 const char *MESSAGE_TYPE_KEEPALIVE="session_keepalive";
 const char *MESSAGE_TYPE_NOTIFICATION="notification";
 
-const char *SUBSCRIPTION_TYPE_FOLLOW="channel.follow";
-const char *SUBSCRIPTION_TYPE_REDEMPTION="channel.channel_points_custom_reward_redemption.add";
-const char *SUBSCRIPTION_TYPE_CHEER="channel.cheer";
-const char *SUBSCRIPTION_TYPE_RAID="channel.raid";
-const char *SUBSCRIPTION_TYPE_SUBSCRIPTION="channel.subscribe";
-const char *SUBSCRIPTION_TYPE_RESUBSCRIPTION="channel.subscription.message";
-const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_START="channel.hype_train.begin";
-const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS="channel.hype_train.progress";
-const char *SUBSCRIPTION_TYPE_HYPE_TRAIN_END="channel.hype_train.end";
+SubscriptionDescriptor SUBSCRIPTION_TYPE_FOLLOW={"channel.follow",1,SubscriptionType::CHANNEL_FOLLOW};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_REDEMPTION={"channel.channel_points_custom_reward_redemption.add",1,SubscriptionType::CHANNEL_REDEMPTION};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_CHEER={"channel.cheer",1,SubscriptionType::CHANNEL_CHEER};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_RAID={"channel.raid",1,SubscriptionType::CHANNEL_RAID};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_SUBSCRIPTION={"channel.subscribe",1,SubscriptionType::CHANNEL_SUBSCRIPTION};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_RESUBSCRIPTION={"channel.subscription.message",1,SubscriptionType::CHANNEL_SUBSCRIPTION};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_HYPE_TRAIN_START={"channel.hype_train.begin",2,SubscriptionType::CHANNEL_HYPE_TRAIN};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS={"channel.hype_train.progress",2,SubscriptionType::CHANNEL_HYPE_TRAIN};
+SubscriptionDescriptor SUBSCRIPTION_TYPE_HYPE_TRAIN_END={"channel.hype_train.end",2,SubscriptionType::CHANNEL_HYPE_TRAIN};
 
 const char *EventSub::SETTINGS_CATEGORY_EVENTS="Events";
 
@@ -67,15 +67,15 @@ EventSub::EventSub(Security &security,QObject *parent) : QObject(parent),
 	messageTypes.insert({MESSAGE_TYPE_NOTIFICATION,MessageType::NOTIFICATION});
 	messageTypes.insert({MESSAGE_TYPE_KEEPALIVE,MessageType::KEEPALIVE});
 
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW,SubscriptionType::CHANNEL_FOLLOW});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_REDEMPTION,SubscriptionType::CHANNEL_REDEMPTION});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_CHEER,SubscriptionType::CHANNEL_CHEER});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RAID,SubscriptionType::CHANNEL_RAID});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_SUBSCRIPTION,SubscriptionType::CHANNEL_SUBSCRIPTION});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RESUBSCRIPTION,SubscriptionType::CHANNEL_SUBSCRIPTION});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_START,SubscriptionType::CHANNEL_HYPE_TRAIN});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS,SubscriptionType::CHANNEL_HYPE_TRAIN});
-	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_END,SubscriptionType::CHANNEL_HYPE_TRAIN});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_FOLLOW.name,SUBSCRIPTION_TYPE_FOLLOW});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_REDEMPTION.name,SUBSCRIPTION_TYPE_REDEMPTION});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_CHEER.name,SUBSCRIPTION_TYPE_CHEER});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RAID.name,SUBSCRIPTION_TYPE_RAID});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_SUBSCRIPTION.name,SUBSCRIPTION_TYPE_SUBSCRIPTION});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_RESUBSCRIPTION.name,SUBSCRIPTION_TYPE_RESUBSCRIPTION});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_START.name,SUBSCRIPTION_TYPE_HYPE_TRAIN_START});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS.name,SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS});
+	subscriptionTypes.insert({SUBSCRIPTION_TYPE_HYPE_TRAIN_END.name,SUBSCRIPTION_TYPE_HYPE_TRAIN_END});
 
 	connect(&keepalive,&QTimer::timeout,this,&EventSub::Dead);
 
@@ -134,20 +134,26 @@ void EventSub::Dead()
 
 void EventSub::Subscribe()
 {
-	defaultTypes.push(SUBSCRIPTION_TYPE_REDEMPTION);
-	defaultTypes.push(SUBSCRIPTION_TYPE_RAID);
-	defaultTypes.push(SUBSCRIPTION_TYPE_SUBSCRIPTION);
-	defaultTypes.push(SUBSCRIPTION_TYPE_RESUBSCRIPTION);
-	defaultTypes.push(SUBSCRIPTION_TYPE_CHEER);
-	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_START);
-	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS);
-	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_END);
+	defaultTypes.push(SUBSCRIPTION_TYPE_REDEMPTION.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_RAID.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_SUBSCRIPTION.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_RESUBSCRIPTION.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_CHEER.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_START.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_PROGRESS.name);
+	defaultTypes.push(SUBSCRIPTION_TYPE_HYPE_TRAIN_END.name);
 	Subscribe(defaultTypes.front());
 }
 
 void EventSub::Subscribe(const QString &type)
 {
 	static const char *TWITCH_API_OPERATION_SUBSCRIBE="subscribe to event";
+	auto subscriptionDescriptor=subscriptionTypes.find(type);
+	if (subscriptionDescriptor == subscriptionTypes.end())
+	{
+		emit Print(u"Subscription type not supported: "_s+type,TWITCH_API_OPERATION_SUBSCRIBE);
+		return;
+	}
 
 	emit Print(u"Requesting subscription to %1"_s.arg(type),TWITCH_API_OPERATION_SUBSCRIBE);
 	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_EVENTSUB)},Network::Method::POST,[this,type](QNetworkReply *reply) {
@@ -184,10 +190,10 @@ void EventSub::Subscribe(const QString &type)
 		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
 	},QJsonDocument(QJsonObject({
 		{u"type"_s,type},
-		{u"version"_s,"1"}, // NOTE: Twitch has already started using this, so going to need to know max versions for subscriptions eventually
+		{u"version"_s,subscriptionDescriptor->second.version}, // NOTE: Twitch has already started using this, so going to need to know max versions for subscriptions eventually
 		{
 			u"condition"_s,
-			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID ? u"to_broadcaster_user_id"_s : u"broadcaster_user_id"_s,security.AdministratorID()}})
+			QJsonObject({{type == SUBSCRIPTION_TYPE_RAID.name ? u"to_broadcaster_user_id"_s : u"broadcaster_user_id"_s,security.AdministratorID()}})
 		},
 		{
 			u"transport"_s,
@@ -307,7 +313,7 @@ void EventSub::ParseNotification(QJsonObject notification)
 		QString key=subscriptionTypeCandidate->toString();
 		if (auto subscriptionTypeCandidate=subscriptionTypes.find(key); subscriptionTypeCandidate != subscriptionTypes.end())
 		{
-			subscriptionType=subscriptionTypeCandidate->second;
+			subscriptionType=subscriptionTypeCandidate->second.type;
 		}
 	}
 	if (subscriptionType == SubscriptionType::UNKNOWN) return;

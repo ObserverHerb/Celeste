@@ -26,11 +26,18 @@ enum class SubscriptionType
 	CHANNEL_HYPE_TRAIN
 };
 
+struct SubscriptionDescriptor
+{
+	const char *name;
+	int version;
+	SubscriptionType type;
+};
+
 class EventSub : public QObject
 {
 	Q_OBJECT
 	using MessageTypes=std::unordered_map<QString,MessageType>;
-	using SubscriptionTypes=std::unordered_map<QString,SubscriptionType>;
+	using SubscriptionTypes=std::unordered_map<QString,SubscriptionDescriptor>;
 public:
 	EventSub(Security &security,QObject *parent=nullptr);
 	void Subscribe();
