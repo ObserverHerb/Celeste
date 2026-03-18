@@ -95,7 +95,7 @@ namespace File
 
 	const QString List::File(const int index) const
 	{
-		if (index < 0 || index >= files.size()) throw std::out_of_range("Index not valid for file list");
+		if (index < 0 || index >= SelectedFiles().size()) throw std::out_of_range("Index not valid for file list");
 		return SelectedFiles().at(index);
 	}
 
