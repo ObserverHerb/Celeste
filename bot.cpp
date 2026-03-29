@@ -1758,45 +1758,108 @@ void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,co
 {
 	if (noteMessage.isEmpty()) return;
 
+	static const QChar a('A');
 	Music::MonkeyKeyboardNote *previousNote=nullptr;
 	for (auto noteCandidate : QStringTokenizer(noteMessage,u' '))
 	{
-		auto noteLetter=noteCandidate.front().toUpper();
-		static const QChar a('A');
+		int durationMultiplier=1; // TODO: this is where reflection would be handy as I could get the type of digitValue() from below
+		int rootFrequencyMultiplier=1;
+		auto noteCursor=noteCandidate.begin();
+		auto noteLetter=noteCursor->toUpper();
 		int noteSemitones=noteLetter.toLatin1()-a.toLatin1();
-		if (noteSemitones < 0 || noteSemitones > QChar('G').toLatin1()-a.toLatin1()) return; // out of range
-		int offset=0;
-		if (noteSemitones > QChar('B').toLatin1()-a.toLatin1()) // B -> C is only 1 semitone
+		int accidentalOffset=0;
+		if (noteLetter == 'R') // rest
 		{
-			offset-=1;
-			if (noteSemitones > QChar('E').toLatin1()-a.toLatin1()) // E -> F is only 1 semitone
+			rootFrequencyMultiplier=0;
+			noteCursor++;
+		}
+		else // note
+		{
+			if (noteSemitones < 0 || noteSemitones > QChar('G').toLatin1()-a.toLatin1()) return; // out of range
+			if (noteSemitones > QChar('B').toLatin1()-a.toLatin1()) // B -> C is only 1 semitone
 			{
-				offset-=1;
+				accidentalOffset-=1;
+				if (noteSemitones > QChar('E').toLatin1()-a.toLatin1()) // E -> F is only 1 semitone
+				{
+					accidentalOffset-=1;
+				}
+			}
+
+			if (++noteCursor != noteCandidate.end()) // sharp or flat
+			{
+				noteLetter=*noteCursor;
+
+				if (noteLetter == '#' || noteLetter == L'♯')
+				{
+					accidentalOffset+=1; // add a semitone for sharp
+					noteCursor++;
+				}
+				if (noteLetter == 'b' || noteLetter == L'♭')
+				{
+					accidentalOffset-=1; // reduce by a semitone for flat
+					noteCursor++;
+				}
 			}
 		}
-		if (noteCandidate.size() > 1) // we might have a sharp or flat in the remainder of the message
+
+		if (noteCursor != noteCandidate.end()) // adjust note duration
 		{
-			noteLetter=noteCandidate.at(1);
-			if (noteLetter == '#')
+			noteLetter=*noteCursor;
+			if (noteLetter.isDigit())
 			{
-				offset+=1; // add a semitone for sharp
+				auto noteLengthMultiplier=noteLetter.digitValue();
+				if (noteLengthMultiplier > 1)
+				{
+					durationMultiplier=noteLetter.digitValue();
+				}
+				noteCursor++;
 			}
-			if (noteLetter == 'b')
+		}
+
+		// octave offset
+		int rootFrequencyOffset=0;
+		QChar rootFrequencyOffsetDirection;
+		QChar increaseOctave('+');
+		QChar decreaseOctave('-');
+		while (noteCursor != noteCandidate.end())
+		{
+			noteLetter=*noteCursor;
+
+			if (noteLetter == increaseOctave || noteLetter == decreaseOctave)
 			{
-				offset-=1; // reduce by a semitone for flat
+				if (rootFrequencyOffsetDirection == noteLetter || rootFrequencyOffsetDirection.isNull())
+				{
+					rootFrequencyOffsetDirection=noteLetter;
+					rootFrequencyOffset++;
+					noteCursor++;
+				}
+				else
+				{
+					noteCursor=noteCandidate.end();
+				}
+			}
+			else
+			{
+				noteCursor=noteCandidate.end();
 			}
 		}
 
 		int frequency=rootFrequency;
-		if (noteSemitones > 0 || offset > 0)
+		if (!rootFrequencyOffsetDirection.isNull())
 		{
-			double semitoneRatio=std::pow(2.0,(noteSemitones*2+offset)/12.0);
+			auto offsetMultiplier=2*rootFrequencyOffset;
+			if (rootFrequencyOffsetDirection == increaseOctave) frequency*=offsetMultiplier;
+			if (rootFrequencyOffsetDirection == decreaseOctave) frequency/=offsetMultiplier;
+		}
+		if (noteSemitones > 0 || accidentalOffset > 0)
+		{
+			double semitoneRatio=std::pow(2.0,(noteSemitones*2+accidentalOffset)/12.0);
 			frequency*=semitoneRatio;
 		}
 
 		try
 		{
-			auto note=new Music::MonkeyKeyboardNote(duration,frequency,NumberConvert::Normalize(settings.monkeyKeyboardVolume));
+			auto note=new Music::MonkeyKeyboardNote(duration*durationMultiplier,frequency*rootFrequencyMultiplier,NumberConvert::Normalize(settings.monkeyKeyboardVolume));
 			connect(note,&Music::MonkeyKeyboardNote::Print,this,&Bot::Print);
 			if (previousNote)
 			{
