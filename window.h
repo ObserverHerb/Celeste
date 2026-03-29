@@ -6,7 +6,21 @@
 #include "panes.h"
 #include "settings.h"
 
-class Window : public QMainWindow
+class Background: public QWidget
+{
+	Q_OBJECT
+public:
+	Background(QWidget *parent): QWidget(parent), chaosMode(false) { }
+	bool ChaosMode();
+	static const QString CHAOS_OBJECT_NAME;
+signals:
+	void ChaosEnded();
+protected:
+	void childEvent(QChildEvent *event) override;
+	bool chaosMode;
+};
+
+class Window: public QMainWindow
 {
 	Q_OBJECT
 public:
@@ -14,7 +28,7 @@ public:
 	ApplicationSetting& BackgroundColor();
 	ApplicationSetting& Dimensions();
 protected:
-	QWidget *background;
+	Background *background;
 	PersistentPane *livePersistentPane;
 	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
 	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
@@ -59,7 +73,7 @@ public slots:
 	void AnnounceHypeTrainProgress(int level,double progress);
 	void AnnounceAdBreakStarting(const QString& videoPath);
 	void AnnounceAdBreakFinished(const QString& videoPath);
-	void PlayVideo(const QString &path);
+	void PlayVideo(const QString &path,bool chaosMode);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
 	void ShowPortraitVideo(const QString &path);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
@@ -72,8 +86,9 @@ public slots:
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void Resize(const QSize &dimensions);
+	void EndChaosMode();
 protected slots:
-	void StageEphemeralPane(EphemeralPane *pane);
+	void StageEphemeralPane(EphemeralPane *pane,bool chaosMode=false);
 };
 
 class Win32Window : public Window

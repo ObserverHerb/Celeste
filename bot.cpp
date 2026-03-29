@@ -115,9 +115,12 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.monkeyKeyboardBleepRootFrequency{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BleepRootFrequency",220},
 		.monkeyKeyboardBloopLength{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BloopLength",500},
 		.monkeyKeyboardBloopRootFrequency{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BloopRootFrequency",110},
+		.chaosModeDuration{SETTINGS_CATEGORY_COMMANDS,"ChaosModeDuration",30}, // in seconds
+		.chaosModeVideo{SETTINGS_CATEGORY_COMMANDS,"ChaosModeVideo"},
 		.commandNameAgenda{SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"},
 		.commandNameBleep{SETTINGS_CATEGORY_COMMANDS,"Bleep","bleep"},
 		.commandNameBloop{SETTINGS_CATEGORY_COMMANDS,"Bloop","bloop"},
+		.commandNameChaosMode{SETTINGS_CATEGORY_COMMANDS,"ChaosMode","chaos"},
 		.commandNameStreamCategory{SETTINGS_CATEGORY_COMMANDS,"StreamCategory","category"},
 		.commandNameStreamTitle{SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"},
 		.commandNameCommands{SETTINGS_CATEGORY_COMMANDS,"Commands","commands"},
@@ -139,6 +142,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	DeclareCommand({settings.commandNameAgenda,"Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
 	DeclareCommand({settings.commandNameBleep,"Play a high, short note",CommandType::NATIVE,false},NativeCommandFlag::BLEEP);
 	DeclareCommand({settings.commandNameBloop,"Play a low, long note",CommandType::NATIVE,false},NativeCommandFlag::BLOOP);
+	DeclareCommand({settings.commandNameChaosMode,"Allow videos to be played in parallel for a brief (hopefully) period of time",CommandType::NATIVE,true},NativeCommandFlag::CHAOS_MODE);
 	DeclareCommand({settings.commandNameStreamCategory,"Change the stream category",CommandType::NATIVE,true},NativeCommandFlag::CATEGORY);
 	DeclareCommand({settings.commandNameStreamTitle,"Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
 	DeclareCommand({settings.commandNameCommands,"List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
@@ -598,6 +602,9 @@ void Bot::StartClocks()
 	connect(&adStartingClock,&QTimer::timeout,this,&Bot::AdsStarting);
 	adFinishedClock.setSingleShot(true);
 	connect(&adFinishedClock,&QTimer::timeout,this,&Bot::AdsFinished);
+
+	chaosModeClock.setInterval(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(settings.chaosModeDuration)));
+	connect(&chaosModeClock,&QTimer::timeout,&chaosModeClock,&QTimer::stop);
 }
 
 void Bot::RequestAdSchedule()
@@ -696,6 +703,12 @@ void Bot::Redemption(const QString &login,const QString &name,const QString &rew
 	{
 		DispatchPanic(name);
 		vibeKeeper.Stop();
+		return;
+	}
+
+	if (rewardTitle == "Chaos Mode")
+	{
+		EnableChaosMode();
 		return;
 	}
 
@@ -1201,19 +1214,40 @@ bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMe
 		viewer.commandTimestamp=std::chrono::system_clock::now();
 	}
 
-	// command is reformatting text, so feed the formatted chat message back into the system
-	if (command.Type() == CommandType::NATIVE && nativeCommandFlags.at(command.Name()) == NativeCommandFlag::HTML)
+	if (command.Type() == CommandType::NATIVE)
 	{
-		int offset=name.size()+QString(COMMAND_PREFIX).size()+1; // the 1 is the space between the command name and the remaining chat message
-		for (Chat::Emote &emote : chatMessage.emotes) // since we've stripped off the command name, we need to slide all of the emote indices left
+		bool shortCircuit=true;
+
+		switch (nativeCommandFlags.at(command.Name()))
 		{
-			emote.start-=offset;
-			emote.end-=offset;
+		case NativeCommandFlag::HTML:
+		{
+			int offset=name.size()+QString(COMMAND_PREFIX).size()+1; // the 1 is the space between the command name and the remaining chat message
+			for (Chat::Emote &emote : chatMessage.emotes) // since we've stripped off the command name, we need to slide all of the emote indices left
+			{
+				emote.start-=offset;
+				emote.end-=offset;
+			}
+			ParseEmoteNamesAndDownloadImages(chatMessage.emotes,chatMessage.text);
+			chatMessage.html=true;
+			break;
 		}
-		ParseEmoteNamesAndDownloadImages(chatMessage.emotes,chatMessage.text);
-		chatMessage.html=true;
-		emit ChatMessage(std::make_shared<Chat::Message>(chatMessage)); // short circuit by firing off the chat message, but not processing the command any further
-		return true;
+		case NativeCommandFlag::BLEEP:
+			MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBleepLength),settings.monkeyKeyboardBleepRootFrequency,chatMessage.text);
+			break;
+		case NativeCommandFlag::BLOOP:
+			MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,chatMessage.text);
+			break;
+		default:
+			shortCircuit=false;
+		}
+
+		// short circuit by firing off the chat message, but not processing the command any further
+		if (shortCircuit)
+		{
+			emit ChatMessage(std::make_shared<Chat::Message>(chatMessage));
+			return true;
+		}
 	}
 
 	DispatchCommandViaCommandObject(chatMessage.text.isEmpty() ? command : Command{command,chatMessage.text},login);
@@ -1242,14 +1276,11 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 			case NativeCommandFlag::AGENDA:
 				emit SetAgenda(command.Message());
 				break;
-			case NativeCommandFlag::BLEEP:
-				MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBleepLength),settings.monkeyKeyboardBleepRootFrequency,command.Message());
-				break;
-			case NativeCommandFlag::BLOOP:
-				MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,command.Message());
-				break;
 			case NativeCommandFlag::CATEGORY:
 				StreamCategory(command.Message());
+				break;
+			case NativeCommandFlag::CHAOS_MODE:
+				EnableChaosMode();
 				break;
 			case NativeCommandFlag::COMMANDS:
 				DispatchCommandList();
@@ -1313,7 +1344,7 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 void Bot::DispatchVideo(Command command)
 {
 	// FIXME: What if there are no videos in the directory?
-	emit PlayVideo(command.File());
+	emit PlayVideo(command.File(),chaosModeClock.isActive());
 }
 
 void Bot::DispatchCommandList()
@@ -1877,6 +1908,13 @@ void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,co
 			emit Print("Failed to set up keyboard note","monkey keyboard");
 		}
 	}
+}
+
+void Bot::EnableChaosMode()
+{
+	chaosModeClock.start();
+	emit PlayVideo(settings.chaosModeVideo,false);
+	emit Print("!! CHAOS !! MODE !! ENABLED !!");
 }
 
 std::optional<CommandType> Bot::ValidCommandType(const QString &type)

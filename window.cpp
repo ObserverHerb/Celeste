@@ -20,8 +20,34 @@ const char *SETTINGS_CATEGORY_WINDOW="Window";
 using PrintLog=QOverload<const QString&,const QString&,const QString&>;
 using PrintUI=QOverload<const QString&>;
 
+bool Background::ChaosMode()
+{
+	return chaosMode;
+}
+
+void Background::childEvent(QChildEvent *event)
+{
+	QWidget::childEvent(event);
+
+	if (event->type() == QEvent::ChildAdded)
+	{
+		if (findChildren<EphemeralPane*>().count() > 1) chaosMode=true;
+	}
+
+	if (event->type() == QEvent::ChildRemoved && chaosMode)
+	{
+		if (findChildren<EphemeralPane*>(CHAOS_OBJECT_NAME).isEmpty())
+		{
+			chaosMode=false;
+			emit ChaosEnded();
+		}
+	}
+}
+
+const QString Background::CHAOS_OBJECT_NAME="chaos";
+
 Window::Window() : QMainWindow(nullptr),
-	background(new QWidget(this)),
+	background(new Background(this)),
 	livePersistentPane(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size",ScreenThird()),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
@@ -52,6 +78,7 @@ Window::Window() : QMainWindow(nullptr),
 		StringConvert::Integer(backgroundColor.alpha()))
 	);
 	setCentralWidget(background);
+	connect(background,&Background::ChaosEnded,this,&Window::EndChaosMode);
 
 	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
 	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
@@ -246,13 +273,13 @@ void Window::ShowChat()
 	connect(chatPane,&ChatPane::ContextMenu,this,&Window::contextMenuEvent);
 }
 
-void Window::PlayVideo(const QString &path)
+void Window::PlayVideo(const QString &path,bool chaosMode)
 {
 	try
 	{
 		VideoPane *pane=new VideoPane(path,this);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		StageEphemeralPane(pane,chaosMode);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -424,19 +451,30 @@ void Window::ShowCurrentSong(const QString &song,const QString &artist,const QIm
 	StageEphemeralPane(pane);
 }
 
-void Window::StageEphemeralPane(EphemeralPane *pane)
+void Window::StageEphemeralPane(EphemeralPane *pane,bool chaosMode)
 {
-	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
 	background->layout()->addWidget(pane);
+	livePersistentPane->hide();
+
+	if (chaosMode)
+	{
+		pane->setObjectName(Background::CHAOS_OBJECT_NAME);
+		pane->show(); // the pane's Expired() signal already calls deleteLater() internally
+		return;
+	}
+
+	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
 	if (pane->HighPriority())
 	{
 		if (highPriorityEphemeralPanes.empty())
 		{
 			if (!lowPriorityEphemeralPanes.empty()) lowPriorityEphemeralPanes.front()->hide();
 			highPriorityEphemeralPanes.push(pane);
-			livePersistentPane->hide();
-			pane->show();
-			emit SuppressMusic();
+			if (!background->ChaosMode())
+			{
+				pane->show();
+				emit SuppressMusic();
+			}
 		}
 		else
 		{
@@ -448,9 +486,8 @@ void Window::StageEphemeralPane(EphemeralPane *pane)
 	{
 		if (lowPriorityEphemeralPanes.empty())
 		{
-			if (highPriorityEphemeralPanes.empty())
+			if (highPriorityEphemeralPanes.empty() && !background->ChaosMode())
 			{
-				livePersistentPane->hide();
 				pane->show();
 			}
 		}
@@ -485,10 +522,33 @@ void Window::ReleaseLiveEphemeralPane()
 	if (highPriorityEphemeralPanes.empty())
 	{
 		if (lowPriorityEphemeralPanes.empty())
-			livePersistentPane->show();
+		{
+			if (!background->ChaosMode()) livePersistentPane->show();
+		}
 		else
+		{
 			lowPriorityEphemeralPanes.front()->show();
+		}
 		emit RestoreMusic();
+	}
+}
+
+void Window::EndChaosMode()
+{
+	if (highPriorityEphemeralPanes.empty())
+	{
+		if (lowPriorityEphemeralPanes.empty()) {
+			livePersistentPane->show();
+		}
+		else
+		{
+			lowPriorityEphemeralPanes.front()->show();
+		}
+	}
+	else
+	{
+		highPriorityEphemeralPanes.front()->show();
+		emit SuppressMusic();
 	}
 }
 

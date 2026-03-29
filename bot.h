@@ -19,6 +19,7 @@ enum class NativeCommandFlag
 	BLEEP,
 	BLOOP,
 	CATEGORY,
+	CHAOS_MODE,
 	COMMANDS,
 	EMOTE,
 	FOLLOWAGE,
@@ -69,6 +70,7 @@ protected:
 	QTimer adScheduleClock;
 	QTimer adStartingClock;
 	QTimer adFinishedClock;
+	QTimer chaosModeClock;
 	QDateTime nextAd;
 	int adBreakDuration;
 	QDateTime lastRaid;
@@ -106,13 +108,14 @@ protected:
 	void StreamTitle(const QString &title);
 	void StreamCategory(const QString &category);
 	void MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,const QString &note);
+	void EnableChaosMode();
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
 	void ChatMessage(std::shared_ptr<Chat::Message> message);
 	void DeleteChatMessage(const QString &id);
 	void RefreshChat();
 	void AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
-	void PlayVideo(const QString &path);
+	void PlayVideo(const QString &path,bool chaosMode);
 	void PlayAudio(const QString &name,const QString &message,const QString &path);
 	void SetAgenda(const QString &agenda);
 	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);

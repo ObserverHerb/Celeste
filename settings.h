@@ -91,9 +91,12 @@ namespace Settings
 		ApplicationSetting monkeyKeyboardBleepRootFrequency;
 		ApplicationSetting monkeyKeyboardBloopLength;
 		ApplicationSetting monkeyKeyboardBloopRootFrequency;
+		ApplicationSetting chaosModeDuration;
+		ApplicationSetting chaosModeVideo;
 		ApplicationSetting commandNameAgenda;
 		ApplicationSetting commandNameBleep;
 		ApplicationSetting commandNameBloop;
+		ApplicationSetting commandNameChaosMode;
 		ApplicationSetting commandNameStreamCategory;
 		ApplicationSetting commandNameStreamTitle;
 		ApplicationSetting commandNameCommands;
