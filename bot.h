@@ -22,6 +22,7 @@ enum class NativeCommandFlag
 	CHAOS_MODE,
 	COMMANDS,
 	EMOTE,
+	FLUSH,
 	FOLLOWAGE,
 	HTML,
 	LIMIT,
@@ -31,7 +32,6 @@ enum class NativeCommandFlag
 	SONG,
 	TIMEZONE,
 	TITLE,
-	TOTAL_TIME,
 	UPTIME,
 	VIBE,
 	VOLUME
@@ -99,7 +99,7 @@ protected:
 	void DispatchPanic(const QString &name);
 	void DispatchShoutout(Command command);
 	void DispatchShoutout(const QString &streamer);
-	void DispatchUptime(bool total);
+	void DispatchUptime();
 	void DispatchHelpText();
 	void ToggleLimitViewer(const QString &target);
 	void ToggleVibeKeeper();
@@ -120,6 +120,7 @@ signals:
 	void SetAgenda(const QString &agenda);
 	void ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>> descriptions);
 	void ShowCommand(const QString &name,const QString &description);
+	void FlushMedia();
 	void Panic(const QString &text);
 	void Pulse(const QString &trigger,const QString &command);
 	void Shoutout(const QString &name,const QString &description,std::shared_ptr<QImage> profileImage);
@@ -127,7 +128,6 @@ signals:
 	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);
 	void ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days);
 	void ShowTimezone(const QString &timezone);
-	void ShowTotalTime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void ShowPortraitVideo(const QString &path);
 	void AnnounceRedemption(const QString &name,const QString &rewardTitle,const QString &message);

@@ -6,20 +6,6 @@
 #include "panes.h"
 #include "settings.h"
 
-class Background: public QWidget
-{
-	Q_OBJECT
-public:
-	Background(QWidget *parent): QWidget(parent), chaosMode(false) { }
-	bool ChaosMode();
-	static const QString CHAOS_OBJECT_NAME;
-signals:
-	void ChaosEnded();
-protected:
-	void childEvent(QChildEvent *event) override;
-	bool chaosMode;
-};
-
 class Window: public QMainWindow
 {
 	Q_OBJECT
@@ -28,10 +14,7 @@ public:
 	ApplicationSetting& BackgroundColor();
 	ApplicationSetting& Dimensions();
 protected:
-	Background *background;
-	PersistentPane *livePersistentPane;
-	std::queue<EphemeralPane*> highPriorityEphemeralPanes;
-	std::queue<EphemeralPane*> lowPriorityEphemeralPanes;
+	PaneHost *background;
 	ApplicationSetting settingWindowSize;
 	ApplicationSetting settingBackgroundColor;
 	QAction configureOptions;
@@ -40,8 +23,6 @@ protected:
 	QAction metrics;
 	QAction vibePlaylist;
 	QAction status;
-	void SwapPersistentPane(PersistentPane *pane);
-	void ReleaseLiveEphemeralPane();
 	const QSize ScreenThird();
 	void contextMenuEvent(QContextMenuEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
@@ -52,8 +33,6 @@ signals:
 	void DeleteChatMessage(const QString &id);
 	void SetAgenda(const QString &agenda);
 	void RefreshChat();
-	void SuppressMusic();
-	void RestoreMusic();
 	void ConfigureOptions();
 	void ConfigureCommands();
 	void ConfigureEventSubscriptions();
@@ -61,6 +40,9 @@ signals:
 	void ShowVibePlaylist();
 	void ShowStatus();
 	void CloseRequested(QCloseEvent *event);
+	void FlushMedia();
+	void HighPriority();
+	void LowPriority();
 public slots:
 	void ShowChat();
 	void AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
@@ -86,9 +68,6 @@ public slots:
 	void ShowTimezone(const QString &timezone);
 	void ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,std::chrono::seconds seconds);
 	void Resize(const QSize &dimensions);
-	void EndChaosMode();
-protected slots:
-	void StageEphemeralPane(EphemeralPane *pane,bool chaosMode=false);
 };
 
 class Win32Window : public Window

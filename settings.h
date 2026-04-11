@@ -101,6 +101,7 @@ namespace Settings
 		ApplicationSetting commandNameStreamTitle;
 		ApplicationSetting commandNameCommands;
 		ApplicationSetting commandNameEmote;
+		ApplicationSetting commandNameFlush;
 		ApplicationSetting commandNameFollowage;
 		ApplicationSetting commandNameHTML;
 		ApplicationSetting commandNameLimit;
@@ -110,7 +111,6 @@ namespace Settings
 		ApplicationSetting commandNameSong;
 		ApplicationSetting commandNameTimezone;
 		ApplicationSetting commandNameUptime;
-		ApplicationSetting commandNameTotalTime;
 		ApplicationSetting commandNameVibe;
 		ApplicationSetting commandNameVibeVolume;
 	};

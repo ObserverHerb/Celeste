@@ -20,35 +20,8 @@ const char *SETTINGS_CATEGORY_WINDOW="Window";
 using PrintLog=QOverload<const QString&,const QString&,const QString&>;
 using PrintUI=QOverload<const QString&>;
 
-bool Background::ChaosMode()
-{
-	return chaosMode;
-}
-
-void Background::childEvent(QChildEvent *event)
-{
-	QWidget::childEvent(event);
-
-	if (event->type() == QEvent::ChildAdded)
-	{
-		if (findChildren<EphemeralPane*>().count() > 1) chaosMode=true;
-	}
-
-	if (event->type() == QEvent::ChildRemoved && chaosMode)
-	{
-		if (findChildren<EphemeralPane*>(CHAOS_OBJECT_NAME).isEmpty())
-		{
-			chaosMode=false;
-			emit ChaosEnded();
-		}
-	}
-}
-
-const QString Background::CHAOS_OBJECT_NAME="chaos";
-
 Window::Window() : QMainWindow(nullptr),
-	background(new Background(this)),
-	livePersistentPane(nullptr),
+	background(nullptr),
 	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size",ScreenThird()),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	configureOptions("Options",this),
@@ -60,17 +33,12 @@ Window::Window() : QMainWindow(nullptr),
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
 	setFixedSize(settingWindowSize);
-
 	layout()->setContentsMargins(0,0,0,0);
+
+	QColor backgroundColor=settingBackgroundColor;
+	background=new PaneHost(backgroundColor,this);
 	background->setLayout(new QGridLayout(background)); // for translucency to work, there has to be a widget covering the window, otherwise the entire thing is clear
 	background->layout()->setContentsMargins(0,0,0,0);
-	QColor backgroundColor=settingBackgroundColor;
-	background->setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4);").arg(
-		StringConvert::Integer(backgroundColor.red()),
-		StringConvert::Integer(backgroundColor.green()),
-		StringConvert::Integer(backgroundColor.blue()),
-		StringConvert::Integer(backgroundColor.alpha()))
-	);
 	setStyleSheet(QString("QMainWindow { background-color: rgba(%1,%2,%3,%4); }").arg(
 		StringConvert::Integer(backgroundColor.red()),
 		StringConvert::Integer(backgroundColor.green()),
@@ -78,7 +46,10 @@ Window::Window() : QMainWindow(nullptr),
 		StringConvert::Integer(backgroundColor.alpha()))
 	);
 	setCentralWidget(background);
-	connect(background,&Background::ChaosEnded,this,&Window::EndChaosMode);
+	connect(this,PrintUI::of(&Window::Print),background,&PaneHost::Print);
+	connect(this,&Window::FlushMedia,background,&PaneHost::Flush);
+	connect(background,&PaneHost::HighPriority,this,&Window::HighPriority);
+	connect(background,&PaneHost::LowPriority,this,&Window::LowPriority);
 
 	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
 	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
@@ -89,15 +60,7 @@ Window::Window() : QMainWindow(nullptr),
 
 	StatusPane *pane=new StatusPane(this);
 	connect(pane,&StatusPane::ContextMenu,this,&Window::contextMenuEvent);
-	SwapPersistentPane(pane);
-}
-
-void Window::SwapPersistentPane(PersistentPane *pane)
-{
-	if (livePersistentPane) livePersistentPane->deleteLater();
-	livePersistentPane=pane;
-	background->layout()->addWidget(livePersistentPane);
-	connect(this,PrintUI::of(&Window::Print),livePersistentPane,&PersistentPane::Print);
+	background->ReplacePersistent(pane);
 }
 
 void Window::AnnounceArrival(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath)
@@ -108,9 +71,9 @@ void Window::AnnounceArrival(const QString &name,std::shared_ptr<QImage> profile
 			{"Please welcome",1},
 			{name,1.5},
 			{"to the chat",1}
-		},*profileImage,audioPath,this);
+		},*profileImage,audioPath,this,PANE_PRIORITY_IMMEDIATE);
 		connect(pane,&MultimediaAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -126,10 +89,9 @@ void Window::AnnounceRedemption(const QString &name,const QString& rewardTitle,c
 		{"has redeemed",1},
 		{rewardTitle,1.5},
 		{message,1}
-	},this);
+	},this,PANE_PRIORITY_DEFAULT);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	pane->LowerPriority();
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
@@ -139,9 +101,9 @@ void Window::AnnounceSubscription(const QString &name,const QString &audioPath)
 		AudioAnnouncePane *pane=new AudioAnnouncePane({
 			{name,1.5},
 			{"has subscribed!",1}
-		},audioPath,this);
+		},audioPath,this,PANE_PRIORITY_IMMEDIATE);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -159,9 +121,9 @@ void Window::AnnounceRaid(const QString &name,const unsigned int viewers,const Q
 			{"is raiding with",1},
 			{StringConvert::PositiveInteger(viewers),1.5},
 			{"viewers",1}
-		},audioPath,this);
+		},audioPath,this,PANE_PRIORITY_IMMEDIATE);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -174,14 +136,14 @@ void Window::AnnounceCheer(const QString &name,const unsigned int count,const QS
 {
 	try
 	{
-		VideoPane *pane=new VideoPane(videoPath,this);
+		VideoPane *pane=new VideoPane(videoPath,this,PANE_PRIORITY_IMMEDIATE);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
-		StageEphemeralPane(new AnnouncePane({
+		background->StageEphemeral(pane);
+		background->StageEphemeral(new AnnouncePane({
 			{QString("%1 has cheered").arg(name),0.5},
 			{message,1.5},
 			{QString("for %1 bits").arg(StringConvert::Integer(count)),0.5}
-		},this));
+		},this,PANE_PRIORITY_IMMEDIATE));
 	}
 
 	catch (const std::runtime_error &exception)
@@ -196,9 +158,9 @@ void Window::AnnounceTextWall(const QString &message,const QString &audioPath)
 	{
 		AudioAnnouncePane *pane=new AudioAnnouncePane({
 			{message,0.5},
-		},audioPath,this);
+		},audioPath,this,PANE_PRIORITY_DEFAULT-1);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -211,9 +173,9 @@ void Window::AnnounceDeniedCommand(const QString &videoPath)
 {
 	try
 	{
-		VideoPane *pane=new VideoPane(videoPath,this);
+		VideoPane *pane=new VideoPane(videoPath,this,PANE_PRIORITY_IMMEDIATE-1);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -228,17 +190,17 @@ void Window::AnnounceHypeTrainProgress(int level,double progress)
 		{u"Hype Train!"_s,0.5},
 		{u"Level %1"_s.arg(level),2},
 		{u"%1% of the way to level "_s.arg(progress*100,0,'f',2)+StringConvert::Integer(level+1),1}
-	},this);
-	StageEphemeralPane(pane);
+	},this,PANE_PRIORITY_DEFAULT+1);
+	background->StageEphemeral(pane);
 }
 
 void Window::AnnounceAdBreakStarting(const QString& videoPath)
 {
 	try
 	{
-		VideoPane *pane=new VideoPane(videoPath,this);
+		VideoPane *pane=new VideoPane(videoPath,this,PANE_PRIORITY_ROUTINE);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error& exception)
@@ -251,9 +213,9 @@ void Window::AnnounceAdBreakFinished(const QString& videoPath)
 {
 	try
 	{
-		VideoPane *pane=new VideoPane(videoPath,this);
+		VideoPane *pane=new VideoPane(videoPath,this,PANE_PRIORITY_ROUTINE);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error& exception)
@@ -265,7 +227,7 @@ void Window::AnnounceAdBreakFinished(const QString& videoPath)
 void Window::ShowChat()
 {
 	ChatPane *chatPane=new ChatPane(this);
-	SwapPersistentPane(chatPane);
+	background->ReplacePersistent(chatPane)->deleteLater();
 	connect(this,&Window::ChatMessage,chatPane,&ChatPane::Message);
 	connect(this,&Window::DeleteChatMessage,chatPane,&ChatPane::DeleteMessage);
 	connect(this,&Window::RefreshChat,chatPane,&ChatPane::Refresh);
@@ -277,9 +239,9 @@ void Window::PlayVideo(const QString &path,bool chaosMode)
 {
 	try
 	{
-		VideoPane *pane=new VideoPane(path,this);
+		VideoPane *pane=new VideoPane(path,this,PANE_PRIORITY_IMMEDIATE);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane,chaosMode);
+		background->StageEphemeral(pane,chaosMode);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -295,9 +257,9 @@ void Window::PlayAudio(const QString &viewer,const QString &message,const QStrin
 		AudioAnnouncePane *pane=new AudioAnnouncePane({
 			{viewer,1.5},
 			{message,1}
-		},path,this);
+		},path,this,PANE_PRIORITY_IMMEDIATE);
 		connect(pane,&AudioAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -310,10 +272,9 @@ void Window::ShowPortraitVideo(const QString &path)
 {
 	try
 	{
-		VideoPane *pane=new VideoPane(path,this);
+		VideoPane *pane=new VideoPane(path,this,PANE_PRIORITY_INCONSEQUENTIAL);
 		connect(pane,&VideoPane::Print,this,PrintLog::of(&Window::Print));
-		pane->LowerPriority();
-		StageEphemeralPane(pane);
+		background->StageEphemeral(pane);
 	}
 
 	catch (const std::runtime_error &exception)
@@ -338,24 +299,22 @@ void Window::ShowCommandList(std::vector<std::tuple<QString,QStringList,QString>
 	}
 	ScrollingPane *pane=new ScrollingPane(text,this);
 	connect(pane,&ScrollingPane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::ShowCommand(const QString &name,const QString &description)
 {
-	if (!highPriorityEphemeralPanes.empty()) return;
 	AnnouncePane *pane=new AnnouncePane({
 		{u"!"_s+name,1.5},
 		{description,1}
-	},this);
+	},this,PANE_PRIORITY_INCONSEQUENTIAL);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	pane->LowerPriority();
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::ShowPanicText(const QString &text)
 {
-	SwapPersistentPane(new StatusPane(this));
+	background->ReplacePersistent(new StatusPane(this))->deleteLater();
 	emit Print(text);
 }
 
@@ -365,10 +324,10 @@ void Window::Shoutout(const QString &name,const QString &description,std::shared
 		{"Drop a follow on",1},
 		{name,1.5},
 		{description,0.5}
-	},*profileImage,this);
+	},*profileImage,this,PANE_PRIORITY_ROUTINE);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
 	pane->Duration(10000); // TODO: change from hardcoded to configurable duration
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chrono::months months,std::chrono::days days)
@@ -390,9 +349,9 @@ void Window::ShowFollowage(const QString &name,std::chrono::years years,std::chr
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(days.count()),StringConvert::NumberAgreement("day","days",NumberConvert::Positive(days.count()))));
 	}
 	if (!finalLine.isEmpty()) lines.emplace_back(finalLine,years.count() > 0 ? 1 : 1.5);
-	AnnouncePane *pane=new AnnouncePane(lines,this);
+	AnnouncePane *pane=new AnnouncePane(lines,this,PANE_PRIORITY_ROUTINE);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::ShowTimezone(const QString &timezone)
@@ -418,9 +377,9 @@ void Window::ShowUptime(std::chrono::hours hours,std::chrono::minutes minutes,st
 		finalLine.append(QString("%1 %2").arg(StringConvert::Integer(seconds.count()),StringConvert::NumberAgreement("second","seconds",NumberConvert::Positive(seconds.count()))));
 	}
 	if (!finalLine.isEmpty()) lines.emplace_back(finalLine,hours.count() > 0 ? 1 : 1.5);
-	AnnouncePane *pane=new AnnouncePane(lines,this);
+	AnnouncePane *pane=new AnnouncePane(lines,this,PANE_PRIORITY_ROUTINE);
 	connect(pane,&AnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt)
@@ -432,10 +391,9 @@ void Window::ShowCurrentSong(const QString &song,const QString &album,const QStr
 		{artist,0.75},
 		{"from the ablum",0.5},
 		{album,0.75}
-	},coverArt,this);
+	},coverArt,this,PANE_PRIORITY_INCONSEQUENTIAL);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	pane->LowerPriority();
-	StageEphemeralPane(pane);
+	background->StageEphemeral(pane);
 }
 
 void Window::ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt)
@@ -445,111 +403,9 @@ void Window::ShowCurrentSong(const QString &song,const QString &artist,const QIm
 		{song,1.0},
 		{"by",0.5},
 		{artist,0.75}
-	},coverArt,this);
+	},coverArt,this,PANE_PRIORITY_INCONSEQUENTIAL);
 	connect(pane,&ImageAnnouncePane::Print,this,PrintLog::of(&Window::Print));
-	pane->LowerPriority();
-	StageEphemeralPane(pane);
-}
-
-void Window::StageEphemeralPane(EphemeralPane *pane,bool chaosMode)
-{
-	background->layout()->addWidget(pane);
-	livePersistentPane->hide();
-
-	if (chaosMode)
-	{
-		pane->setObjectName(Background::CHAOS_OBJECT_NAME);
-		pane->show(); // the pane's Expired() signal already calls deleteLater() internally
-		return;
-	}
-
-	connect(pane,&EphemeralPane::Expired,this,&Window::ReleaseLiveEphemeralPane);
-	if (pane->HighPriority())
-	{
-		if (highPriorityEphemeralPanes.empty())
-		{
-			if (!lowPriorityEphemeralPanes.empty()) lowPriorityEphemeralPanes.front()->hide();
-			highPriorityEphemeralPanes.push(pane);
-			if (!background->ChaosMode())
-			{
-				pane->show();
-				emit SuppressMusic();
-			}
-		}
-		else
-		{
-			connect(highPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::show);
-			highPriorityEphemeralPanes.push(pane);
-		}
-	}
-	else
-	{
-		if (lowPriorityEphemeralPanes.empty())
-		{
-			if (highPriorityEphemeralPanes.empty() && !background->ChaosMode())
-			{
-				pane->show();
-			}
-		}
-		else
-		{
-			connect(lowPriorityEphemeralPanes.back(),&EphemeralPane::Finished,pane,&EphemeralPane::show);
-		}
-		lowPriorityEphemeralPanes.push(pane);
-	}
-}
-
-void Window::ReleaseLiveEphemeralPane()
-{
-	// determine which queue the pane came from and remove it
-	if (highPriorityEphemeralPanes.empty())
-	{
-		if (lowPriorityEphemeralPanes.empty())
-		{
-			throw std::logic_error("Ran out of ephemeral panes but messages still coming in to remove them"); // FIXME: this is undefined behavior since it's being thrown from a slot
-		}
-		else
-		{
-			lowPriorityEphemeralPanes.pop();
-		}
-	}
-	else
-	{
-		highPriorityEphemeralPanes.pop();
-	}
-
-	// check what's left and return to chat if empty
-	if (highPriorityEphemeralPanes.empty())
-	{
-		if (lowPriorityEphemeralPanes.empty())
-		{
-			if (!background->ChaosMode()) livePersistentPane->show();
-		}
-		else
-		{
-			lowPriorityEphemeralPanes.front()->show();
-		}
-		emit RestoreMusic();
-	}
-}
-
-void Window::EndChaosMode()
-{
-	if (highPriorityEphemeralPanes.empty())
-	{
-		if (lowPriorityEphemeralPanes.empty()) {
-			livePersistentPane->show();
-		}
-		else
-		{
-			lowPriorityEphemeralPanes.front()->show();
-		}
-	}
-	else
-	{
-		highPriorityEphemeralPanes.front()->show();
-		emit SuppressMusic();
-	}
+	background->StageEphemeral(pane);
 }
 
 void Window::Resize(const QSize &dimensions)

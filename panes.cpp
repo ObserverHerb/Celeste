@@ -241,31 +241,145 @@ ApplicationSetting& ChatPane::StatusInterval()
 	return settingStatusInterval;
 }
 
-EphemeralPane::EphemeralPane(QWidget *parent,bool highPriority) : QWidget(parent), expired(false), highPriority(highPriority)
+EphemeralPane::EphemeralPane(QWidget *parent,int priority): QWidget(parent), expired(false), priority(priority)
 {
 	setVisible(false);
 	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::Expire);
 }
 
-void EphemeralPane::LowerPriority()
+bool EphemeralPane::operator<(const EphemeralPane &other) const
 {
-	highPriority=false;
+	return priority < other.priority;
 }
 
-bool EphemeralPane::HighPriority() const
+int EphemeralPane::Priority() const
 {
-	return highPriority;
+	return priority;
 }
 
 void EphemeralPane::Expire()
 {
+	// I think some panes, particularly the ones relying on QMediaPlayer signals
+	// can fire Finished() more than once. This was my workaround for that.
 	if (expired) return;
 	expired=true;
 	emit Expired();
 	deleteLater();
 }
 
-VideoPane::VideoPane(const QString &path,QWidget *parent) noexcept(false) : EphemeralPane(parent), videoPlayer(BuildPlayer(this,1)), viewport(new QVideoWidget(this))
+const int PaneHost::HIGH_PRIORITY_THRESHOLD=50;
+
+PaneHost::PaneHost(const QColor &backgroundColor,QWidget *parent): QWidget(parent), livePane(nullptr), persistentPane(nullptr)
+{
+	auto gridLayout=new QGridLayout(this);
+	gridLayout->setContentsMargins(0,0,0,0);
+
+	setLayout(gridLayout);
+	setStyleSheet(QString("background-color: rgba(%1,%2,%3,%4);").arg(
+		StringConvert::Integer(backgroundColor.red()),
+		StringConvert::Integer(backgroundColor.green()),
+		StringConvert::Integer(backgroundColor.blue()),
+		StringConvert::Integer(backgroundColor.alpha()))
+	);
+}
+
+PersistentPane* PaneHost::ReplacePersistent(PersistentPane *candidate)
+{
+	auto replacedPane=persistentPane;
+	persistentPane=candidate;
+	layout()->addWidget(candidate);
+	connect(this,&PaneHost::Print,candidate,&PersistentPane::Print);
+	return replacedPane;
+}
+
+void PaneHost::StageEphemeral(EphemeralPane *candidate,bool bypassQueue)
+{
+	if (persistentPane) persistentPane->hide();
+	layout()->addWidget(candidate);
+	connect(candidate,&EphemeralPane::Expired,this,&PaneHost::RestorePersistent);
+
+	if (bypassQueue)
+	{
+		// there's is a subtle bug here where the music will stay suppressed until
+		// everything in the host is clear, not just the chaos mode pane, which I'm okay with
+		emit HighPriority();
+		candidate->show();
+		return;
+	}
+
+	connect(candidate,&EphemeralPane::Expired,this,&PaneHost::PresentNextEphemeral);
+	ephemeralPanes.push(candidate);
+	if (livePane)
+	{
+		if (*livePane < *candidate) // interrupt lower priority panes
+		{
+			livePane->hide();
+			ephemeralPanes.push(livePane);
+			livePane=nullptr;
+			PresentNextEphemeral();
+		}
+	}
+	else
+	{
+		PresentNextEphemeral();
+	}
+}
+
+void PaneHost::PresentNextEphemeral()
+{
+	if (ephemeralPanes.empty())
+	{
+		livePane=nullptr;
+		return;
+	}
+
+	livePane=ephemeralPanes.top();
+	ephemeralPanes.pop();
+	livePane->show();
+	if (livePane->Priority() > HIGH_PRIORITY_THRESHOLD)
+	{
+		emit HighPriority();
+	}
+	else
+	{
+		if (!Chaos()) emit LowPriority();
+	}
+}
+
+bool PaneHost::Chaos()
+{
+	return findChildren<EphemeralPane*>().count() > 1;
+}
+
+void PaneHost::Flush()
+{
+	while (!ephemeralPanes.empty())
+	{
+		auto pane=ephemeralPanes.top();
+		ephemeralPanes.pop();
+		disconnect(pane,&EphemeralPane::Expired,this,&PaneHost::PresentNextEphemeral);
+		pane->show();
+	}
+}
+
+void PaneHost::RestorePersistent()
+{
+	if (!ephemeralPanes.empty()) return; // can speed up the check because we know we're not done if panes are waiting in queue
+
+	qsizetype ephemeralPaneCount=0;
+	for (auto child : children())
+	{
+		if (qobject_cast<EphemeralPane*>(child))
+		{
+			if (++ephemeralPaneCount > 1) return;
+		}
+	}
+
+	if (persistentPane) persistentPane->show();
+	emit LowPriority();
+}
+
+VideoPane::VideoPane(const QString &path,QWidget *parent,int priority) noexcept(false): EphemeralPane(parent,priority), videoPlayer(BuildPlayer(this,1)), viewport(new QVideoWidget(this))
 {
 	if (!QFile(path).exists()) throw std::runtime_error(QString{"Video doesn't exist ("+path+")"}.toStdString());
 	videoPlayer->setVideoOutput(viewport);
@@ -332,7 +446,7 @@ QString ScrollingPane::Subsystem()
 
 const QString AnnouncePane::SETTINGS_CATEGORY="AnnouncePane";
 
-AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent) : EphemeralPane(parent),
+AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent,int priority): EphemeralPane(parent,priority),
 	lines(lines),
 	output(new QLabel(this)),
 	settingDuration(SETTINGS_CATEGORY,"Duration",5000),
@@ -359,7 +473,7 @@ AnnouncePane::AnnouncePane(const Lines &lines,QWidget *parent) : EphemeralPane(p
 	connect(this,&AnnouncePane::Resized,this,&AnnouncePane::AdjustText,Qt::QueuedConnection);
 }
 
-AnnouncePane::AnnouncePane(const QString &text,QWidget *parent) : AnnouncePane(Lines{},parent)
+AnnouncePane::AnnouncePane(const QString &text,QWidget *parent,int priority): AnnouncePane(Lines{},parent,priority)
 {
 	SingleLine(text);
 }
@@ -456,7 +570,7 @@ QString AnnouncePane::Subsystem()
 	return u"announce pane"_s;
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent) : AnnouncePane(lines,parent), audioPlayer(BuildPlayer(this,1)), path(path)
+AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent,int priority): AnnouncePane(lines,parent,priority), audioPlayer(BuildPlayer(this,1)), path(path)
 {
 	if (!QFile(path).exists()) throw std::runtime_error(QString{"Audio doesn't exist ("+path+")"}.toStdString());
 	connect(audioPlayer,&QMediaPlayer::playbackStateChanged,this,[this](QMediaPlayer::PlaybackState state) {
@@ -470,7 +584,7 @@ AudioAnnouncePane::AudioAnnouncePane(const Lines &lines,const QString &path,QWid
 	});
 }
 
-AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent) : AudioAnnouncePane(Lines{},path,parent)
+AudioAnnouncePane::AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent,int priority): AudioAnnouncePane(Lines{},path,parent,priority)
 {
 	SingleLine(text);
 }
@@ -505,7 +619,7 @@ QString AudioAnnouncePane::Subsystem()
 	return u"audible announce pane"_s;
 }
 
-ImageAnnouncePane::ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent) : AnnouncePane(lines,parent), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
+ImageAnnouncePane::ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent,int priority): AnnouncePane(lines,parent,priority), view(nullptr), stack(nullptr), shadow(nullptr), image(image), pixmap(nullptr)
 {
 	stack=new QStackedWidget(this);
 	qobject_cast<QStackedLayout*>(stack->layout())->setStackingMode(QStackedLayout::StackAll);
@@ -523,7 +637,7 @@ ImageAnnouncePane::ImageAnnouncePane(const Lines &lines,const QImage &image,QWid
 	output->setGraphicsEffect(shadow);
 }
 
-ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent) : ImageAnnouncePane(Lines{},image,parent)
+ImageAnnouncePane::ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent,int priority): ImageAnnouncePane(Lines{},image,parent,priority)
 {
 	SingleLine(text);
 }
@@ -551,22 +665,22 @@ QString ImageAnnouncePane::Subsystem()
 	return u"visual announcement pane"_s;
 }
 
-MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent) : AnnouncePane(Lines{},parent), imagePane(nullptr)
+MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &path,QWidget *parent,int priority): AnnouncePane(Lines{},parent,priority), imagePane(nullptr)
 {
-	audioPane=new AudioAnnouncePane(Lines{},path,this);
+	audioPane=new AudioAnnouncePane(Lines{},path,this,priority);
 	connect(audioPane,&AudioAnnouncePane::Finished,this,&MultimediaAnnouncePane::Finished);
 	connect(audioPane,&AudioAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
 	connect(imagePane,&ImageAnnouncePane::Print,this,&MultimediaAnnouncePane::Print);
 }
 
-MultimediaAnnouncePane::MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
+MultimediaAnnouncePane::MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent,int priority): MultimediaAnnouncePane(path,parent,priority)
 {
-	imagePane=new ImageAnnouncePane(lines,image,this);
+	imagePane=new ImageAnnouncePane(lines,image,this,priority);
 }
 
-MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent) : MultimediaAnnouncePane(path,parent)
+MultimediaAnnouncePane::MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent,int priority): MultimediaAnnouncePane(path,parent,priority)
 {
-	imagePane=new ImageAnnouncePane(text,image,this);
+	imagePane=new ImageAnnouncePane(text,image,this,priority);
 }
 
 void MultimediaAnnouncePane::Polish()

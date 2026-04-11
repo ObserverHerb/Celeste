@@ -17,6 +17,11 @@
 #include "widgets.h"
 #include "entities.h"
 
+static constexpr int PANE_PRIORITY_IMMEDIATE=std::numeric_limits<int>::max();
+static constexpr int PANE_PRIORITY_DEFAULT=PANE_PRIORITY_IMMEDIATE/2;
+static constexpr int PANE_PRIORITY_ROUTINE=PANE_PRIORITY_DEFAULT/2;
+static constexpr int PANE_PRIORITY_INCONSEQUENTIAL=0;
+
 struct Line
 {
 	QString text;
@@ -24,7 +29,7 @@ struct Line
 };
 using Lines=std::vector<Line>;
 
-class PersistentPane : public QWidget
+class PersistentPane: public QWidget
 {
 	Q_OBJECT
 public:
@@ -56,7 +61,7 @@ public slots:
 	void Print(const QString &text) override;
 };
 
-class ChatPane : public PersistentPane
+class ChatPane: public PersistentPane
 {
 	Q_OBJECT
 public:
@@ -91,16 +96,16 @@ protected slots:
 	void DismissStatus();
 };
 
-class EphemeralPane : public QWidget
+class EphemeralPane: public QWidget
 {
 	Q_OBJECT
 public:
-	EphemeralPane(QWidget *parent,bool highPriority=true);
-	void LowerPriority();
-	bool HighPriority() const;
+	EphemeralPane(QWidget *parent,int priority=PANE_PRIORITY_DEFAULT);
+	bool operator<(const EphemeralPane &other) const;
+	int Priority() const;
 protected:
 	bool expired;
-	bool highPriority;
+	int priority;
 	void Expire();
 	virtual QString Subsystem()=0;
 signals:
@@ -109,11 +114,37 @@ signals:
 	void Print(const QString &message,const QString &operation,const QString &subsystem);
 };
 
-class VideoPane : public EphemeralPane
+class PaneHost: public QWidget
 {
 	Q_OBJECT
 public:
-	VideoPane(const QString &path,QWidget *parent) noexcept(false);
+	PaneHost(const QColor &backgroundColor,QWidget *parent);
+	PersistentPane* ReplacePersistent(PersistentPane *candidate);
+	void StageEphemeral(EphemeralPane *candidate,bool bypassQueue=false);
+	void PresentNextEphemeral();
+protected:
+	EphemeralPane *livePane;
+	PersistentPane *persistentPane;
+	std::priority_queue<EphemeralPane*,std::vector<EphemeralPane*>,decltype([](const EphemeralPane *left,const EphemeralPane *right)->bool {
+		return left->Priority() < right->Priority();
+	})> ephemeralPanes;
+	static const int HIGH_PRIORITY_THRESHOLD;
+	bool Chaos();
+signals:
+	void HighPriority();
+	void LowPriority();
+	void Print(const QString &message);
+public slots:
+	void Flush();
+protected slots:
+	void RestorePersistent();
+};
+
+class VideoPane: public EphemeralPane
+{
+	Q_OBJECT
+public:
+	VideoPane(const QString &path,QWidget *parent,int priority) noexcept(false);
 protected:
 	QMediaPlayer *videoPlayer;
 	QVideoWidget *viewport;
@@ -122,7 +153,7 @@ protected:
 	QString Subsystem() override;
 };
 
-class ScrollingPane : public EphemeralPane
+class ScrollingPane: public EphemeralPane
 {
 	Q_OBJECT
 public:
@@ -137,12 +168,12 @@ protected:
 	QString Subsystem() override;
 };
 
-class AnnouncePane : public EphemeralPane
+class AnnouncePane: public EphemeralPane
 {
 	Q_OBJECT
 public:
-	AnnouncePane(const Lines &lines,QWidget *parent);
-	AnnouncePane(const QString &text,QWidget *parent);
+	AnnouncePane(const Lines &lines,QWidget *parent,int priority);
+	AnnouncePane(const QString &text,QWidget *parent,int priority);
 	void Duration(const int duration) { clock.setInterval(duration); }
 	ApplicationSetting& Font();
 	ApplicationSetting& FontSize();
@@ -175,12 +206,12 @@ protected slots:
 	void AdjustText(int width);
 };
 
-class AudioAnnouncePane : public AnnouncePane
+class AudioAnnouncePane: public AnnouncePane
 {
 	Q_OBJECT
 public:
-	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent);
-	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent);
+	AudioAnnouncePane(const Lines &lines,const QString &path,QWidget *parent,int priority);
+	AudioAnnouncePane(const QString &text,const QString &path,QWidget *parent,int priority);
 protected:
 	QMediaPlayer *audioPlayer;
 	QString path;
@@ -191,12 +222,12 @@ signals:
 	void DurationAvailable(qint64 duration);
 };
 
-class ImageAnnouncePane : public AnnouncePane
+class ImageAnnouncePane: public AnnouncePane
 {
 	Q_OBJECT
 public:
-	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent);
-	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent);
+	ImageAnnouncePane(const Lines &lines,const QImage &image,QWidget *parent,int priority);
+	ImageAnnouncePane(const QString &text,const QImage &image,QWidget *parent,int priority);
 protected:
 	QGraphicsScene *scene;
 	QGraphicsView *view;
@@ -209,14 +240,14 @@ protected:
 	QString Subsystem() override;
 };
 
-class MultimediaAnnouncePane : public AnnouncePane
+class MultimediaAnnouncePane: public AnnouncePane
 {
 	Q_OBJECT
 public:
-	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent);
-	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent);
+	MultimediaAnnouncePane(const Lines &lines,const QImage &image,const QString &path,QWidget *parent,int priority);
+	MultimediaAnnouncePane(const QString &text,const QImage &image,const QString &path,QWidget *parent,int priority);
 protected:
-	MultimediaAnnouncePane(const QString &path,QWidget *parent);
+	MultimediaAnnouncePane(const QString &path,QWidget *parent,int priority);
 	AudioAnnouncePane *audioPane;
 	ImageAnnouncePane *imagePane;
 	void Polish() override;

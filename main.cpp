@@ -69,7 +69,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 		.backgroundColor=chatPane.BackgroundColor(),
 		.statusInterval=chatPane.StatusInterval()
 	},errorReport,configureOptions));
-	AnnouncePane announcePane(QString{},&window);
+	AnnouncePane announcePane(QString{},&window,PANE_PRIORITY_IMMEDIATE);
 	configureOptions->AddCategory(new UI::Options::Categories::Pane({
 		.font=announcePane.Font(),
 		.fontSize=announcePane.FontSize(),
@@ -256,11 +256,11 @@ int main(int argc,char *argv[])
 		celeste.connect(&celeste,&Bot::ShowCommandList,&window,&Window::ShowCommandList);
 		celeste.connect(&celeste,&Bot::ShowFollowage,&window,&Window::ShowFollowage);
 		celeste.connect(&celeste,&Bot::ShowUptime,&window,&Window::ShowUptime);
-		celeste.connect(&celeste,&Bot::ShowTotalTime,&window,&Window::ShowUptime);
 		celeste.connect(&celeste,&Bot::ShowTimezone,&window,&Window::ShowTimezone);
 		celeste.connect(&celeste,&Bot::Shoutout,&window,&Window::Shoutout);
 		celeste.connect(&celeste,&Bot::PlayVideo,&window,&Window::PlayVideo);
 		celeste.connect(&celeste,&Bot::PlayAudio,&window,&Window::PlayAudio);
+		celeste.connect(&celeste,&Bot::FlushMedia,&window,&Window::FlushMedia);
 		celeste.connect(&celeste,&Bot::Pulse,&pulsar,QOverload<const QString&,const QString&>::of(&Pulsar::Pulse));
 		celeste.connect(&celeste,&Bot::Welcomed,&metrics,&UI::Metrics::Dialog::Acknowledged);
 		celeste.connect(&celeste,&Bot::Panic,&window,&Window::ShowPanicText);
@@ -322,8 +322,8 @@ int main(int argc,char *argv[])
 			channel->disconnect(); // stops attempting to reconnect by removing all connections to signals
 			channel->deleteLater();
 		});
-		window.connect(&window,&Window::SuppressMusic,&celeste,&Bot::SuppressMusic);
-		window.connect(&window,&Window::RestoreMusic,&celeste,&Bot::RestoreMusic);
+		window.connect(&window,&Window::HighPriority,&celeste,&Bot::SuppressMusic);
+		window.connect(&window,&Window::LowPriority,&celeste,&Bot::RestoreMusic);
 		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::show);
 		window.connect(&window,&Window::CloseRequested,&window,[channel,&celeste](QCloseEvent *closeEvent) {
 			if (channel->Protection())

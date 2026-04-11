@@ -125,6 +125,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.commandNameStreamTitle{SETTINGS_CATEGORY_COMMANDS,"StreamTitle","title"},
 		.commandNameCommands{SETTINGS_CATEGORY_COMMANDS,"Commands","commands"},
 		.commandNameEmote{SETTINGS_CATEGORY_COMMANDS,"EmoteOnly","emote"},
+		.commandNameFlush{SETTINGS_CATEGORY_COMMANDS,"Flush","flush"},
 		.commandNameFollowage{SETTINGS_CATEGORY_COMMANDS,"Followage","followage"},
 		.commandNameHTML{SETTINGS_CATEGORY_COMMANDS,"HTML","html"},
 		.commandNameLimit{SETTINGS_CATEGORY_COMMANDS,"Limit","limit"},
@@ -134,7 +135,6 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.commandNameSong{SETTINGS_CATEGORY_COMMANDS,"Song","song"},
 		.commandNameTimezone{SETTINGS_CATEGORY_COMMANDS,"Timezone","timezone"},
 		.commandNameUptime{SETTINGS_CATEGORY_COMMANDS,"Uptime","uptime"},
-		.commandNameTotalTime{SETTINGS_CATEGORY_COMMANDS,"TotalTime","totaltime"},
 		.commandNameVibe{SETTINGS_CATEGORY_COMMANDS,"Vibe","vibe"},
 		.commandNameVibeVolume{SETTINGS_CATEGORY_COMMANDS,"VibeVolume","volume"}
 	}
@@ -147,6 +147,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	DeclareCommand({settings.commandNameStreamTitle,"Change the stream title",CommandType::NATIVE,true},NativeCommandFlag::TITLE);
 	DeclareCommand({settings.commandNameCommands,"List all of the commands Celeste recognizes",CommandType::NATIVE,false},NativeCommandFlag::COMMANDS);
 	DeclareCommand({settings.commandNameEmote,"Toggle emote only mode in chat",CommandType::NATIVE,true},NativeCommandFlag::EMOTE);
+	DeclareCommand({settings.commandNameFlush,"Play all of the media in queue",CommandType::NATIVE,true},NativeCommandFlag::FLUSH);
 	DeclareCommand({settings.commandNameFollowage,"Show how long a user has followed the broadcaster",CommandType::NATIVE,false},NativeCommandFlag::FOLLOWAGE);
 	DeclareCommand({settings.commandNameHTML,"Format the chat message as HTML",CommandType::NATIVE,false},NativeCommandFlag::HTML);
 	DeclareCommand({settings.commandNameLimit,"Limit frequency of viewer's commands with a cooldown",CommandType::NATIVE,true},NativeCommandFlag::LIMIT);
@@ -156,7 +157,6 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	DeclareCommand({settings.commandNameSong,"Show the title, album, and artist of the song that is currently playing",CommandType::NATIVE,false},NativeCommandFlag::SONG);
 	DeclareCommand({settings.commandNameTimezone,"Display the timezone of the system the bot is running on",CommandType::NATIVE,false},NativeCommandFlag::TIMEZONE);
 	DeclareCommand({settings.commandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
-	DeclareCommand({settings.commandNameTotalTime,"Show how many total hours stream has ever been live",CommandType::NATIVE,false},NativeCommandFlag::TOTAL_TIME);
 	DeclareCommand({settings.commandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
 	DeclareCommand({settings.commandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
 	LoadViewerAttributes();
@@ -1288,6 +1288,9 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 			case NativeCommandFlag::EMOTE:
 				ToggleEmoteOnly();
 				break;
+			case NativeCommandFlag::FLUSH:
+				emit FlushMedia();
+				break;
 			case NativeCommandFlag::FOLLOWAGE:
 				DispatchFollowage(viewer);
 				break;
@@ -1321,11 +1324,8 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 			case NativeCommandFlag::TITLE:
 				StreamTitle(command.Message());
 				break;
-			case NativeCommandFlag::TOTAL_TIME:
-				DispatchUptime(true);
-				break;
 			case NativeCommandFlag::UPTIME:
-				DispatchUptime(false);
+				DispatchUptime();
 				break;
 			case NativeCommandFlag::VIBE:
 				ToggleVibeKeeper();
@@ -1472,9 +1472,9 @@ void Bot::DispatchShoutout(const QString &streamer)
 	connect(profile,&Viewer::Remote::Print,this,&Bot::Print);
 }
 
-void Bot::DispatchUptime(bool total)
+void Bot::DispatchUptime()
 {
-	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_STREAM_INFORMATION)},Network::Method::GET,[this,total](QNetworkReply *reply) {
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_STREAM_INFORMATION)},Network::Method::GET,[this](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
 		case 400:
@@ -1523,14 +1523,10 @@ void Bot::DispatchUptime(bool total)
 
 		const QDateTime start=QDateTime::fromString(jsonFieldStartDate->toString(),Qt::ISODate);
 		std::chrono::milliseconds duration=static_cast<std::chrono::milliseconds>(start.msecsTo(QDateTime::currentDateTimeUtc()));
-		if (total) duration+=std::chrono::minutes(static_cast<qint64>(settings.uptimeHistory));
 		std::chrono::hours hours=std::chrono::duration_cast<std::chrono::hours>(duration);
 		std::chrono::minutes minutes=std::chrono::duration_cast<std::chrono::minutes>(duration-hours);
 		std::chrono::seconds seconds=std::chrono::duration_cast<std::chrono::seconds>(duration-hours-minutes);
-		if (total)
-			emit ShowTotalTime(hours,minutes,seconds);
-		else
-			emit ShowUptime(hours,minutes,seconds);
+		emit ShowUptime(hours,minutes,seconds);
 	},{
 		{"user_login",security.Administrator()}
 	},{
@@ -1913,8 +1909,14 @@ void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,co
 void Bot::EnableChaosMode()
 {
 	chaosModeClock.start();
-	emit PlayVideo(settings.chaosModeVideo,false);
-	emit Print("!! CHAOS !! MODE !! ENABLED !!");
+	if (settings.chaosModeVideo)
+	{
+		emit PlayVideo(settings.chaosModeVideo,true);
+	}
+	else
+	{
+		emit Print("!! CHAOS !! MODE !! ENABLED !!");
+	}
 }
 
 std::optional<CommandType> Bot::ValidCommandType(const QString &type)
