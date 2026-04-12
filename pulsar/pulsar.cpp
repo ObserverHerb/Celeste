@@ -218,7 +218,7 @@ bool obs_module_load()
 	dock->setWidget(container);
 	dock->setObjectName("celeste_pulsar_controls");
 	window->addDockWidget(Qt::BottomDockWidgetArea,dock);
-	obs_frontend_add_dock(dock);
+	obs_frontend_add_dock_by_id("engineering_deck_pulsar","Pulsar",dock);
 
 	Log("Loaded");
 	return true;

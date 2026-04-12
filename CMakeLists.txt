@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(Celeste LANGUAGES CXX VERSION 3.00)
+project(Celeste LANGUAGES CXX VERSION 4.00)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -92,8 +92,7 @@ if(WITH_PULSAR)
 			execute_process(COMMAND cmake --build --preset windows-x64 WORKING_DIRECTORY ${OBS_SOURCE_DIR})
 		endif()
 
-		include_directories(${OBS_SOURCE_DIR}/libobs)
-		include_directories(${OBS_SOURCE_DIR}/UI/obs-frontend-api/)
+		include_directories(${OBS_SOURCE_DIR}/libobs ${OBS_LIB_DIR}/config ${OBS_SOURCE_DIR}/frontend/api/)
 		target_include_directories(Pulsar SYSTEM PRIVATE ${OBS_INCLUDE_DIR}/obs)
 
 		find_library(LIBOBS_LIBRARY obs
@@ -106,10 +105,10 @@ if(WITH_PULSAR)
 
 		find_library(OBS_FRONTEND_LIBRARY obs-frontend-api
 			${OBS_LIB_DIR}
-			${OBS_LIB_DIR}/UI/obs-frontend-api/
-			${OBS_LIB_DIR}/UI/obs-frontend-api/RelWithDebInfo/
-			${OBS_LIB_DIR}/UI/obs-frontend-api/Release/
-			${OBS_LIB_DIR}/UI/obs-frontend-api/*/
+			${OBS_LIB_DIR}/frontend/api/
+			${OBS_LIB_DIR}/frontend/api/RelWithDebInfo/
+			${OBS_LIB_DIR}/frontend/api/Release/
+			${OBS_LIB_DIR}/frontend/api/*/
 		)
 	else()
 		find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
