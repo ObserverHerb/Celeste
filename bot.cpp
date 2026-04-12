@@ -1816,12 +1816,12 @@ void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,co
 			{
 				noteLetter=*noteCursor;
 
-				if (noteLetter == '#' || noteLetter == L'♯')
+				if (noteLetter == '#' || noteLetter == u'♯')
 				{
 					accidentalOffset+=1; // add a semitone for sharp
 					noteCursor++;
 				}
-				if (noteLetter == 'b' || noteLetter == L'♭')
+				if (noteLetter == 'b' || noteLetter == u'♭')
 				{
 					accidentalOffset-=1; // reduce by a semitone for flat
 					noteCursor++;
