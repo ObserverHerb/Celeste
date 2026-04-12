@@ -624,7 +624,7 @@ namespace UI
 		{
 			widget->setText(u"Protect"_s);
 			widget->setChecked(protect);
-			connect(widget,&QCheckBox::stateChanged,this,&Entry::UpdateProtect);
+			connect(widget,&QCheckBox::checkStateChanged,this,&Entry::UpdateProtect);
 			widget->installEventFilter(this);
 			detailsLayout.addWidget(widget,0,3);
 		}
@@ -633,8 +633,8 @@ namespace UI
 		{
 			widget->setChecked(random);
 			widget->setText(u"Random"_s);
-			connect(widget,&QCheckBox::stateChanged,this,&Entry::RandomChanged);
-			connect(widget,&QCheckBox::stateChanged,this,&Entry::UpdateRandom);
+			connect(widget,&QCheckBox::checkStateChanged,this,&Entry::RandomChanged);
+			connect(widget,&QCheckBox::checkStateChanged,this,&Entry::UpdateRandom);
 			widget->installEventFilter(this);
 			detailsLayout.addWidget(widget,3,2,1,1);
 		}
@@ -644,7 +644,7 @@ namespace UI
 			widget->setChecked(duplicates);
 			widget->setEnabled(random);
 			widget->setText(u"Duplicates"_s);
-			connect(widget,&QCheckBox::stateChanged,this,&Entry::UpdateDuplicates);
+			connect(widget,&QCheckBox::checkStateChanged,this,&Entry::UpdateDuplicates);
 			widget->installEventFilter(this);
 			detailsLayout.addWidget(widget,3,3,1,1);
 		}
