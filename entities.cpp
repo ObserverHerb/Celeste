@@ -60,7 +60,7 @@ namespace File
 
 	List::List(const QStringList &list): currentIndex(0)
 	{
-		auto &defaultList=BuildDefaultList();
+		BuildDefaultList();
 		SelectedFiles()=list;
 		Shuffle();
 	}
