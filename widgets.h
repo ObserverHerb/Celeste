@@ -97,37 +97,37 @@ namespace UI
 	QString OpenVideo(QWidget *parent,QString initialPath=QString());
 	QString OpenAudio(QWidget *parent,QString initialPath=QString());
 
-	template <typename T> concept IsWidget=requires { std::convertible_to<T*,QWidget*>; };
+	template <typename T> concept IsWidget=requires { requires std::convertible_to<T*,QWidget*>; };
 
 	template <typename T> concept WidgetHasViewport=requires (T member)
 	{
-		IsWidget<T>;
+		requires IsWidget<T>;
 		{ member.viewport() }->std::same_as<QWidget*>;
 	};
 
 	template <typename T> concept WidgetIsBool=requires(T member,bool checked)
 	{
-		IsWidget<T>;
+		requires IsWidget<T>;
 		{ member.setChecked(checked) }->std::same_as<void>;
 	};
 
 	template <typename T> concept WidgetIsText=requires(T member,const QString &text)
 	{
-		IsWidget<T>;
+		requires IsWidget<T>;
 		requires !WidgetIsBool<T>;
 		{ member.setText(text) }->std::same_as<void>;
 	};
 
 	template <typename T> concept WidgetIsRichText=requires(T member,const QString &text)
 	{
-		IsWidget<T>;
+		requires IsWidget<T>;
 		requires !WidgetIsBool<T>;
 		{ member.setPlainText(text) }->std::same_as<void>;
 	};
 
 	template <typename T> concept WidgetIsList=requires(T member,int index)
 	{
-		IsWidget<T>;
+		requires IsWidget<T>;
 		{ member.setCurrentIndex(index) }->std::same_as<void>;
 	};
 
