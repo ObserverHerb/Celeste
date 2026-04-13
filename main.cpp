@@ -313,7 +313,7 @@ int main(int argc,char *argv[])
 				MessageBox(u"EventSub Rate Limit"_s,u"The maximum number of subscription requests has been hit. EventSub functionality may be limited."_s,QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
 			eventSub->connect(eventSub,&EventSub::Connected,eventSub,QOverload<>::of(&EventSub::Subscribe),Qt::QueuedConnection);
-			window.connect(&window,&Window::ConfigureEventSubscriptions,&window,[&window,eventSub]() {
+			window.connect(&window,&Window::ConfigureEventSubscriptions,eventSub,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
 			});
 			celeste.connect(&celeste,&Bot::Panic,eventSub,&EventSub::deleteLater,Qt::QueuedConnection);
