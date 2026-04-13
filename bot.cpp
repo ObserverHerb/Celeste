@@ -989,8 +989,7 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		if (command)
 		{
 			chatMessage.text=window->toString().trimmed();
-			DispatchCommandViaChatMessage(*command,chatMessage,login.toString());
-			return;
+			if (DispatchCommandViaChatMessage(*command,chatMessage,login.toString())) return;
 		}
 
 		if (!chatMessage.broadcaster) DispatchArrival(login.toString());
