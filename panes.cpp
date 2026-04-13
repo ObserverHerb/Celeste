@@ -243,7 +243,6 @@ ApplicationSetting& ChatPane::StatusInterval()
 
 EphemeralPane::EphemeralPane(QWidget *parent,int priority): QWidget(parent), expired(false), priority(priority)
 {
-	setVisible(false);
 	connect(this,&EphemeralPane::Finished,this,&EphemeralPane::Expire);
 }
 
@@ -278,6 +277,12 @@ void EphemeralPane::hideEvent(QHideEvent *event)
 {
 	if (!expired) Interrupt();
 	QWidget::hideEvent(event);
+}
+
+bool EphemeralPane::event(QEvent *event)
+{
+	if (event->type() == QEvent::Polish) setVisible(false);
+	return QWidget::event(event);
 }
 
 const int PaneHost::HIGH_PRIORITY_THRESHOLD=50;
@@ -577,7 +582,7 @@ void AnnouncePane::SingleLine(const QString &text)
 bool AnnouncePane::event(QEvent *event)
 {
 	if (event->type() == QEvent::Polish) Polish();
-	return QWidget::event(event);
+	return EphemeralPane::event(event);
 }
 
 void AnnouncePane::showEvent(QShowEvent *event)

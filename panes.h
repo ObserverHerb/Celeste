@@ -111,6 +111,7 @@ protected:
 	virtual void Interrupt()=0;
 	virtual void showEvent(QShowEvent *event) override;
 	virtual void hideEvent(QHideEvent *event) override;
+	bool event(QEvent *event) override;
 signals:
 	void Presented();
 	void Finished();
