@@ -381,7 +381,7 @@ bool PaneHost::Chaos()
 		auto pane=qobject_cast<EphemeralPane*>(child);
 		if (pane && pane->isVisible())
 		{
-			if (++ephemeralPaneCount > 1) true;
+			if (++ephemeralPaneCount > 1) return true;
 		}
 	}
 	return false;
