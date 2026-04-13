@@ -49,7 +49,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 {
 	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
 	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Channel(channel->Settings(),errorReport,configureOptions));
+	UI::Options::Categories::Channel *optionsCategoryChannel=new UI::Options::Categories::Channel(channel->Settings(),errorReport,configureOptions);
+	configureOptions->AddCategory(optionsCategoryChannel);
 	configureOptions->AddCategory(new UI::Options::Categories::Window({
 		.backgroundColor=window.BackgroundColor(),
 		.dimensions=window.Dimensions()
@@ -89,6 +90,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 	},errorReport,configureOptions));
 	configureOptions->AddCategory(new UI::Options::Categories::Security(security,errorReport,configureOptions));
 
+	configureOptions->connect(optionsCategoryChannel,&UI::Options::Categories::Channel::Changed,channel,&Channel::Disconnect);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,std::shared_ptr<QImage>,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayPortraitVideo),&window,&Window::ShowPortraitVideo);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const QString&>::of(&UI::Options::Categories::Bot::PlayTextWallSound),&window,&Window::AnnounceTextWall);
@@ -283,10 +285,13 @@ int main(int argc,char *argv[])
 			pulsar.connect(&pulsar,&Pulsar::Print,&window,QOverload<const QString&>::of(&Window::Print));
 			window.ShowChat();
 		});
-		channel->connect(channel,&Channel::Disconnected,&window,[channel,&window]() {
-			qApp->alert(&window);
-			qApp->beep();
-			if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
+		channel->connect(channel,&Channel::Disconnected,&window,[channel,&window](bool intended) {
+			if (!intended)
+			{
+				qApp->alert(&window);
+				qApp->beep();
+				if (MessageBox(u"Connection Failed"_s,u"Failed to connect to Twitch. Would you like to try again?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::No) return;
+			}
 			channel->Connect();
 		});
 		channel->connect(channel,&Channel::Connected,channel,[&security,&window,&celeste,&log,&application,eventSub]() mutable {

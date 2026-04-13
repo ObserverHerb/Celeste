@@ -38,14 +38,13 @@ public:
 	Channel(Security &security,QObject *parent=nullptr) : Channel(security,nullptr,parent) { }
 	Channel(Security &security,IRCSocket *socket,QObject *parent=nullptr);
 	~Channel();
-	void Connect();
-	void Disconnect();
 	bool Protection();
 	Settings::Channel& Settings();
 protected:
 	Security &security;
 	Settings::Channel settings;
 	IRCSocket *ircSocket;
+	bool healthy;
 	void ParseMessage(const QString message);
 	void DispatchMessage(QString prefix,QString source,QString command,QStringList parameters,QString finalParamter);
 	void SendMessage(QString prefix,QString command,QStringList parameters,QString finalParamter);
@@ -63,13 +62,16 @@ signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("channel"));
 	void Dispatch(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void Connected();
-	void Disconnected();
+	void Disconnected(bool intended);
 	void Denied();
 	void Joined();
 	void Joined(const QString &user);
 	void Parted(const QString &user);
 	void Deleted(const QString &prefix);
 	void Ping(const QString &token);
+public slots:
+	void Connect();
+	void Disconnect();
 protected slots:
 	void DataAvailable();
 	void SocketError(QAbstractSocket::SocketError error);

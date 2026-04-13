@@ -81,7 +81,8 @@ Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject
 		.name{SETTINGS_CATEGORY_CHANNEL,"Name",security.Administrator().Value()},
 		.protect{SETTINGS_CATEGORY_CHANNEL,"Protect",false}
 	},
-	ircSocket(socket)
+	ircSocket(socket),
+	healthy(true)
 {
 	if (!ircSocket) ircSocket=new IRCSocket(this);
 	connect(ircSocket,&IRCSocket::connected,this,[this]() {
@@ -89,8 +90,11 @@ Channel::Channel(Security &security,IRCSocket *socket,QObject *parent) : QObject
 		Authenticate();
 	});
 	connect(ircSocket,&IRCSocket::disconnected,this,[this]() {
-		emit Disconnected();
+		emit Disconnected(healthy);
 		emit Print("Disconnected",OPERATION_CONNECTION);
+	});
+	connect(ircSocket,&IRCSocket::errorOccurred,this,[this]() {
+		healthy=false;
 	});
 	connect(ircSocket,&IRCSocket::readyRead,this,&Channel::DataAvailable);
 	connect(ircSocket,&IRCSocket::errorOccurred,this,&Channel::SocketError);
@@ -289,6 +293,7 @@ void Channel::ParseUserNotice(const QString &prefix,const QString &message)
 
 void Channel::Connect()
 {
+	healthy=true;
 	QMetaObject::invokeMethod(ircSocket,[this]() {
 		// trigger using event loop so the socket operation doesn't freeze the UI
 		ircSocket->connectToHost(TWITCH_HOST,TWITCH_PORT);

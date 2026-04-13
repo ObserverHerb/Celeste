@@ -1249,12 +1249,16 @@ namespace UI
 
 			void Channel::Save()
 			{
+				bool changed=settings.name != name.text();
+
 				settings.name.Set(name.text());
 				settings.protect.Set(protection.isChecked());
 
 				// only need to do this on one of the settings for all of the categories, because it
 				// is all the same QSettings object under the hood, so it's saving all of the settings
 				settings.name.Save();
+
+				if (changed) emit Changed();
 			}
 
 			Window::Window(Settings settings,QWidget *parent) : Category(parent,QStringLiteral("Main Window")),

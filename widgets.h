@@ -473,6 +473,8 @@ namespace UI
 				Settings::Channel &settings;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
+			signals:
+				void Changed();
 			protected slots:
 				void ValidateName(const QString &text);
 			};
