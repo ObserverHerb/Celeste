@@ -612,6 +612,9 @@ void Bot::RequestAdSchedule()
 	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_AD_SCHEDULE)},Network::Method::GET,[this](QNetworkReply *reply) {
 		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
 		{
+		case 204:
+			emit Print(u"Broadcaster is not live"_s,TWITCH_API_OPERATION_AD_SCHEDULE); // broadcaster is not live (according to reality)
+			return;
 		case 400:
 			emit Print(u"Broadcaster ID is invalid"_s,TWITCH_API_OPERATION_AD_SCHEDULE);
 			return;
@@ -656,7 +659,7 @@ void Bot::RequestAdSchedule()
 			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_AD_SCHEDULE));
 			return;
 		}
-		if (jsonNextAdTime->toString().isEmpty()) return; // broadcaster is not live
+		if (jsonNextAdTime->isNull()) return; // broadcaster is not live (according to the docs, which are wrong)
 
 		if (adStartingClock.isActive())
 		{
