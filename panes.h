@@ -108,7 +108,11 @@ protected:
 	int priority;
 	void Expire();
 	virtual QString Subsystem()=0;
+	virtual void Interrupt()=0;
+	virtual void showEvent(QShowEvent *event) override;
+	virtual void hideEvent(QHideEvent *event) override;
 signals:
+	void Presented();
 	void Finished();
 	void Expired();
 	void Print(const QString &message,const QString &operation,const QString &subsystem);
@@ -137,7 +141,8 @@ signals:
 public slots:
 	void Flush();
 protected slots:
-	void RestorePersistent();
+	void RestoreOrder();
+	void ReflowLayout();
 };
 
 class VideoPane: public EphemeralPane
@@ -149,7 +154,7 @@ protected:
 	QMediaPlayer *videoPlayer;
 	QVideoWidget *viewport;
 	void showEvent(QShowEvent *event) override;
-	void hideEvent(QHideEvent *event) override;
+	void Interrupt() override;
 	QString Subsystem() override;
 };
 
@@ -166,6 +171,7 @@ protected:
 	ApplicationSetting settingBackgroundColor;
 	static const QString SETTINGS_CATEGORY;
 	QString Subsystem() override;
+	void Interrupt() override { } // pausing happens in the ScrollingTextEdit
 };
 
 class AnnouncePane: public EphemeralPane
@@ -197,7 +203,7 @@ protected:
 	void SingleLine(const QString &text);
 	bool event(QEvent *event) override;
 	void showEvent(QShowEvent *event) override;
-	void hideEvent(QHideEvent *event) override;
+	void Interrupt() override;
 	void resizeEvent(QResizeEvent *event) override;
 	QString Subsystem() override;
 signals:
@@ -216,7 +222,7 @@ protected:
 	QMediaPlayer *audioPlayer;
 	QString path;
 	void showEvent(QShowEvent *event) override;
-	void hideEvent(QHideEvent *event) override;
+	void Interrupt() override;
 	QString Subsystem() override;
 signals:
 	void DurationAvailable(qint64 duration);
@@ -236,6 +242,7 @@ protected:
 	QImage image;
 	QGraphicsPixmapItem *pixmap;
 	void Polish() override;
+	void Interrupt() override { };
 	void resizeEvent(QResizeEvent *event) override;
 	QString Subsystem() override;
 };
@@ -251,7 +258,7 @@ protected:
 	AudioAnnouncePane *audioPane;
 	ImageAnnouncePane *imagePane;
 	void Polish() override;
+	void Interrupt() override;
 	void showEvent(QShowEvent *event) override;
-	void hideEvent(QHideEvent *event) override;
 	QString Subsystem() override;
 };

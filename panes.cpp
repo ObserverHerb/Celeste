@@ -263,8 +263,21 @@ void EphemeralPane::Expire()
 	// can fire Finished() more than once. This was my workaround for that.
 	if (expired) return;
 	expired=true;
+	hide(); // so as not to confuse layout counts in the pane host
 	emit Expired();
 	deleteLater();
+}
+
+void EphemeralPane::showEvent(QShowEvent *event)
+{
+	emit Presented();
+	QWidget::showEvent(event);
+}
+
+void EphemeralPane::hideEvent(QHideEvent *event)
+{
+	if (!expired) Interrupt();
+	QWidget::hideEvent(event);
 }
 
 const int PaneHost::HIGH_PRIORITY_THRESHOLD=50;
@@ -296,10 +309,18 @@ void PaneHost::StageEphemeral(EphemeralPane *candidate,bool bypassQueue)
 {
 	if (persistentPane) persistentPane->hide();
 	layout()->addWidget(candidate);
-	connect(candidate,&EphemeralPane::Expired,this,&PaneHost::RestorePersistent);
+	connect(candidate,&EphemeralPane::Expired,this,&PaneHost::RestoreOrder);
+	connect(candidate,&EphemeralPane::Expired,this,&PaneHost::ReflowLayout);
+	connect(candidate,&EphemeralPane::Presented,this,&PaneHost::ReflowLayout);
 
 	if (bypassQueue)
 	{
+		if (livePane && livePane->Priority() < HIGH_PRIORITY_THRESHOLD)
+		{
+			livePane->hide();
+			ephemeralPanes.push(livePane);
+			livePane=nullptr;
+		}
 		// there's is a subtle bug here where the music will stay suppressed until
 		// everything in the host is clear, not just the chaos mode pane, which I'm okay with
 		emit HighPriority();
@@ -309,6 +330,7 @@ void PaneHost::StageEphemeral(EphemeralPane *candidate,bool bypassQueue)
 
 	connect(candidate,&EphemeralPane::Expired,this,&PaneHost::PresentNextEphemeral);
 	ephemeralPanes.push(candidate);
+	if (Chaos()) return;
 	if (livePane)
 	{
 		if (*livePane < *candidate) // interrupt lower priority panes
@@ -348,7 +370,16 @@ void PaneHost::PresentNextEphemeral()
 
 bool PaneHost::Chaos()
 {
-	return findChildren<EphemeralPane*>().count() > 1;
+	int ephemeralPaneCount=0;
+	for (const auto &child : children())
+	{
+		auto pane=qobject_cast<EphemeralPane*>(child);
+		if (pane && pane->isVisible())
+		{
+			if (++ephemeralPaneCount > 1) true;
+		}
+	}
+	return false;
 }
 
 void PaneHost::Flush()
@@ -362,21 +393,82 @@ void PaneHost::Flush()
 	}
 }
 
-void PaneHost::RestorePersistent()
+void PaneHost::RestoreOrder()
 {
-	if (!ephemeralPanes.empty()) return; // can speed up the check because we know we're not done if panes are waiting in queue
-
-	qsizetype ephemeralPaneCount=0;
-	for (auto child : children())
+	if (ephemeralPanes.empty())
 	{
-		if (qobject_cast<EphemeralPane*>(child))
+		int ephemeralPaneCount=0;
+		for (const auto &child : children())
 		{
-			if (++ephemeralPaneCount > 1) return;
+			if (qobject_cast<EphemeralPane*>(child))
+			{
+				if (++ephemeralPaneCount > 1) return;
+			}
 		}
+
+		if (persistentPane) persistentPane->show();
+		emit LowPriority();
+	}
+	else
+	{
+		PresentNextEphemeral();
 	}
 
-	if (persistentPane) persistentPane->show();
-	emit LowPriority();
+}
+
+void PaneHost::ReflowLayout()
+{
+	// count how many total visible panes we have
+	int visiblePaneCount=0;
+	for (const auto &child : children())
+	{
+		if (auto pane=qobject_cast<EphemeralPane*>(child); pane && pane->isVisible()) visiblePaneCount++;
+	}
+	if (visiblePaneCount < 4) return;
+
+	// determine how many rows and columns we need to make a square of them
+	int paneCountSquareRoot=static_cast<int>(std::sqrt(visiblePaneCount));
+	if (paneCountSquareRoot*paneCountSquareRoot == visiblePaneCount && layout()->count() >= visiblePaneCount)
+	{
+		auto candidateLayout=new QGridLayout();
+		std::vector<QWidget*> visibleEphemeralPanes;
+		visibleEphemeralPanes.reserve(visiblePaneCount);
+		std::vector<QWidget*> inactivePanes;
+		inactivePanes.reserve(layout()->count()-visiblePaneCount);
+
+		// remove panes from old layout
+		QLayoutItem *candidateLayoutItem;
+		while ((candidateLayoutItem=layout()->takeAt(0)) != nullptr)
+		{
+			auto widget=candidateLayoutItem->widget();
+			if (auto pane=qobject_cast<EphemeralPane*>(widget); pane && pane->isVisible())
+			{
+				visibleEphemeralPanes.push_back(widget);
+			}
+			else
+			{
+				inactivePanes.push_back(widget);
+			}
+			delete candidateLayoutItem;
+		}
+
+		// add visible panes to the new layout in the correct row and column
+		for (int y=0; y < paneCountSquareRoot; y++)
+		{
+			for (int x=0; x < paneCountSquareRoot; x++)
+			{
+				int subscript=y*paneCountSquareRoot+x;
+				candidateLayout->addWidget(visibleEphemeralPanes.at(subscript),x,y);
+			}
+		}
+
+		// add the remaining inactive panes to the new layout in a generic position
+		for (auto pane : inactivePanes) candidateLayout->addWidget(pane,0,0);
+
+		// replace the old layout with the new one
+		delete layout();
+		setLayout(candidateLayout);
+	}
 }
 
 VideoPane::VideoPane(const QString &path,QWidget *parent,int priority) noexcept(false): EphemeralPane(parent,priority), videoPlayer(BuildPlayer(this,1)), viewport(new QVideoWidget(this))
@@ -396,13 +488,12 @@ VideoPane::VideoPane(const QString &path,QWidget *parent,int priority) noexcept(
 void VideoPane::showEvent(QShowEvent *event)
 {
 	videoPlayer->play();
-	QWidget::showEvent(event);
+	EphemeralPane::showEvent(event);
 }
 
-void VideoPane::hideEvent(QHideEvent *event)
+void VideoPane::Interrupt()
 {
 	videoPlayer->pause();
-	QWidget::hideEvent(event);
 }
 
 QString VideoPane::Subsystem()
@@ -493,13 +584,12 @@ void AnnouncePane::showEvent(QShowEvent *event)
 {
 	clock.setInterval(static_cast<std::chrono::milliseconds>(settingDuration).count());
 	clock.start();
-	QWidget::showEvent(event);
+	EphemeralPane::showEvent(event);
 }
 
-void AnnouncePane::hideEvent(QHideEvent *event)
+void AnnouncePane::Interrupt()
 {
 	clock.stop();
-	QWidget::hideEvent(event);
 }
 
 void AnnouncePane::resizeEvent(QResizeEvent *event)
@@ -595,7 +685,7 @@ void AudioAnnouncePane::showEvent(QShowEvent *event)
 		if (status == QMediaPlayer::LoadedMedia)
 		{
 			audioPlayer->play();
-			QWidget::showEvent(event);
+			EphemeralPane::showEvent(event);
 			return;
 		}
 		if (status == QMediaPlayer::InvalidMedia)
@@ -608,10 +698,9 @@ void AudioAnnouncePane::showEvent(QShowEvent *event)
 	audioPlayer->setSource(QUrl::fromLocalFile(path));
 }
 
-void AudioAnnouncePane::hideEvent(QHideEvent *event)
+void AudioAnnouncePane::Interrupt()
 {
 	audioPlayer->pause();
-	QWidget::hideEvent(event);
 }
 
 QString AudioAnnouncePane::Subsystem()
@@ -688,18 +777,17 @@ void MultimediaAnnouncePane::Polish()
 	layout()->addWidget(imagePane);
 }
 
+void MultimediaAnnouncePane::Interrupt()
+{
+	audioPane->hide();
+	imagePane->hide();
+}
+
 void MultimediaAnnouncePane::showEvent(QShowEvent *event)
 {
 	audioPane->show();
 	imagePane->show();
-	QWidget::showEvent(event); // don't call AnnouncePane's show event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
-}
-
-void MultimediaAnnouncePane::hideEvent(QHideEvent *event)
-{
-	audioPane->hide();
-	imagePane->hide();
-	QWidget::hideEvent(event);  // don't call AnnouncePane's hide event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
+	EphemeralPane::showEvent(event); // don't call AnnouncePane's show event because that will make it do AnnouncePane things which will conflict with the AudioAnnouncePane's timing
 }
 
 QString MultimediaAnnouncePane::Subsystem()
