@@ -246,8 +246,8 @@ namespace Music
 		if (duck)
 		{
 			if (volumeAdjustment.state() == QAbstractAnimation::Running) volumeAdjustment.pause();
-			if (NumberConvert::Denormalize(player.audioOutput()->volume()) < static_cast<int>(settingSuppressedVolume)) return;
 			volumeAdjustment.setStartValue(player.audioOutput()->volume());
+			if (NumberConvert::Denormalize(player.audioOutput()->volume()) < static_cast<int>(settingSuppressedVolume)) return;
 			player.audioOutput()->setVolume(NumberConvert::Normalize(static_cast<int>(settingSuppressedVolume)));
 		}
 		else
