@@ -79,9 +79,6 @@ const Bot::CommandTypeLookup Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_PULSAR,CommandType::PULSAR}
 };
 
-using StringViewLookup=std::unordered_map<QStringView,QStringView>;
-using StringViewTakeResult=std::optional<QStringView>;
-
 Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
@@ -903,14 +900,14 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 
 		// parse tags
 		window=prefix;
-		StringViewLookup tags;
+		std::unordered_map<QStringView,QStringView> tags;
 		while (!window->isEmpty())
 		{
-			StringViewTakeResult pair=StringView::Take(*window,';');
+			auto pair=StringView::Take(*window,';');
 			if (!pair) continue; // skip malformated badges rather than making a visible fuss
-			StringViewTakeResult key=StringView::Take(*pair,'=');
+			auto key=StringView::Take(*pair,'=');
 			if (!key) continue; // same as above
-			StringViewTakeResult value=StringView::Last(*pair,'=');
+			auto value=StringView::Last(*pair,'=');
 			if (!value) continue; // I'll rely on "missing" to represent an empty value
 			tags.try_emplace(*key,*value);
 		}
@@ -925,18 +922,18 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 		// badges
 		if (auto tagBadges=tags.find(CHAT_TAG_BADGES); tagBadges != tags.end())
 		{
-			StringViewLookup badges;
+			std::unordered_map<QStringView,QStringView> badges;
 			QStringView &versions=tagBadges->second;
 			while (!versions.isEmpty())
 			{
-				StringViewTakeResult pair=StringView::Take(versions,',');
+				auto pair=StringView::Take(versions,',');
 				if (!pair) continue;
-				StringViewTakeResult name=StringView::Take(*pair,'/');
+				auto name=StringView::Take(*pair,'/');
 				if (!name) continue;
-				StringViewTakeResult version=StringView::Last(*pair,'/');
+				auto version=StringView::Last(*pair,'/');
 				if (!version) continue; // a badge must have a version
 				badges.insert({*name,*version});
-				std::optional<QString> badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
+				auto badgeIconPath=DownloadBadgeIcon(name->toString(),version->toString());
 				if (!badgeIconPath) continue;
 				chatMessage.badges.append(*badgeIconPath);
 			}
@@ -950,15 +947,15 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 			QStringView &entries=tagEmotes->second;
 			while (!entries.isEmpty())
 			{
-				StringViewTakeResult entry=StringView::Take(entries,'/');
+				auto entry=StringView::Take(entries,'/');
 				if (!entry) continue;
-				StringViewTakeResult id=StringView::Take(*entry,':');
+				auto id=StringView::Take(*entry,':');
 				if (!id) continue;
 				while (!entry->isEmpty())
 				{
-					StringViewTakeResult occurrence=StringView::Take(*entry,',');
-					StringViewTakeResult left=StringView::First(*occurrence,'-');
-					StringViewTakeResult right=StringView::Last(*occurrence,'-');
+					auto occurrence=StringView::Take(*entry,',');
+					auto left=StringView::First(*occurrence,'-');
+					auto right=StringView::Last(*occurrence,'-');
 					if (!left || !right) continue;
 					int start=StringConvert::Integer(left->toString());
 					int end=StringConvert::Integer(right->toString());
@@ -976,9 +973,9 @@ void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QSt
 
 		// hostmask
 		// TODO: break these down in the Channel class, not here
-		StringViewTakeResult hostmask=StringView::Take(*window,' ');
+		auto hostmask=StringView::Take(*window,' ');
 		if (!hostmask) return;
-		StringViewTakeResult user=StringView::Take(*hostmask,'!');
+		auto user=StringView::Take(*hostmask,'!');
 		if (!user) return;
 		login=*user;
 
@@ -1029,22 +1026,22 @@ void Bot::ParseChatMessageDeletion(const QString &prefix)
 	std::optional<QStringView> window;
 
 	window=prefix;
-	StringViewLookup tags;
+	std::unordered_map<QStringView,QStringView> tags;
 	while (!window->isEmpty())
 	{
-		StringViewTakeResult pair=StringView::Take(*window,';');
+		auto pair=StringView::Take(*window,';');
 		if (!pair)
 		{
 			emit Print("Can't delete because a tag was missing a body",OPERATION);
 			return;
 		}
-		StringViewTakeResult key=StringView::Take(*pair,'=');
+		auto key=StringView::Take(*pair,'=');
 		if (!key)
 		{
 			emit Print("Can't delete because a tag had no key no key",OPERATION);
 			return;
 		}
-		StringViewTakeResult value=StringView::Last(*pair,'=');
+		auto value=StringView::Last(*pair,'=');
 		if (!value)
 		{
 			emit Print("Can't delete because a key had no value",OPERATION);
