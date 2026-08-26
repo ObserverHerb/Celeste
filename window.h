@@ -23,12 +23,12 @@ protected:
 	QAction metrics;
 	QAction vibePlaylist;
 	QAction status;
-	const QSize ScreenThird();
 	void contextMenuEvent(QContextMenuEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
 signals:
 	void Print(const QString &message);
 	void Print(const QString &message,const QString &operation,const QString &subsystem="main window");
+	void OpenContextMenu(const QPoint &position);
 	void ChatMessage(std::shared_ptr<Chat::Message> message);
 	void DeleteChatMessage(const QString &id);
 	void SetAgenda(const QString &agenda);
@@ -57,6 +57,7 @@ public slots:
 	void AnnounceAdBreakFinished(const QString& videoPath);
 	void PlayVideo(const QString &path,bool chaosMode);
 	void PlayAudio(const QString &viewer,const QString &message,const QString &path);
+	void PrepareContextMenu();
 	void ShowPortraitVideo(const QString &path);
 	void ShowCurrentSong(const QString &song,const QString &album,const QString &artist,const QImage coverArt);
 	void ShowCurrentSong(const QString &song,const QString &artist,const QImage coverArt);

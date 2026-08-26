@@ -326,30 +326,31 @@ void EventSub::ParseNotification(QJsonObject notification)
 	}
 
 	QJsonObject eventObject=event->toObject();
-	JSON::SignalPayload *payload=new JSON::SignalPayload(event->toObject());
+	Subsystem::Interchange::Transaction *payload=new Subsystem::Interchange::Transaction(event->toObject());
 	if (std::optional<QString> prompt=ExtractPrompt(subscriptionType,eventObject); prompt) payload->context=*prompt;
 	const QString name=eventObject.value(JSON_KEY_EVENT_USER_NAME).toString();
 	const QString login=eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString();
-	connect(payload,&JSON::SignalPayload::Deliver,this,[subscriptionType=subscriptionType,name,login,payload,this](const QJsonObject &eventObject) {
+	connect(payload,&Subsystem::Interchange::Transaction::AcknowledgeClosure,this,[subscriptionType,name,login,payload,this](const QVariant &subject) {
+		auto object=subject.toJsonObject();
 		switch (subscriptionType)
 		{
 		case SubscriptionType::CHANNEL_FOLLOW:
 			emit Follow();
 			break;
 		case SubscriptionType::CHANNEL_REDEMPTION:
-			emit Redemption(login,name,eventObject.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),payload->context.toString());
+			emit Redemption(login,name,object.value(JSON_KEY_EVENT_REWARD).toObject().value(JSON_KEY_EVENT_REWARD_TITLE).toString(),payload->context.toString());
 			break;
 		case SubscriptionType::CHANNEL_CHEER:
-			emit Cheer(name,eventObject.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),eventObject.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
+			emit Cheer(name,object.value(JSON_KEY_EVENT_CHEER_AMOUNT).toVariant().toUInt(),object.value(JSON_KEY_EVENT_MESSAGE).toString().section(" ",1));
 			break;
 		case SubscriptionType::CHANNEL_RAID:
-			emit Raid(eventObject.value("from_broadcaster_user_name").toString(),eventObject.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
+			emit Raid(object.value("from_broadcaster_user_name").toString(),object.value(JSON_KEY_EVENT_VIEWERS).toVariant().toUInt());
 			break;
 		case SubscriptionType::CHANNEL_SUBSCRIPTION:
-			emit ChannelSubscription(eventObject.value(JSON_KEY_EVENT_USER_LOGIN).toString(),eventObject.value(JSON_KEY_EVENT_USER_NAME).toString());
+			emit ChannelSubscription(object.value(JSON_KEY_EVENT_USER_LOGIN).toString(),object.value(JSON_KEY_EVENT_USER_NAME).toString());
 			break;
 		case SubscriptionType::CHANNEL_HYPE_TRAIN:
-			if (double goal=eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_TOTAL).toDouble(); goal > 0) emit HypeTrain(eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_LEVEL).toInt(),eventObject.value(JSON_KEY_EVENT_HYPE_TRAIN_PROGRESS).toDouble()/goal);
+			if (double goal=object.value(JSON_KEY_EVENT_HYPE_TRAIN_TOTAL).toDouble(); goal > 0) emit HypeTrain(object.value(JSON_KEY_EVENT_HYPE_TRAIN_LEVEL).toInt(),object.value(JSON_KEY_EVENT_HYPE_TRAIN_PROGRESS).toDouble()/goal);
 			break;
 		default:
 			throw std::logic_error("Subscription type recognized but unimplemented");

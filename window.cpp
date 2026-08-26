@@ -22,7 +22,11 @@ using PrintUI=QOverload<const QString&>;
 
 Window::Window() : QMainWindow(nullptr),
 	background(nullptr),
-	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size",ScreenThird()),
+	settingWindowSize(SETTINGS_CATEGORY_WINDOW,"Size",[]()->QSize {
+		QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
+		int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
+		return {shortestSide,shortestSide};
+	}()),
 	settingBackgroundColor(SETTINGS_CATEGORY_WINDOW,"BackgroundColor","#ff000000"),
 	configureOptions("Options",this),
 	configureCommands("Commands",this),
@@ -32,8 +36,8 @@ Window::Window() : QMainWindow(nullptr),
 	status("Status",this)
 {
 	setAttribute(Qt::WA_TranslucentBackground,true);
-	setFixedSize(settingWindowSize);
 	layout()->setContentsMargins(0,0,0,0);
+	setFixedSize(settingWindowSize);
 
 	QColor backgroundColor=settingBackgroundColor;
 	background=new PaneHost(backgroundColor,this);
@@ -50,13 +54,6 @@ Window::Window() : QMainWindow(nullptr),
 	connect(this,&Window::FlushMedia,background,&PaneHost::Flush);
 	connect(background,&PaneHost::HighPriority,this,&Window::HighPriority);
 	connect(background,&PaneHost::LowPriority,this,&Window::LowPriority);
-
-	connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
-	connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
-	connect(&configureEventSubscriptions,&QAction::triggered,this,&Window::ConfigureEventSubscriptions);
-	connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
-	connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
-	connect(&status,&QAction::triggered,this,&Window::ShowStatus);
 
 	StatusPane *pane=new StatusPane(this);
 	connect(pane,&StatusPane::ContextMenu,this,&Window::contextMenuEvent);
@@ -416,13 +413,6 @@ void Window::Resize(const QSize &dimensions)
 		setFixedSize(dimensions);
 }
 
-const QSize Window::ScreenThird()
-{
-	QSize screenSize=QSize(QGuiApplication::primaryScreen()->geometry().size());
-	int shortestSide=std::min(screenSize.width(),screenSize.height())/3;
-	return {shortestSide,shortestSide};
-}
-
 ApplicationSetting& Window::BackgroundColor()
 {
 	return settingBackgroundColor;
@@ -435,17 +425,30 @@ ApplicationSetting& Window::Dimensions()
 
 void Window::contextMenuEvent(QContextMenuEvent *event)
 {
-	QMenu menu(this);
-	menu.addAction(&configureOptions);
-	menu.addAction(&configureCommands);
-	menu.addAction(&vibePlaylist);
-	menu.addSeparator();
-	menu.addAction(&configureEventSubscriptions);
-	menu.addAction(&metrics);
-	menu.addSeparator();
-	menu.addAction(&status);
-	menu.exec(event->globalPos());
+	emit OpenContextMenu(event->globalPos());
 	event->accept();
+}
+
+void Window::PrepareContextMenu()
+{
+	static auto optionsConnection=connect(&configureOptions,&QAction::triggered,this,&Window::ConfigureOptions);
+	static auto commandsConnection=connect(&configureCommands,&QAction::triggered,this,&Window::ConfigureCommands);
+	static auto eventSubscriptionsConnection=connect(&configureEventSubscriptions,&QAction::triggered,this,&Window::ConfigureEventSubscriptions);
+	static auto metricsConnection=connect(&metrics,&QAction::triggered,this,&Window::ShowMetrics);
+	static auto vibePlaylistConnection=connect(&vibePlaylist,&QAction::triggered,this,&Window::ShowVibePlaylist);
+	static auto statusConnection=connect(&status,&QAction::triggered,this,&Window::ShowStatus);
+	static auto menuConnection=connect(this,&Window::OpenContextMenu,this,[this](const QPoint &position) {
+		QMenu menu(this);
+		menu.addAction(&configureOptions);
+		menu.addAction(&configureCommands);
+		menu.addAction(&vibePlaylist);
+		menu.addSeparator();
+		menu.addAction(&configureEventSubscriptions);
+		menu.addAction(&metrics);
+		menu.addSeparator();
+		menu.addAction(&status);
+		menu.exec(position);
+	});
 }
 
 void Window::closeEvent(QCloseEvent *event)

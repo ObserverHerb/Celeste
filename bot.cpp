@@ -52,6 +52,7 @@ const char *TWITCH_API_OPERATION_STREAM_CATEGORY="stream category";
 const char *TWITCH_API_OPERATION_LOAD_BADGES="badges";
 const char *TWITCH_API_OPERATION_SHOUTOUT="shoutout";
 const char *TWITCH_API_OPERATION_AD_SCHEDULE="ad schedule";
+const char *TWITCH_API_OPERATION_REDEMPTION_LIST="list redemptions";
 const char *TWITCH_API_ERROR_TEMPLATE_INCOMPLETE="Response from requesting %1 was incomplete";
 const char *TWITCH_API_ERROR_TEMPLATE_UNKNOWN="Something went wrong obtaining %1";
 const char *TWITCH_API_ERROR_TEMPLATE_JSON_PARSE="Error parsing %1 JSON: %2";
@@ -72,14 +73,14 @@ const char *FILE_OPERATION_WRITE="write";
 const char *FILE_ERROR_TEMPLATE_COMMANDS_LIST="Failed to %1 command list file: %2";
 const char *FILE_ERROR_TEMPLATE_VIBE_PLAYLIST="Failed to %1 vibe playlist list file: %2";
 
-const Bot::CommandTypeLookup Bot::COMMAND_TYPE_LOOKUP={
+const std::unordered_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_NATIVE,CommandType::NATIVE},
 	{COMMAND_TYPE_VIDEO,CommandType::VIDEO},
 	{COMMAND_TYPE_AUDIO,CommandType::AUDIO},
 	{COMMAND_TYPE_PULSAR,CommandType::PULSAR}
 };
 
-Bot::BadgeIconURLsLookup Bot::badgeIconURLs;
+std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
 Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObject(parent),
@@ -136,6 +137,10 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.commandNameVibeVolume{SETTINGS_CATEGORY_COMMANDS,"VibeVolume","volume"}
 	}
 {
+	auto DeclareCommand=[this](const Command &&command,NativeCommandFlag flag) {
+		commands.try_emplace(command.Name(),command);
+		nativeCommandAliases.try_emplace(command.Name(),flag);
+	};
 	DeclareCommand({settings.commandNameAgenda,"Set the agenda of the stream, displayed in the header of the chat window",CommandType::NATIVE,true},NativeCommandFlag::AGENDA);
 	DeclareCommand({settings.commandNameBleep,"Play a high, short note",CommandType::NATIVE,false},NativeCommandFlag::BLEEP);
 	DeclareCommand({settings.commandNameBloop,"Play a low, long note",CommandType::NATIVE,false},NativeCommandFlag::BLOOP);
@@ -156,8 +161,9 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	DeclareCommand({settings.commandNameUptime,"Show how long the bot has been connected",CommandType::NATIVE,false},NativeCommandFlag::UPTIME);
 	DeclareCommand({settings.commandNameVibe,"Start the playlist of music for the stream",CommandType::NATIVE,true},NativeCommandFlag::VIBE);
 	DeclareCommand({settings.commandNameVibeVolume,"Adjust the volume of the vibe keeper",CommandType::NATIVE,true},NativeCommandFlag::VOLUME);
-	LoadViewerAttributes();
+	DeserializeCommands(LoadDynamicCommands());
 
+	LoadViewerAttributes();
 	if (settings.roasts) LoadRoasts();
 	LoadBadgeIconURLs();
 	StartClocks();
@@ -165,12 +171,6 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 	lastRaid=QDateTime::currentDateTime().addMSecs(static_cast<qint64>(0)-static_cast<qint64>(settings.raidInterruptDuration));
 
 	connect(&vibeKeeper,&Music::Player::Print,this,&Bot::Print);
-}
-
-void Bot::DeclareCommand(const Command &&command,NativeCommandFlag flag)
-{
-	commands.insert({{command.Name(),command}});
-	nativeCommandFlags.insert({{command.Name(),flag}});
 }
 
 QJsonDocument Bot::LoadDynamicCommands()
@@ -189,146 +189,163 @@ QJsonDocument Bot::LoadDynamicCommands()
 	return parsedJSON();
 }
 
-const Command::Lookup& Bot::DeserializeCommands(const QJsonDocument &json)
+void Bot::DeserializeCommands(const QJsonDocument &json)
 {
-	const QJsonArray objects=json.array();
-	for (const QJsonValue &jsonValue : objects)
+	const QJsonArray configurationJSONArray=json.array();
+	for (const QJsonValue &jsonValue : configurationJSONArray)
 	{
-		QJsonObject jsonObject=jsonValue.toObject();
+		QJsonObject configurationJSONObject=jsonValue.toObject();
+
+		// skipping invalid command types will prevent them from being resaved to the file, essentially erasing them
+		std::optional<CommandType> type=ValidCommandType(configurationJSONObject.value(JSON_KEY_COMMAND_TYPE).toString());
+		if (!type) continue;
 
 		// check if this is triggered by a redemption
-		auto redemptionName=jsonObject.find(JSON_KEY_COMMAND_REDEMPTION);
-		if (redemptionName != jsonObject.end())
+		if (auto redemptionName=configurationJSONObject.find(JSON_KEY_COMMAND_REDEMPTION); redemptionName != configurationJSONObject.end())
 		{
-			StageRedemptionCommand(redemptionName->toString(),jsonObject);
+			// internally, redemptions go in their own list, not the commands list
+			redemptions.try_emplace(redemptionName->toString(), // the redemption name is the key in the map
+				configurationJSONObject.value(JSON_KEY_COMMAND_NAME).toString(),
+				configurationJSONObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
+				*type,
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
+				configurationJSONObject.value(JSON_KEY_COMMAND_PATH).toString(),
+				Command::FileListFilters(*type),
+				configurationJSONObject.contains(JSON_KEY_COMMAND_MESSAGE) ? configurationJSONObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
+				redemptionName->toString(),
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_VIEWERS,{}).toVariant().toStringList(),
+				false
+			);
+
 			continue;
 		}
 
-		const QString name=jsonObject.value(JSON_KEY_COMMAND_NAME).toString();
+		// it's not a redemption, so create a standard command
+		const QString name=configurationJSONObject.value(JSON_KEY_COMMAND_NAME).toString();
 		if (!commands.contains(name))
 		{
-			std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
-			if (!type) continue;
-
-			commands.insert({name,{
+			auto commandEntry=commands.try_emplace(name,
 				name,
-				jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
+				configurationJSONObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
 				*type,
-				Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
-				Container::Resolve(jsonObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
-				jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
+				configurationJSONObject.value(JSON_KEY_COMMAND_PATH).toString(),
 				Command::FileListFilters(*type),
-				Container::Resolve(jsonObject,JSON_KEY_COMMAND_MESSAGE,{}).toString(),
-				Container::Resolve(jsonObject,JSON_KEY_COMMAND_VIEWERS,{}).toVariant().toStringList(),
-				Container::Resolve(jsonObject,JSON_KEY_COMMAND_PROTECTED,false).toBool()
-			}});
-		}
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_MESSAGE,{}).toString(),
+				QString{}, // no redemption name
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_VIEWERS,{}).toVariant().toStringList(),
+				Container::Resolve(configurationJSONObject,JSON_KEY_COMMAND_PROTECTED,false).toBool()
+			);
 
-		auto jsonObjectAliases=jsonObject.find(JSON_KEY_COMMAND_ALIASES);
-		if (jsonObjectAliases == jsonObject.end()) continue;
-		const QJsonArray aliases=jsonObjectAliases->toArray();
-		for (const QJsonValue &jsonValue : aliases)
-		{
-			const QString alias=jsonValue.toString();
-			const Command &command=commands.at(name);
-			const CommandType type=command.Type();
-			commands.try_emplace(alias,alias,&commands.at(name));
-			if (type == CommandType::NATIVE) nativeCommandFlags.insert({alias,nativeCommandFlags.at(name)});
+			if (commandEntry.second)
+			{
+				// redemptions don't have aliases, so we don't worry about attaching them here
+				auto jsonObjectAliases=configurationJSONObject.find(JSON_KEY_COMMAND_ALIASES);
+				if (jsonObjectAliases != configurationJSONObject.end())
+				{
+					const QJsonArray aliases=jsonObjectAliases->toArray();
+					for (const QJsonValue &jsonValue : aliases)
+					{
+						const QString alias=jsonValue.toString();
+						Command &command=commandEntry.first->second;
+						commands.try_emplace(alias,alias,&command);
+					}
+				}
+			}
 		}
 	}
-	return commands;
 }
 
-QJsonDocument Bot::SerializeCommands(const Command::Lookup &entries)
+std::vector<const Command*> Bot::CommandsList() const
 {
-	NativeCommandFlagLookup mergedNativeCommandFlags;
-	QJsonArray array;
+	// copy the redemptions into the list being passed to the UI
+	// because while under the hood they're two different lists,
+	// the user isn't aware of this when building commands
+	std::vector<const Command*> comprehensiveList; // we can do Command* because std::unordered_map guarantees pointer and reference stability even if it gets rehashed
+	comprehensiveList.reserve(commands.size()+redemptions.size());
+	for (auto &command : commands) comprehensiveList.push_back(&command.second);
+	for (auto &redemption : redemptions) comprehensiveList.push_back(&redemption.second);
+	return comprehensiveList;
+}
+
+QJsonDocument Bot::SerializeCommands(const std::deque<Command> &modifiedCommands)
+{
+	decltype(commands) modifiedCommandsLookup;
+	modifiedCommandsLookup.reserve(modifiedCommands.size()); // we don't know the total size because of aliases, but this will cover the bulk of it
+	decltype(nativeCommandAliases) mergedNativeCommandAliases;
+	QJsonArray configurationJSONArray;
 	std::unordered_map<QString,QStringList> aliases;
-	for (const auto& [name,command] : entries)
+	for (const auto &modifiedCommand : modifiedCommands)
 	{
-		if (command.Parent())
-		{
-			aliases[command.Parent()->Name()].push_back(name);
-			continue; // if this is just an alias, move on without processing it as a full command
-		}
+		if (modifiedCommand.Parent()) continue; // if this command object is an alias, skip it because we're building the new aliases from the list of children
 
-		QJsonObject object;
-		object.insert(JSON_KEY_COMMAND_NAME,name);
+		QJsonObject configurationEntryJSONObject;
+		configurationEntryJSONObject.insert(JSON_KEY_COMMAND_NAME,modifiedCommand.Name());
 
-		switch (command.Type())
+		switch (modifiedCommand.Type())
 		{
-		case CommandType::BLANK:
-			throw std::logic_error("UI should not allow empty command type");
 		case CommandType::NATIVE:
-			mergedNativeCommandFlags.insert(nativeCommandFlags.extract(name));
+			mergedNativeCommandAliases.insert(nativeCommandAliases.extract(modifiedCommand.Name()));
+			modifiedCommandsLookup.insert(commands.extract(modifiedCommand.Name()));
 			continue;
 		case CommandType::AUDIO:
-			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
-			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
-			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
-			if (command.Random())
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PATH,modifiedCommand.Path());
+			if (modifiedCommand.Random())
 			{
-				object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
-				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
+				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DUPLICATES,modifiedCommand.Duplicates());
 			}
-			if (!command.Message().isEmpty()) object.insert(JSON_KEY_COMMAND_MESSAGE,command.Message());
-			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
-			if (!command.Viewers().empty()) object.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(command.Viewers()));
+			if (!modifiedCommand.Message().isEmpty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_MESSAGE,modifiedCommand.Message());
+			if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
+			if (!modifiedCommand.Viewers().empty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(modifiedCommand.Viewers()));
+			if (!modifiedCommand.Redemption().isEmpty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_REDEMPTION,modifiedCommand.Redemption());
 			break;
 		case CommandType::VIDEO:
-			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
-			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
-			object.insert(JSON_KEY_COMMAND_PATH,command.Path());
-			if (command.Random())
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PATH,modifiedCommand.Path());
+			if (modifiedCommand.Random())
 			{
-				object.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
-				object.insert(JSON_KEY_COMMAND_DUPLICATES,command.Duplicates());
+				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
+				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DUPLICATES,modifiedCommand.Duplicates());
 			}
-			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
-			if (!command.Viewers().empty()) object.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(command.Viewers()));
+			if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
+			if (!modifiedCommand.Viewers().empty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(modifiedCommand.Viewers()));
+			if (!modifiedCommand.Redemption().isEmpty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_REDEMPTION,modifiedCommand.Redemption());
 			break;
 		case CommandType::PULSAR:
-			object.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_PULSAR);
-			object.insert(JSON_KEY_COMMAND_DESCRIPTION,command.Description());
-			if (command.Protected()) object.insert(JSON_KEY_COMMAND_PROTECTED,command.Protected());
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_PULSAR);
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
+			if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
 			break;
 		}
 
-		array.append(object);
-	}
-
-	for (QJsonValueRef value : array)
-	{
-		// if aliases exist for this object, attach the array of aliases to it
-		QJsonObject object=value.toObject();
-		QString name=object.value(JSON_KEY_COMMAND_NAME).toString();
-		auto candidate=aliases.find(name);
-		if (candidate != aliases.end())
+		auto parentCommandNode=modifiedCommandsLookup.try_emplace(modifiedCommand.Name(),modifiedCommand); // always place the parent in the map
+		if (!modifiedCommand.Children().empty()) // skip processing aliases if it doesn't have children to avoid the unnecessary QJsonArray allocation
 		{
-			QJsonArray names;
-			const QStringList nodes=aliases.extract(candidate).mapped();
-			for (const QString &alias : nodes) names.append(alias);
-			object.insert(JSON_KEY_COMMAND_ALIASES,names);
+			QJsonArray aliases;
+			for (Command *alias : modifiedCommand.Children())
+			{
+				aliases.append(alias->Name());
+				// we have to rebuild the aliases here instead of just copy or move because the relationship is
+				// maintained by pointers that will point to the wrong parent or children otherwise
+				if (parentCommandNode.second) modifiedCommandsLookup.try_emplace(alias->Name(),alias->Name(),&parentCommandNode.first->second);
+			}
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_ALIASES,aliases);
 		}
-		value=object;
+
+		configurationJSONArray.append(configurationEntryJSONObject);
 	}
 
-	// catch the aliases that were for native commands,
-	// which normally aren't listed in the commands file
-	for (const auto& [commandName,aliasNames] : aliases)
-	{
-		QJsonArray namesArray;
-		for (const QString &aliasName : aliasNames) namesArray.append(aliasName);
-		array.append(QJsonObject({
-			{JSON_KEY_COMMAND_NAME,commandName},
-			{JSON_KEY_COMMAND_ALIASES,namesArray}
-		}));
-	}
+	// make the modified lists live and throw the old ones away at the end of this scope
+	commands.swap(modifiedCommandsLookup);
+	nativeCommandAliases.swap(mergedNativeCommandAliases);
 
-	commands=entries;
-	nativeCommandFlags.swap(mergedNativeCommandFlags);
-
-	return QJsonDocument(array);
+	return QJsonDocument(configurationJSONArray);
 }
 
 bool Bot::SaveDynamicCommands(const QJsonDocument &json)
@@ -350,30 +367,6 @@ bool Bot::SaveDynamicCommands(const QJsonDocument &json)
 
 	commandListFile.close();
 	return result;
-}
-
-void Bot::StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject)
-{
-	std::optional<CommandType> type=ValidCommandType(jsonObject.value(JSON_KEY_COMMAND_TYPE).toString());
-	if (!type) return;
-
-	redemptions.try_emplace(name,
-		name,
-		jsonObject.value(JSON_KEY_COMMAND_DESCRIPTION).toString(),
-		*type,
-		Container::Resolve(jsonObject,JSON_KEY_COMMAND_RANDOM_PATH,false).toBool(),
-		Container::Resolve(jsonObject,JSON_KEY_COMMAND_DUPLICATES,true).toBool(),
-		jsonObject.value(JSON_KEY_COMMAND_PATH).toString(),
-		Command::FileListFilters(*type),
-		jsonObject.contains(JSON_KEY_COMMAND_MESSAGE) ? jsonObject.value(JSON_KEY_COMMAND_MESSAGE).toString() : QString(),
-		QStringList(),
-		false
-	);
-}
-
-const Command::Lookup& Bot::Commands() const
-{
-	return commands;
 }
 
 bool Bot::LoadViewerAttributes() // FIXME: have this throw an exception rather than return a bool
@@ -680,6 +673,70 @@ void Bot::RequestAdSchedule()
 		QDateTime announceTime=nextAd.addSecs(-static_cast<int>(settings.adWarningLeadTime));
 		adBreakDuration=jsonAdDuration->toInt();
 		adFinishedClock.setInterval(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(adBreakDuration)+std::chrono::seconds(settings.adWarningLeadTime)).count());
+	}, {
+		{"broadcaster_id",security.AdministratorID()}
+	}, {
+		{NETWORK_HEADER_AUTHORIZATION,security.Bearer(security.OAuthToken())},
+		{NETWORK_HEADER_CLIENT_ID,security.ClientID()},
+		{Network::CONTENT_TYPE,Network::CONTENT_TYPE_JSON}
+	});
+}
+
+void Bot::RequestRedemptionList(Subsystem::Interchange::Transaction *transaction)
+{
+	Network::Request::Send({Twitch::Endpoint(Twitch::ENDPOINT_REDEMPTION_LIST)},Network::Method::GET,[this,transaction](QNetworkReply *reply) {
+		switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+		{
+		case 400:
+			emit Print(u"Broadcaster ID is invalid"_s,TWITCH_API_OPERATION_REDEMPTION_LIST);
+			return;
+		case 401:
+			emit Print(u"Invalid OAuth token or missing scope"_s,TWITCH_API_OPERATION_REDEMPTION_LIST);
+			return;
+		case 403:
+			emit Print(u"Broadcaster does not qualify for redemptions"_s,TWITCH_API_OPERATION_REDEMPTION_LIST);
+			return;
+		case 404:
+			emit Print(u"No redemptions found"_s,TWITCH_API_OPERATION_REDEMPTION_LIST);
+			return;
+		case 500:
+			emit Print(TWITCH_API_ERROR_INTERNAL_SERVER,TWITCH_API_OPERATION_REDEMPTION_LIST);
+			return;
+		}
+
+		if (reply->error())
+		{
+			emit Print("Failed to obtain redemption list",TWITCH_API_OPERATION_REDEMPTION_LIST);
+			return;
+		}
+
+		const JSON::ParseResult parsedJSON=JSON::Parse(reply->readAll());
+		if (!parsedJSON)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_JSON_PARSE).arg(TWITCH_API_OPERATION_REDEMPTION_LIST,parsedJSON.error));
+			return;
+		}
+
+		const QJsonObject object=parsedJSON().object();
+		auto jsonFieldData=object.find(JSON::Keys::DATA);
+		if (jsonFieldData == object.end())
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_UNKNOWN).arg(TWITCH_API_OPERATION_REDEMPTION_LIST));
+			return;
+		}
+
+		const QJsonArray jsonEntries=jsonFieldData->toArray();
+		if (jsonEntries.size() < 1)
+		{
+			emit Print(QString(TWITCH_API_ERROR_TEMPLATE_INCOMPLETE).arg(TWITCH_API_OPERATION_REDEMPTION_LIST));
+			return;
+		}
+
+		QStringList redemptionNames;
+		redemptionNames.reserve(jsonEntries.size());
+		for (auto &entry : jsonEntries) redemptionNames.append(entry.toObject().value("title").toString());
+		transaction->subject=redemptionNames;
+		transaction->Close();
 	}, {
 		{"broadcaster_id",security.AdministratorID()}
 	}, {
@@ -1139,7 +1196,7 @@ std::optional<QString> Bot::ParseCommandIfExists(QStringView &message)
 	return {command.trimmed().mid(1).toString()};
 }
 
-void Bot::DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QString &name,const QString &login)
+void Bot::DispatchCommandViaSubsystem(Subsystem::Interchange::Transaction *transaction,const QString &name,const QString &login)
 {
 	// This function provides a way for a subsystem to retrieve the parsed chat
 	// message back if that message had a command in it.
@@ -1151,24 +1208,24 @@ void Bot::DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QStrin
 
 	try
 	{
-		const QString message=response->context.toString();
+		const QString message=transaction->context.toString();
 		if (!message.isNull())
 		{
-			QStringView window{message};
-			std::optional<QString> command=ParseCommandIfExists(window);
+			QStringView messageWindow{message};
+			std::optional<QString> command=ParseCommandIfExists(messageWindow);
 			if (command)
 			{
 				// NOTE: there is chat/color for chat color and moderation/moderators for privileged commands if I ever want to implement this
 				Chat::Message message{
 					.displayName=name,
-					.text=window.toString()
+					.text=messageWindow.toString()
 				};
 				DispatchCommandViaChatMessage(*command,message,login);
-				response->context.setValue(message);
+				transaction->context.setValue(message);
 			}
 		}
 
-		response->Dispatch();
+		transaction->Close();
 	}
 
 	catch (const std::out_of_range &exception)
@@ -1217,7 +1274,7 @@ bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMe
 	{
 		bool shortCircuit=true;
 
-		switch (nativeCommandFlags.at(command.Name()))
+		switch (nativeCommandAliases.at(command.Name()))
 		{
 		case NativeCommandFlag::HTML:
 		{
@@ -1270,7 +1327,7 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 			emit Pulse(command.Message(),command.Name());
 			break;
 		case CommandType::NATIVE:
-			switch (nativeCommandFlags.at(command.Name()))
+			switch (nativeCommandAliases.at(command.Name()))
 			{
 			case NativeCommandFlag::AGENDA:
 				emit SetAgenda(command.Message());
@@ -1333,8 +1390,6 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 				AdjustVibeVolume(command);
 				break;
 			}
-			break;
-		case CommandType::BLANK:
 			break;
 		};
 	});

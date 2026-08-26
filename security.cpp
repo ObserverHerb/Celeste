@@ -301,7 +301,7 @@ void Security::AuthorizeUser()
 		{QUERY_PARAMETER_SCOPE,settingScope},
 		{QUERY_PARAMETER_SESSION_ID,settingRewireSession}
 	}));
-	QDesktopServices::openUrl(request);
+	if (!QDesktopServices::openUrl(request)) throw std::runtime_error("Unable to authorize");
 }
 
 void Security::ObtainAdministratorProfile()

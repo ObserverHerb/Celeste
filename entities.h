@@ -18,7 +18,6 @@
 
 enum class CommandType
 {
-	BLANK,
 	NATIVE,
 	VIDEO,
 	AUDIO,
@@ -61,13 +60,12 @@ namespace File
 class Command
 {
 public:
-	using Lookup=std::unordered_map<QString,Command>;
-	Command() : Command({},{},CommandType::BLANK,false,true,{},{},{},{}) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},{},protect) { }
-	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,const QStringList &viewers,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(std::make_shared<File::List>(path,filters)), message(message), viewers(viewers), parent(nullptr) { }
-	Command(const QString &name,Command* const parent);
-	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), duplicates(command.duplicates), protect(command.protect), path(command.path), files(command.files), message(message), viewers(command.viewers), parent(nullptr) { }
-	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), duplicates(other.duplicates), protect(other.protect), path(other.path), files(other.files), message(other.message), viewers(other.viewers), parent(nullptr) { }
+	Command(const QString &name,const QString &description,const CommandType &type,bool protect=false) : Command(name,description,type,false,true,{},{},{},{},{},protect) { } // create a command with default settings
+	Command(const QString &name,const QString &description,const CommandType &type,bool random,bool duplicates,const QString &path,const QStringList &filters,const QString &message,const QString &redemption,const QStringList &viewers,bool protect=false) : name(name), description(description), type(type), random(random), duplicates(duplicates), protect(protect), path(path), files(std::make_shared<File::List>(path,filters)), message(message), redemption(redemption), viewers(viewers), parent(nullptr) { } // create a command from scratch
+	Command(const QString &name,Command* const parent); // create a command that mirrors its parent but with a new name
+	Command(const Command &command,const QString &message) : name(command.name), description(command.description), type(command.type), random(command.random), duplicates(command.duplicates), protect(command.protect), path(command.path), files(command.files), message(message), redemption(command.redemption), viewers(command.viewers), parent(nullptr) { } // don't copy the parent/child relationship
+	Command(const Command &other) : name(other.name), description(other.description), type(other.type), random(other.random), duplicates(other.duplicates), protect(other.protect), path(other.path), files(other.files), message(other.message), redemption(other.redemption), viewers(other.viewers), parent(nullptr) { } // don't copy the parent/child relationship
+	Command(const Command &&other)=delete;
 	const QString& Name() const { return name; }
 	const QString& Description() const { return description; }
 	CommandType Type() const { return type; }
@@ -77,6 +75,7 @@ public:
 	const QString& Path() const { return path; }
 	const QString File();
 	const QString& Message() const { return message; }
+	const QString& Redemption() const { return redemption; }
 	const QStringList& Viewers() const { return viewers; }
 	const Command* Parent() const { return parent; }
 	const std::vector<Command*>& Children() const { return children; }
@@ -91,7 +90,8 @@ protected:
 	QString path;
 	std::shared_ptr<File::List> files;
 	QString message;
-	QStringList viewers; //! the names of the viewers needed in chat to trigger the command
+	QString redemption;
+	QStringList viewers; // the names of the viewers needed in chat to trigger the command
 	Command *parent;
 	std::vector<Command*> children;
 };
@@ -388,20 +388,5 @@ namespace Chat
 		bool moderator { false };
 		bool html { false };
 		bool Privileged() const { return broadcaster || moderator; }
-	};
-}
-
-namespace JSON
-{
-	class SignalPayload : public QObject
-	{
-		Q_OBJECT
-	public:
-		SignalPayload(const QJsonObject &payload) : QObject(nullptr), payload(payload) { }
-		void Dispatch();
-		QJsonObject payload;
-		QVariant context;
-	signals:
-		void Deliver(const QJsonObject &payload);
 	};
 }

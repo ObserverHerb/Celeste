@@ -8,9 +8,10 @@
 #include <QListWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <deque>
 #include <exception>
 #include "window.h"
-#include "widgets.h"
+#include "widgets/widgets.h"
 #include "channel.h"
 #include "bot.h"
 #include "log.h"
@@ -108,15 +109,16 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 	configureOptions->open();
 }
 
-void ShowCommands(ApplicationWindow &window,Bot &bot,const Command::Lookup &commands)
+void ShowCommands(ApplicationWindow &window,Bot &bot)
 {
-	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(commands,&window);
-	configureCommands->connect(configureCommands,QOverload<const Command::Lookup&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot](const Command::Lookup& commands) {
+	UI::Commands::Dialog *configureCommands=new UI::Commands::Dialog(bot.CommandsList(),&window); // RVO ensures result of CommandsList() is moved in, so don't worry about copies of the vector here
+	configureCommands->connect(configureCommands,QOverload<const std::deque<Command>&>::of(&UI::Commands::Dialog::Save),&bot,[&window,&bot](const std::deque<Command> &commands) {
 		if (!bot.SaveDynamicCommands(bot.SerializeCommands(commands)))
 		{
 			MessageBox(u"Save dynamic commands Failed"_s,u"Something went wrong saving the commands list to a file"_s,QMessageBox::Warning,QMessageBox::Ok,QMessageBox::Ok,&window);
 		}
 	});
+	configureCommands->connect(configureCommands,&UI::Commands::Dialog::RequestRedemptionList,&bot,&Bot::RequestRedemptionList,Qt::QueuedConnection);
 	configureCommands->connect(configureCommands,&UI::Options::Dialog::finished,[configureCommands](int result) {
 		Q_UNUSED(result)
 		configureCommands->deleteLater();
@@ -223,11 +225,11 @@ int main(int argc,char *argv[])
 		Channel *channel=new Channel(security,&socket);
 		Music::Player musicPlayer(true,0);
 		Bot celeste(musicPlayer,security);
-		const Command::Lookup &botCommands=celeste.DeserializeCommands(celeste.LoadDynamicCommands());
 		const File::List &musicPlaylist=celeste.SetVibePlaylist(celeste.DeserializeVibePlaylist(celeste.LoadVibePlaylist()));
 		Pulsar pulsar;
 		EventSub *eventSub=nullptr;
 		ApplicationWindow window;
+		QMetaObject::Connection closeRequestConnection;
 		UI::Metrics::Dialog metrics(&window);
 		UI::Status::Window<StatusPane> status(&window);
 
@@ -294,7 +296,7 @@ int main(int argc,char *argv[])
 			}
 			channel->Connect();
 		});
-		channel->connect(channel,&Channel::Connected,channel,[&security,&window,&celeste,&log,&application,eventSub]() mutable {
+		channel->connect(channel,&Channel::Connected,channel,[&security,channel,&window,&closeRequestConnection,&celeste,&log,&application,eventSub]() mutable {
 			if (eventSub) eventSub->deleteLater();
 			eventSub=new EventSub(security);
 
@@ -304,7 +306,7 @@ int main(int argc,char *argv[])
 			eventSub->connect(eventSub,&EventSub::Raid,&celeste,&Bot::Raid);
 			eventSub->connect(eventSub,&EventSub::Cheer,&celeste,&Bot::Cheer);
 			eventSub->connect(eventSub,&EventSub::HypeTrain,&window,&Window::AnnounceHypeTrainProgress);
-			eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<JSON::SignalPayload*,const QString&,const QString&>::of(&Bot::DispatchCommandViaSubsystem),Qt::QueuedConnection);
+			eventSub->connect(eventSub,&EventSub::ParseCommand,&celeste,QOverload<Subsystem::Interchange::Transaction*,const QString&,const QString&>::of(&Bot::DispatchCommandViaSubsystem),Qt::QueuedConnection);
 			eventSub->connect(eventSub,&EventSub::EventSubscriptionFailed,eventSub,[](const QString &type) {
 				MessageBox(u"EventSub Request Failed"_s,u"The attempt to subscribe to %1 failed."_s.arg(type),QMessageBox::Information,QMessageBox::Ok,QMessageBox::Ok);
 			},Qt::QueuedConnection);
@@ -316,9 +318,21 @@ int main(int argc,char *argv[])
 			window.connect(&window,&Window::ConfigureEventSubscriptions,eventSub,[&window,eventSub]() {
 				ShowEventSubscriptions(window,eventSub);
 			});
+			closeRequestConnection=window.connect(&window,&Window::CloseRequested,&window,[channel,&celeste](QCloseEvent *closeEvent) {
+				// now that we know we're authorized
+				// replace the original connection with a more advance one
+				// that can perform operations that require successful authorization
+				if (channel->Protection())
+				{
+					if (MessageBox(u"Channel Protection"_s,u"Enable emote-only chat?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::Yes) celeste.EmoteOnly(true);
+				}
+				celeste.SaveViewerAttributes(MessageBox(u"Reset Next Session"_s,u"Would you like to reset the session for the next stream?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes);
+				closeEvent->accept();
+			});
 			celeste.connect(&celeste,&Bot::Panic,eventSub,&EventSub::deleteLater,Qt::QueuedConnection);
 			application.connect(&application,&QApplication::aboutToQuit,eventSub,&EventSub::deleteLater,Qt::DirectConnection);
 		});
+		channel->connect(channel,&Channel::Connected,&window,&Window::PrepareContextMenu);
 		channel->connect(channel,&Channel::Denied,&security,&Security::AuthorizeUser);
 		security.connect(&security,&Security::Initialized,channel,&Channel::Connect);
 		security.connect(&security,&Security::Print,&log,&Log::Receive);
@@ -330,19 +344,14 @@ int main(int argc,char *argv[])
 		window.connect(&window,&Window::HighPriority,&celeste,&Bot::SuppressMusic);
 		window.connect(&window,&Window::LowPriority,&celeste,&Bot::RestoreMusic);
 		window.connect(&window,&Window::ShowMetrics,&metrics,&QDialog::show);
-		window.connect(&window,&Window::CloseRequested,&window,[channel,&celeste](QCloseEvent *closeEvent) {
-			if (channel->Protection())
-			{
-				if (MessageBox(u"Channel Protection"_s,u"Enable emote-only chat?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::No) == QMessageBox::Yes) celeste.EmoteOnly(true);
-			}
-			celeste.SaveViewerAttributes(MessageBox(u"Reset Next Session"_s,u"Would you like to reset the session for the next stream?"_s,QMessageBox::Question,QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes) == QMessageBox::Yes);
+		closeRequestConnection=window.connect(&window,&Window::CloseRequested,&window,[](QCloseEvent *closeEvent) {
 			closeEvent->accept();
 		});
 		window.connect(&window,&Window::ConfigureOptions,&window,[&window,channel,&celeste,&pulsar,&musicPlayer,&log,&security]() {
 			ShowOptions(window,channel,celeste,pulsar,musicPlayer,log,security);
 		});
-		window.connect(&window,&Window::ConfigureCommands,&window,[&window,&celeste,&botCommands]() {
-			ShowCommands(window,celeste,botCommands);
+		window.connect(&window,&Window::ConfigureCommands,&window,[&window,&celeste]() {
+			ShowCommands(window,celeste);
 		});
 		window.connect(&window,&Window::ShowVibePlaylist,&window,[&musicPlaylist,&window,&celeste,&musicPlayer]() {
 			ShowPlaylist(musicPlaylist,window,celeste,musicPlayer);
@@ -357,7 +366,8 @@ int main(int argc,char *argv[])
 		window.show();
 		security.Listen();
 
-		return application.exec();
+		if (application.exec() > 0) throw std::bad_alloc();
+		return 0;
 	}
 
 	catch (const std::runtime_error &exception)
@@ -372,15 +382,18 @@ int main(int argc,char *argv[])
 		return FATAL_ERROR;
 	}
 
+	catch (const std::bad_alloc &exception)
+	{
+		qFatal("System is out of memory");
+	}
+
 	catch (const std::exception &exception)
 	{
 		qFatal("%s",exception.what());
-		return FATAL_ERROR;
 	}
 
 	catch (...)
 	{
 		qFatal("An unknown error occurred!");
-		return UNKNOWN_ERROR;
 	}
 }

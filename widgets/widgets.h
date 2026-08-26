@@ -27,12 +27,15 @@
 #include <QDialog>
 #include <QDir>
 #include <unordered_set>
+#include <deque>
 #include <concepts>
+#include "widgets/lazy.h"
 #include "entities.h"
+#include "subsystem/subsystem.h"
 
 namespace StyleSheet
 {
-	template<Concept::Widget T> const QString Colors(const QColor &foreground,const QColor &background)
+	template<Concept::Widget TWidget> const QString Colors(const QColor &foreground,const QColor &background)
 	{
 		return QString{"%9 { color: rgba(%1,%2,%3,%4); background-color: rgba(%5,%6,%7,%8); }"}.arg(
 			StringConvert::Integer(foreground.red()),
@@ -43,7 +46,7 @@ namespace StyleSheet
 			StringConvert::Integer(background.green()),
 			StringConvert::Integer(background.blue()),
 			StringConvert::Integer(background.alpha()),
-			T::staticMetaObject.className()
+			TWidget::staticMetaObject.className()
 		);
 	}
 }
@@ -92,43 +95,26 @@ signals:
 	void Finished();
 };
 
+class SingleSelectionListWidget: public QListWidget
+{
+	Q_OBJECT
+public:
+	SingleSelectionListWidget(QWidget *parent);
+protected:
+	void mousePressEvent(QMouseEvent *event) override;
+};
+
 namespace UI
 {
 	QString OpenVideo(QWidget *parent,QString initialPath=QString());
 	QString OpenAudio(QWidget *parent,QString initialPath=QString());
 
-	template <typename T> concept IsWidget=requires { requires std::convertible_to<T*,QWidget*>; };
-
-	template <typename T> concept WidgetHasViewport=requires (T member)
+	class Color : public QLabel
 	{
-		requires IsWidget<T>;
-		{ member.viewport() }->std::same_as<QWidget*>;
-	};
-
-	template <typename T> concept WidgetIsBool=requires(T member,bool checked)
-	{
-		requires IsWidget<T>;
-		{ member.setChecked(checked) }->std::same_as<void>;
-	};
-
-	template <typename T> concept WidgetIsText=requires(T member,const QString &text)
-	{
-		requires IsWidget<T>;
-		requires !WidgetIsBool<T>;
-		{ member.setText(text) }->std::same_as<void>;
-	};
-
-	template <typename T> concept WidgetIsRichText=requires(T member,const QString &text)
-	{
-		requires IsWidget<T>;
-		requires !WidgetIsBool<T>;
-		{ member.setPlainText(text) }->std::same_as<void>;
-	};
-
-	template <typename T> concept WidgetIsList=requires(T member,int index)
-	{
-		requires IsWidget<T>;
-		{ member.setCurrentIndex(index) }->std::same_as<void>;
+		Q_OBJECT
+	public:
+		Color(QWidget *parent,const QString &color);
+		void Set(const QString &color);
 	};
 
 	namespace Feedback
@@ -160,102 +146,6 @@ namespace UI
 			Help(QWidget *parent);
 		};
 	}
-
-	template <IsWidget TWidget>
-	class EphemeralWidgetBase
-	{
-	public:
-		void Show()
-		{
-			if (widget) return;
-			TWidget *candidate=new TWidget(parent);
-			setupNeeded(candidate);
-			widget=candidate;
-			widget->setObjectName(name);
-		}
-
-		void Hide()
-		{
-			if (!widget) return;
-			widget->disconnect();
-			widget->deleteLater();
-			widget=nullptr;
-		}
-
-		void Name(const QString &name)
-		{
-			this->name=name;
-			if (widget) widget->setObjectName(name);
-		}
-
-		const QString& Name() const { return name; }
-		TWidget* operator*() { return Widget(); }
-		void Enable(bool enabled) { widget->setEnabled(enabled); }
-		void Visible(bool visible) { widget->setVisible(visible); }
-		std::optional<QWidget*> Viewport() requires WidgetHasViewport<TWidget> { return widget ? std::make_optional(widget->viewport()) : std::nullopt; }
-		bool operator==(const QObject *other) const { return widget==other; }
-	protected:
-		QString name;
-		QWidget *parent;
-		TWidget *widget;
-		std::function<void(TWidget*)> setupNeeded;
-		EphemeralWidgetBase(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : name(name), parent(parent), widget(nullptr), setupNeeded(setupNeeded) { }
-
-		TWidget* Widget()
-		{
-			if (!widget) Show();
-			return widget;
-		}
-	};
-
-	template <IsWidget TWidget>
-	class EphemeralWidget : public EphemeralWidgetBase<TWidget>
-	{
-	public:
-		EphemeralWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : EphemeralWidgetBase<TWidget>(name,setupNeeded,parent) { }
-		void operator=(const QString &text) requires WidgetIsText<TWidget> { value=text; }
-		void operator=(bool checked) requires WidgetIsBool<TWidget> { value=checked; }
-		void operator=(int index) requires WidgetIsList<TWidget> { value=index; }
-		operator QString() const requires WidgetIsText<TWidget> { return this->widget ? Text() : value; }
-		operator bool() const requires WidgetIsBool<TWidget> { return this->widget ? this->widget->isChecked() : value; }
-		operator int() const requires WidgetIsList<TWidget> { return this->widget ? this->widget->currentIndex() : value; }
-		void RevertValue() requires WidgetIsText<TWidget> { if (this->widget) Text(value); }
-		void RevertValue() requires WidgetIsBool<TWidget> { if (this->widget) this->widget->setChecked(value); }
-		void RevertValue() requires WidgetIsList<TWidget> { if (this->widget) this->widget->setCurrentIndex(value); }
-		void CacheValue() requires WidgetIsText<TWidget> { if (this->widget) value=Text(); }
-		void CacheValue() requires WidgetIsBool<TWidget> { if (this->widget) value=this->widget->isChecked(); }
-		void CacheValue() requires WidgetIsList<TWidget> { if (this->widget) value=this->widget->currentIndex(); }
-		const QString& CachedValue() const requires WidgetIsText<TWidget> { return value; }
-		bool CachedValue() const requires WidgetIsBool<TWidget> { return value; }
-		int CachedValue() const requires WidgetIsList<TWidget> { return value; }
-
-	protected:
-		std::conditional<WidgetIsText<TWidget>,QString,bool>::type value;
-		QString Text() const requires (WidgetIsText<TWidget> && !WidgetIsRichText<TWidget>) { return this->widget->text(); }
-		QString Text() const requires WidgetIsRichText<TWidget> { return this->widget->toPlainText(); }
-		void Text(const QString &value) requires (WidgetIsText<TWidget> && !WidgetIsRichText<TWidget>) { if (this->widget) this->widget->setText(value); }
-		void Text(const QString &value) requires WidgetIsRichText<TWidget> { if (this->widget) this->widget->setPlainText(value); }
-	};
-
-	template <IsWidget TWidget,typename TValue>
-	class EphemeralPayloadWidget : public EphemeralWidgetBase<TWidget>
-	{
-	public:
-		EphemeralPayloadWidget(const QString &name,std::function<void(TWidget*)> setupNeeded,QWidget *parent) : EphemeralWidgetBase<TWidget>(name,setupNeeded,parent) { }
-		void operator=(const TValue &value) { this->value=value; }
-		operator TValue() const { return value; }
-
-	protected:
-		TValue value;
-	};
-
-	class Color : public QLabel
-	{
-		Q_OBJECT
-	public:
-		Color(QWidget *parent,const QString &color);
-		void Set(const QString &color);
-	};
 
 	namespace Text
 	{
@@ -310,37 +200,57 @@ namespace UI
 			PULSAR
 		};
 
-		class NamesList : public QDialog
+		class AliasesList : public QDialog
 		{
 			Q_OBJECT
 		public:
-			NamesList(const QString &title,const QString &placeholder,QWidget *parent);
+			AliasesList(QWidget *parent);
 			void Populate(const QStringList &names);
-			operator QStringList() const;
+			QStringList Aliases() const;
 		protected:
-			QGridLayout layout;
 			QListWidget list;
 			QLineEdit name;
 			QPushButton add;
 			QPushButton remove;
 			void Add();
 			void Remove();
-			void hideEvent(QHideEvent *event) override;
-		signals:
-			void Finished();
+		};
+
+		class TriggersList : public QDialog
+		{
+			Q_OBJECT
+		public:
+			TriggersList(QWidget *parent);
+			void Populate(const QStringList &viewerNames,const QString redemptionTitlem,const QStringList &availableRedemptionTitles);
+			QStringList ViewerNames() const;
+			QString RedemptionName() const;
+		protected:
+			QListWidget viewerList;
+			QLineEdit viewerName;
+			QPushButton addViewerName;
+			QPushButton removeViewerName;
+			SingleSelectionListWidget redemptionList;
+			void AddViewerName();
+			void RemoveViewerName();
 		};
 
 		class Entry : public QWidget
 		{
 			Q_OBJECT
+
+			struct Triggers
+			{
+				QStringList viewers;
+				QString redemption;
+			};
 		public:
-			Entry(Feedback::Error &errorReport,QWidget *parent);
-			Entry(const Command &command,Feedback::Error &errorReport,QWidget *parent);
+			Entry(const Command &command,const QStringList &availableRedemptionTitles,Feedback::Error &errorReport,QWidget *parent);
 			QString Name() const;
 			QString Description() const;
 			QStringList Aliases() const;
 			void Aliases(const QStringList &names);
-			QStringList Triggers() const;
+			QStringList ViewerNameTriggers() const;
+			QString RedemptionTrigger() const;
 			QString Path() const;
 			QStringList Filters() const;
 			CommandType Type() const;
@@ -354,17 +264,18 @@ namespace UI
 			QFrame details;
 			QGridLayout detailsLayout;
 			QPushButton header;
-			EphemeralWidget<QLineEdit> name;
-			EphemeralWidget<QLineEdit> description;
-			EphemeralPayloadWidget<QPushButton,QStringList> aliases;
-			EphemeralPayloadWidget<QPushButton,QStringList> triggers;
-			EphemeralWidget<QLineEdit> path;
-			EphemeralWidget<QPushButton> browse;
-			EphemeralWidget<QComboBox> type;
-			EphemeralWidget<QCheckBox> random;
-			EphemeralWidget<QCheckBox> duplicates;
-			EphemeralWidget<QCheckBox> protect;
-			EphemeralWidget<QTextEdit> message;
+			const QStringList &availableRedemptionTitles; // not worried about const here because QObjects are non-copyable anyway
+			LazyWidget<QLineEdit> name;
+			LazyWidget<QLineEdit> description;
+			GraftedLazyWidget<QPushButton,QStringList> aliases;
+			GraftedLazyWidget<QPushButton,Triggers> triggers;
+			LazyWidget<QLineEdit> path;
+			LazyWidget<QPushButton> browse;
+			LazyWidget<QComboBox> type;
+			LazyWidget<QCheckBox> random;
+			LazyWidget<QCheckBox> duplicates;
+			LazyWidget<QCheckBox> protect;
+			LazyWidget<QTextEdit> message;
 			Feedback::Error &errorReport;
 			void UpdateName();
 			void UpdateDescription(const QString &text);
@@ -373,8 +284,6 @@ namespace UI
 			void UpdateProtect(int state);
 			void UpdateRandom(int state);
 			void UpdateDuplicates(int state);
-			void Native();
-			void Pulsar();
 			void Browse();
 			void SelectAliases();
 			void SelectTriggers();
@@ -408,7 +317,7 @@ namespace UI
 		{
 			Q_OBJECT
 		public:
-			Dialog(const Command::Lookup &commands,QWidget *parent);
+			Dialog(std::vector<const Command*> commands,QWidget *parent);
 		protected:
 			QWidget entriesFrame;
 			QVBoxLayout scrollLayout;
@@ -424,14 +333,18 @@ namespace UI
 			QGroupBox errorBox;
 			QLabel errorMessages;
 			QStatusBar statusBar;
+			std::vector<const Command*> commands;
+			QStringList availableRedemptionTitles;
 			std::unordered_map<QString,Entry*> entries;
-			void PopulateEntries(const Command::Lookup &commands);
-			void Add();
-			void Save();
+			bool event(QEvent *event) override;
 		signals:
-			void Save(const Command::Lookup &commands);
+			void Save(const std::deque<Command> &commands);
+			void RequestRedemptionList(Subsystem::Interchange::Transaction *transaction);
 		public slots:
 			void FilterChanged(int index);
+		protected slots:
+			void Add();
+			void Save();
 		};
 	}
 

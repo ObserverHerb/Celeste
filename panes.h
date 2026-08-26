@@ -14,7 +14,7 @@
 #include <QEvent>
 #include <queue>
 #include "settings.h"
-#include "widgets.h"
+#include "widgets/widgets.h"
 #include "entities.h"
 
 static constexpr int PANE_PRIORITY_IMMEDIATE=std::numeric_limits<int>::max();

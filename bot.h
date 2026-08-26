@@ -9,7 +9,9 @@
 #include <QDateTime>
 #include <QTimer>
 #include <unordered_map>
+#include <deque>
 #include "entities.h"
+#include "subsystem/subsystem.h"
 #include "settings.h"
 #include "security.h"
 
@@ -41,26 +43,21 @@ class Bot : public QObject
 {
 	Q_OBJECT
 public:
-	using NativeCommandFlagLookup=std::unordered_map<QString,NativeCommandFlag>;
 	Bot(Music::Player &musicPlayer,Security &security,QObject *parent=nullptr);
 	Bot(const Bot& other)=delete;
 	Bot& operator=(const Bot &other)=delete;
 	void ToggleEmoteOnly();
 	void EmoteOnly(bool enable);
 	void SaveViewerAttributes(bool reset);
-	const Command::Lookup& Commands() const;
-	const Command::Lookup& DeserializeCommands(const QJsonDocument &json);
-	QJsonDocument LoadDynamicCommands();
+	std::vector<const Command*> CommandsList() const;
 	File::List DeserializeVibePlaylist(const QJsonDocument &json);
 	QJsonDocument LoadVibePlaylist();
 	const File::List& SetVibePlaylist(const File::List &files);
 	Settings::Bot& Settings();
 protected:
-	using BadgeIconURLsLookup=std::unordered_map<QString,std::unordered_map<QString,QString>>;
-	using CommandTypeLookup=std::unordered_map<QString,CommandType>;
-	Command::Lookup commands;
-	Command::Lookup redemptions;
-	NativeCommandFlagLookup nativeCommandFlags;
+	std::unordered_map<QString,Command> commands;
+	decltype(commands) redemptions;
+	std::unordered_map<QString,NativeCommandFlag> nativeCommandAliases;
 	std::unordered_map<QString,Viewer::Attributes> viewers;
 	std::unordered_map<QString,std::vector<QString>> userMessageCrossReference;
 	Music::Player &vibeKeeper;
@@ -76,10 +73,11 @@ protected:
 	QDateTime lastRaid;
 	Security &security;
 	Settings::Bot settings;
-	static BadgeIconURLsLookup badgeIconURLs;
+	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
-	static const CommandTypeLookup COMMAND_TYPE_LOOKUP;
-	void DeclareCommand(const Command &&command,NativeCommandFlag flag);
+	static const std::unordered_map<QString,CommandType> COMMAND_TYPE_LOOKUP;
+	void DeserializeCommands(const QJsonDocument &json);
+	QJsonDocument LoadDynamicCommands();
 	void StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject);
 	bool LoadViewerAttributes();
 	void LoadRoasts();
@@ -142,8 +140,9 @@ signals:
 public slots:
 	void ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message);
 	void ParseChatMessageDeletion(const QString &prefix);
-	void DispatchCommandViaSubsystem(JSON::SignalPayload *response,const QString &name,const QString &login);
+	void DispatchCommandViaSubsystem(Subsystem::Interchange::Transaction *response,const QString &name,const QString &login);
 	void RequestAdSchedule();
+	void RequestRedemptionList(Subsystem::Interchange::Transaction *transaction);
 	void Ping();
 	void Subscription(const QString &login,const QString &displayName);
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);
@@ -153,7 +152,7 @@ public slots:
 	void AdsFinished();
 	void SuppressMusic();
 	void RestoreMusic();
-	QJsonDocument SerializeCommands(const Command::Lookup &entries);
+	QJsonDocument SerializeCommands(const std::deque<Command> &modifiedCommands);
 	bool SaveDynamicCommands(const QJsonDocument &json);
 	QJsonDocument SerializeVibePlaylist(const File::List &files);
 	bool SaveVibePlaylist(const QJsonDocument &json);

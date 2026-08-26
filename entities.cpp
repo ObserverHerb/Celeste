@@ -906,12 +906,3 @@ namespace Viewer
 		});
 	};
 }
-
-namespace JSON
-{
-	void SignalPayload::Dispatch()
-	{
-		emit Deliver(payload);
-		deleteLater();
-	}
-}

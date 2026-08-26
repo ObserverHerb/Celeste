@@ -4,9 +4,9 @@
 #include <QWebSocket>
 #include <QJsonObject>
 #include <queue>
+#include "subsystem/subsystem.h"
 #include "settings.h"
 #include "security.h"
-#include "entities.h"
 
 enum class MessageType
 {
@@ -71,7 +71,7 @@ signals:
 	void ChannelSubscription(const QString &login,const QString &displayName);
 	void EventSubscription(const QString &id,const QString &type,const QDateTime &creationDate,const QString &callbackURL);
 	void EventSubscriptionRemoved(const QString &id);
-	void ParseCommand(JSON::SignalPayload *payload,const QString &name,const QString &login);
+	void ParseCommand(Subsystem::Interchange::Transaction *payload,const QString &name,const QString &login);
 	void Connected();
 	void Disconnected();
 protected slots:

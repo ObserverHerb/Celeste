@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QFont>
 #include <QFontMetrics>
+#include <QScreen>
 #include <chrono>
 #include <optional>
 #include <random>
@@ -20,22 +21,22 @@ namespace Resources
 
 namespace Concept
 {
-	template<typename T> concept Container=requires(T m)
+	template<typename TContainer> concept Container=requires(TContainer member)
 	{
-		requires std::forward_iterator<typename T::iterator>;
-		{ m.empty() }->std::same_as<bool>;
-		{ m.size() }->std::same_as<typename T::size_type>;
+		requires std::forward_iterator<typename TContainer::iterator>;
+		{ member.empty() }->std::same_as<bool>;
+		{ member.size() }->std::same_as<typename TContainer::size_type>;
 	};
 
-	template<typename T> concept AssociativeContainer=requires(T m,typename T::key_type k)
+	template<typename TContainer> concept AssociativeContainer=requires(TContainer member,typename TContainer::key_type key)
 	{
-		typename T::key_type;
-		typename T::mapped_type;
-		typename T::const_iterator;
-		{ m.find(k) }->std::convertible_to<typename T::const_iterator>;
+		typename TContainer::key_type;
+		typename TContainer::mapped_type;
+		typename TContainer::const_iterator;
+		{ member.find(key) }->std::convertible_to<typename TContainer::const_iterator>;
 	};
 
-	template <typename T> concept Widget=std::is_base_of<QWidget,T>::value;
+	template <typename TWidget> concept Widget=std::is_base_of<QWidget,TWidget>::value;
 }
 
 namespace NumberConvert

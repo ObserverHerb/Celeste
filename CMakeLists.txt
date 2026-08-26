@@ -8,7 +8,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(WIN32)
@@ -24,10 +24,15 @@ add_executable(Celeste
 	security.cpp
 	channel.h
 	channel.cpp
-	widgets.h
-	widgets.cpp
+	widgets/widgets.h
+	widgets/lazy.h
+	widgets/widgets.cpp
+	widgets/general.cpp
+	widgets/commands.cpp
 	entities.h
 	entities.cpp
+	subsystem/subsystem.h
+	subsystem/subsystem.cpp
 	eventsub.h
 	eventsub.cpp
 	panes.h
