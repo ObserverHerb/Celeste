@@ -274,6 +274,7 @@ QJsonDocument Bot::SerializeCommands(const std::deque<Command> &modifiedCommands
 {
 	decltype(commands) modifiedCommandsLookup;
 	modifiedCommandsLookup.reserve(modifiedCommands.size()); // we don't know the total size because of aliases, but this will cover the bulk of it
+	decltype(commands) modifiedRedemptionsLookup;
 	decltype(nativeCommandAliases) mergedNativeCommandAliases;
 	QJsonArray configurationJSONArray;
 	std::unordered_map<QString,QStringList> aliases;
@@ -292,7 +293,6 @@ QJsonDocument Bot::SerializeCommands(const std::deque<Command> &modifiedCommands
 			continue;
 		case CommandType::AUDIO:
 			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_AUDIO);
-			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
 			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PATH,modifiedCommand.Path());
 			if (modifiedCommand.Random())
 			{
@@ -300,42 +300,51 @@ QJsonDocument Bot::SerializeCommands(const std::deque<Command> &modifiedCommands
 				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DUPLICATES,modifiedCommand.Duplicates());
 			}
 			if (!modifiedCommand.Message().isEmpty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_MESSAGE,modifiedCommand.Message());
-			if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
 			if (!modifiedCommand.Viewers().empty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(modifiedCommand.Viewers()));
 			if (!modifiedCommand.Redemption().isEmpty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_REDEMPTION,modifiedCommand.Redemption());
 			break;
 		case CommandType::VIDEO:
 			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_VIDEO);
-			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
 			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PATH,modifiedCommand.Path());
 			if (modifiedCommand.Random())
 			{
 				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_RANDOM_PATH,true);
 				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DUPLICATES,modifiedCommand.Duplicates());
 			}
-			if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
 			if (!modifiedCommand.Viewers().empty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_VIEWERS,QJsonArray::fromStringList(modifiedCommand.Viewers()));
 			if (!modifiedCommand.Redemption().isEmpty()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_REDEMPTION,modifiedCommand.Redemption());
 			break;
 		case CommandType::PULSAR:
 			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_TYPE,COMMAND_TYPE_PULSAR);
-			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
-			if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
 			break;
 		}
+		configurationEntryJSONObject.insert(JSON_KEY_COMMAND_DESCRIPTION,modifiedCommand.Description());
+		if (modifiedCommand.Protected()) configurationEntryJSONObject.insert(JSON_KEY_COMMAND_PROTECTED,modifiedCommand.Protected());
 
-		auto parentCommandNode=modifiedCommandsLookup.try_emplace(modifiedCommand.Name(),modifiedCommand); // always place the parent in the map
-		if (!modifiedCommand.Children().empty()) // skip processing aliases if it doesn't have children to avoid the unnecessary QJsonArray allocation
+		if (!modifiedCommand.Redemption().isEmpty())
 		{
-			QJsonArray aliases;
-			for (Command *alias : modifiedCommand.Children())
+			// it's redeemable, so put this in redemptions map and move on
+			// without processing aliases because they're triggered by the
+			// redemption, not the command name
+			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_REDEMPTION,modifiedCommand.Redemption());
+			modifiedRedemptionsLookup.try_emplace(modifiedCommand.Redemption(),modifiedCommand);
+		}
+		else
+		{
+			// it's not redeemable, which means we want it in the commands map along with all of its aliases
+			auto parentCommandNode=modifiedCommandsLookup.try_emplace(modifiedCommand.Name(),modifiedCommand); // always place the parent in the map
+			if (!modifiedCommand.Children().empty()) // skip processing aliases if it doesn't have children to avoid the unnecessary QJsonArray allocation
 			{
-				aliases.append(alias->Name());
-				// we have to rebuild the aliases here instead of just copy or move because the relationship is
-				// maintained by pointers that will point to the wrong parent or children otherwise
-				if (parentCommandNode.second) modifiedCommandsLookup.try_emplace(alias->Name(),alias->Name(),&parentCommandNode.first->second);
+				QJsonArray aliases;
+				for (Command *alias : modifiedCommand.Children())
+				{
+					aliases.append(alias->Name());
+					// we have to rebuild the aliases here instead of just copy or move because the relationship is
+					// maintained by pointers that will point to the wrong parent or children otherwise
+					if (parentCommandNode.second) modifiedCommandsLookup.try_emplace(alias->Name(),alias->Name(),&parentCommandNode.first->second);
+				}
+				configurationEntryJSONObject.insert(JSON_KEY_COMMAND_ALIASES,aliases);
 			}
-			configurationEntryJSONObject.insert(JSON_KEY_COMMAND_ALIASES,aliases);
 		}
 
 		configurationJSONArray.append(configurationEntryJSONObject);
@@ -343,6 +352,7 @@ QJsonDocument Bot::SerializeCommands(const std::deque<Command> &modifiedCommands
 
 	// make the modified lists live and throw the old ones away at the end of this scope
 	commands.swap(modifiedCommandsLookup);
+	redemptions.swap(modifiedRedemptionsLookup);
 	nativeCommandAliases.swap(mergedNativeCommandAliases);
 
 	return QJsonDocument(configurationJSONArray);
