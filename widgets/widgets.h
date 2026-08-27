@@ -326,6 +326,7 @@ namespace UI
 			Feedback::Error errorReport;
 			QLabel labelFilter;
 			QComboBox filter;
+			QLineEdit search;
 			QDialogButtonBox buttons;
 			QPushButton discard;
 			QPushButton save;
@@ -337,6 +338,26 @@ namespace UI
 			QStringList availableRedemptionTitles;
 			std::unordered_map<QString,Entry*> entries;
 			bool event(QEvent *event) override;
+
+			struct SearchNode
+			{
+				std::unordered_map<QChar,std::shared_ptr<SearchNode>> children;
+				std::unordered_set<const Entry*> matches;
+			};
+
+			class SearchEngine
+			{
+			public:
+				SearchEngine(): root(new SearchNode()) { }
+				~SearchEngine();
+				void PopulateEntry(const Entry *entry);
+				std::unordered_set<const Entry*> Search(const QString &key);
+			protected:
+				SearchNode *root;
+				void PopulateSuffixes(const QString &text,const Entry *entry);
+			};
+
+			SearchEngine searchEngine;
 		signals:
 			void Save(const std::deque<Command> &commands);
 			void RequestRedemptionList(Subsystem::Interchange::Transaction *transaction);
@@ -345,6 +366,7 @@ namespace UI
 		protected slots:
 			void Add();
 			void Save();
+			void Search(const QString &key);
 		};
 	}
 

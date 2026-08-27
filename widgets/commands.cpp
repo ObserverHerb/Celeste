@@ -790,6 +790,7 @@ namespace UI
 			help(this),
 			labelFilter("Filter:",this),
 			filter(this),
+			search(this),
 			buttons(this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
@@ -843,6 +844,10 @@ namespace UI
 				filter.setCurrentIndex(0);
 				connect(&filter,QOverload<int>::of(&QComboBox::currentIndexChanged),this,&Dialog::FilterChanged);
 				rightLayout->addWidget(&filter,2,1);
+				search.setPlaceholderText("Search");
+				search.setClearButtonEnabled(true);
+				connect(&search,&QLineEdit::textChanged,this,&Dialog::Search);
+				rightLayout->addWidget(&search,3,0,1,2);
 				upperLayout->addWidget(rightPane);
 
 				QWidget *lowerContent=new QWidget(this);
@@ -919,6 +924,7 @@ namespace UI
 								}
 
 								if (headerLength > entryWithLongestHeader.first) entryWithLongestHeader={headerLength,entry};
+								searchEngine.PopulateEntry(entry);
 							}
 
 							catch (const std::logic_error &exception)
@@ -988,6 +994,7 @@ namespace UI
 			);
 			scrollLayout.addWidget(entry);
 			entryIterator->second=entry;
+			searchEngine.PopulateEntry(entry);
 		}
 
 		void Dialog::FilterChanged(int index)
@@ -1057,6 +1064,71 @@ namespace UI
 
 			emit Save(commands);
 			accept();
+		}
+
+		void Dialog::Search(const QString &key)
+		{
+			if (key.isEmpty())
+			{
+				filter.setEnabled(true);
+				FilterChanged(filter.currentIndex());
+				return;
+			}
+
+			filter.setEnabled(false);
+			auto matchedEntries=searchEngine.Search(key);
+			for (const auto& [name,entry] : entries)
+			{
+				auto candidate=matchedEntries.find(entry);
+				if (candidate != matchedEntries.end())
+				{
+					entry->show();
+				}
+				else
+				{
+					entry->hide();
+				}
+			}
+		}
+
+		Dialog::SearchEngine::~SearchEngine()
+		{
+			delete root;
+		}
+
+		void Dialog::SearchEngine::PopulateEntry(const Entry *entry)
+		{
+			PopulateSuffixes(entry->Name(),entry);
+			for (const auto &alias : entry->Aliases()) PopulateSuffixes(alias,entry);
+		}
+
+		std::unordered_set<const Entry*> Dialog::SearchEngine::Search(const QString &key)
+		{
+			SearchNode *current=root;
+			for (auto character : key)
+			{
+				auto candidateChild=current->children.find(character);
+				if (candidateChild == current->children.end()) return {};
+				current=candidateChild->second.get();
+			}
+			return current->matches;
+		}
+
+		void Dialog::SearchEngine::PopulateSuffixes(const QString &text,const Entry *entry)
+		{
+			int size=text.size();
+			for (int textIndex=0; textIndex < size; textIndex++)
+			{
+				SearchNode *current=root;
+				for (int suffixIndex=textIndex; suffixIndex < size; suffixIndex++)
+				{
+					auto character=text[suffixIndex];
+					auto candidateChild=current->children.find(character);
+					if (candidateChild == current->children.end()) candidateChild=current->children.try_emplace(character,std::make_shared<SearchNode>()).first;
+					current=candidateChild->second.get();
+					current->matches.insert(entry);
+				}
+			}
 		}
 	}
 }
