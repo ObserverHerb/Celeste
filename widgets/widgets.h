@@ -137,6 +137,7 @@ namespace UI
 		public slots:
 			void Valid(QWidget *widget);
 			void Invalid(QWidget *widget);
+			void ValidateFont(QWidget *widget,const QString &family,const int pointSize);
 		};
 
 		class Help : public QGroupBox
@@ -467,9 +468,6 @@ namespace UI
 				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
-				void ValidateFont(const QString &family,const int pointSize);
-				void ValidateFont(const QString &family);
-				void ValidateFont(const int pointSize);
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
@@ -505,9 +503,6 @@ namespace UI
 				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
-				void ValidateFont(const QString &family,const int pointSize);
-				void ValidateFont(const QString &family);
-				void ValidateFont(const int pointSize);
 			};
 
 			class Pane : public Category
@@ -547,9 +542,6 @@ namespace UI
 				void PickForegroundColor();
 				void PickBackgroundColor();
 				void PickAccentColor();
-				void ValidateFont(const QString &family,const int pointSize);
-				void ValidateFont(const QString &family);
-				void ValidateFont(const int pointSize);
 			};
 
 			class Music : public Category

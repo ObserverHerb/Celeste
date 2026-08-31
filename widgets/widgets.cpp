@@ -66,11 +66,11 @@ namespace UI
 
 		void Error::SwapTrackingName(const QString &oldName,const QString &newName)
 		{
-			auto candidate=errors.find(oldName);
-			if (candidate != errors.end())
+			auto candidate=errors.extract(oldName);
+			if (!candidate.empty())
 			{
-				errors.erase(candidate);
-				errors.insert(newName);
+				candidate.value()=newName;
+				errors.insert(std::move(candidate));
 			}
 			CompileErrorMessages();
 		}
@@ -88,6 +88,20 @@ namespace UI
 			widget->setStyleSheet("background-color: LavenderBlush;");
 			if (errors.insert(widget->objectName()).second) emit Clear(false);
 			CompileErrorMessages();
+		}
+
+		void Error::ValidateFont(QWidget *widget,const QString &family,const int pointSize)
+		{
+			if (QFontDatabase::families().contains(family,Qt::CaseInsensitive))
+			{
+				auto availableSizes=QFontDatabase::pointSizes(family);
+				if (availableSizes.isEmpty() || availableSizes.contains(pointSize)) // empty means scalable font so all point sizes valid
+				{
+					Valid(widget);
+					return;
+				}
+			}
+			Invalid(widget);
 		}
 
 		void Error::CompileErrorMessages()

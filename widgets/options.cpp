@@ -232,8 +232,12 @@ namespace UI
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Status::ValidateFont));
-				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Status::ValidateFont));
+				connect(&font,&QLineEdit::textChanged,this,[this](const QString &family) {
+					this->errorReport->ValidateFont(&font,family,fontSize.value());
+				});
+				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,[this](int pointSize) {
+					this->errorReport->ValidateFont(&font,font.text(),pointSize);
+				});
 				connect(&selectFont,&QPushButton::clicked,this,&Status::PickFont);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Status::PickForegroundColor);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Status::PickBackgroundColor);
@@ -273,25 +277,6 @@ namespace UI
 				previewBackgroundColor.Set(backgroundColor.text());
 			}
 
-			void Status::ValidateFont(const QString &family,const int pointSize)
-			{
-				QFont candidate(family,pointSize);
-				if (candidate.exactMatch())
-					errorReport->Valid(&font);
-				else
-					errorReport->Invalid(&font);
-			}
-
-			void Status::ValidateFont(const QString &family)
-			{
-				ValidateFont(family,fontSize.value());
-			}
-
-			void Status::ValidateFont(const int pointSize)
-			{
-				ValidateFont(font.text(),pointSize);
-			}
-
 			bool Status::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
@@ -327,8 +312,12 @@ namespace UI
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Chat::ValidateFont));
-				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Chat::ValidateFont));
+				connect(&font,&QLineEdit::textChanged,this,[this](const QString &family) {
+					this->errorReport->ValidateFont(&font,family,fontSize.value());
+				});
+				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,[this](int pointSize) {
+					this->errorReport->ValidateFont(&font,font.text(),pointSize);
+				});
 				connect(&selectFont,&QPushButton::clicked,this,&Chat::PickFont);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Chat::PickForegroundColor);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Chat::PickBackgroundColor);
@@ -368,25 +357,6 @@ namespace UI
 			{
 				PickColor(backgroundColor);
 				previewBackgroundColor.Set(backgroundColor.text());
-			}
-
-			void Chat::ValidateFont(const QString &family,const int pointSize)
-			{
-				QFont candidate(family,pointSize);
-				if (candidate.exactMatch())
-					errorReport->Valid(&font);
-				else
-					errorReport->Invalid(&font);
-			}
-
-			void Chat::ValidateFont(const QString &family)
-			{
-				ValidateFont(family,fontSize.value());
-			}
-
-			void Chat::ValidateFont(const int pointSize)
-			{
-				ValidateFont(font.text(),pointSize);
 			}
 
 			bool Chat::eventFilter(QObject *object,QEvent *event)
@@ -429,8 +399,12 @@ namespace UI
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&font,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&Pane::ValidateFont));
-				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,QOverload<const int>::of(&Pane::ValidateFont));
+				connect(&font,&QLineEdit::textChanged,this,[this](const QString &family) {
+					this->errorReport->ValidateFont(&font,family,fontSize.value());
+				});
+				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,[this](int pointSize) {
+					this->errorReport->ValidateFont(&font,font.text(),pointSize);
+				});
 				connect(&selectFont,&QPushButton::clicked,this,&Pane::PickFont);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Pane::PickForegroundColor);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Pane::PickBackgroundColor);
@@ -480,25 +454,6 @@ namespace UI
 			{
 				PickColor(accentColor);
 				previewAccentColor.Set(accentColor.text());
-			}
-
-			void Pane::ValidateFont(const QString &family,const int pointSize)
-			{
-				QFont candidate(family,pointSize);
-				if (candidate.exactMatch())
-					errorReport->Valid(&font);
-				else
-					errorReport->Invalid(&font);
-			}
-
-			void Pane::ValidateFont(const QString &family)
-			{
-				ValidateFont(family,fontSize.value());
-			}
-
-			void Pane::ValidateFont(const int pointSize)
-			{
-				ValidateFont(font.text(),pointSize);
 			}
 
 			bool Pane::eventFilter(QObject *object,QEvent *event)
