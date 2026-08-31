@@ -786,7 +786,6 @@ namespace UI
 		Dialog::Dialog(std::vector<const Command*> commands,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			entriesFrame(this),
 			scrollLayout(&entriesFrame),
-			helpBox("Help",this),
 			help(this),
 			labelFilter("Filter:",this),
 			filter(this),
@@ -827,10 +826,7 @@ namespace UI
 				QWidget *rightPane=new QWidget(this);
 				QGridLayout *rightLayout=new QGridLayout(rightPane);
 				rightPane->setLayout(rightLayout);
-				QVBoxLayout *helpBoxLayout=new QVBoxLayout(&helpBox);
-				helpBox.setLayout(helpBoxLayout);
-				helpBoxLayout->addWidget(&help);
-				rightLayout->addWidget(&helpBox,0,0,1,2);
+				rightLayout->addWidget(&help,0,0,1,2);
 				QVBoxLayout *errorBoxLayout=new QVBoxLayout(&errorBox);
 				errorBox.setLayout(errorBoxLayout);
 				errorBox.setVisible(false);
@@ -904,7 +900,7 @@ namespace UI
 									continue;
 								}
 								auto entry=new Entry(*command,availableRedemptionTitles,errorReport,&entriesFrame);
-								connect(entry,&Entry::Help,&help,&QTextEdit::setText);
+								connect(entry,&Entry::Help,&help,&UI::Feedback::Help::Message);
 								connect(&errorReport,&Feedback::Error::Clear,&save,&QPushButton::setEnabled);
 								connect(&errorReport,&Feedback::Error::Count,&errorBox,&QGroupBox::setVisible);
 								connect(&errorReport,&Feedback::Error::ReportProblem,&errorMessages,&QLabel::setText);

@@ -29,6 +29,7 @@ add_executable(Celeste
 	widgets/widgets.cpp
 	widgets/general.cpp
 	widgets/commands.cpp
+	widgets/options.cpp
 	entities.h
 	entities.cpp
 	subsystem/subsystem.h

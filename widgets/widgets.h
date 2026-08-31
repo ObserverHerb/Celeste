@@ -139,11 +139,15 @@ namespace UI
 			void Invalid(QWidget *widget);
 		};
 
-		class Help : public QTextEdit
+		class Help : public QGroupBox
 		{
 			Q_OBJECT
 		public:
 			Help(QWidget *parent);
+		protected:
+			QTextEdit text;
+		signals:
+			void Message(const QString &message);
 		};
 	}
 
@@ -321,7 +325,6 @@ namespace UI
 		protected:
 			QWidget entriesFrame;
 			QVBoxLayout scrollLayout;
-			QGroupBox helpBox;
 			Feedback::Help help;
 			Feedback::Error errorReport;
 			QLabel labelFilter;
