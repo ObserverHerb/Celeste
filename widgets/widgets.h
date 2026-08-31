@@ -430,10 +430,12 @@ namespace UI
 				void Save() override;
 			protected:
 				QLineEdit backgroundColor;
+				Color previewBackgroundColor;
 				QPushButton selectBackgroundColor;
 				QSpinBox width;
 				QSpinBox height;
 				Settings settings;
+				void PickBackgroundColor();
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 

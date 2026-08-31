@@ -158,13 +158,12 @@ namespace UI
 
 			Window::Window(Settings settings,QWidget *parent) : Category(parent,QStringLiteral("Main Window")),
 				backgroundColor(this),
+				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
 				width(this),
 				height(this),
 				settings(settings)
 			{
-				connect(&selectBackgroundColor,&QPushButton::clicked,this,[this]() { PickColor(backgroundColor); });
-
 				backgroundColor.setText(settings.backgroundColor);
 				QRect desktop=QGuiApplication::primaryScreen()->availableVirtualGeometry();
 				width.setRange(1,desktop.width());
@@ -173,10 +172,12 @@ namespace UI
 				height.setValue(static_cast<QSize>(settings.dimensions).height());
 
 				Rows({
-					{Label(QStringLiteral("Background Color")),&backgroundColor,&selectBackgroundColor},
-					{Label(QStringLiteral("Width")),&width},
-					{Label(QStringLiteral("Height")),&height}
+					{Label(u"Background Color"_s),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+					{Label(u"Width"_s),&width},
+					{Label(u"Height"_s),&height}
 				});
+
+				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Window::PickBackgroundColor);
 			}
 
 			bool Window::eventFilter(QObject *object,QEvent *event)
@@ -204,6 +205,12 @@ namespace UI
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
 				return false;
+			}
+
+			void Window::PickBackgroundColor()
+			{
+				PickColor(backgroundColor);
+				previewBackgroundColor.Set(backgroundColor.text());
 			}
 
 			void Window::Save()
@@ -1137,7 +1144,7 @@ namespace UI
 			// to create and attach the categories, so these can't be passed into
 			// the constructor
 			scrollLayout->addWidget(category);
-			connect(category,&Categories::Category::Help,&help,&UI::Feedback::Help::Message);
+			connect(category,&Categories::Category::Help,&help,&Feedback::Help::Message);
 			categories.push_back(category);
 		}
 
