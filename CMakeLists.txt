@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.29)
 
 project(Celeste LANGUAGES CXX VERSION 4.00)
 
