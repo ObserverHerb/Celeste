@@ -382,7 +382,7 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Category(QWidget *parent,const QString &name);
+				Category(const QString &name);
 				virtual void Save()=0;
 			protected:
 				QVBoxLayout verticalLayout;
@@ -404,7 +404,7 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				QLineEdit name;
@@ -427,7 +427,7 @@ namespace UI
 					ApplicationSetting &backgroundColor;
 					ApplicationSetting &dimensions;
 				};
-				Window(Settings settings,QWidget *parent);
+				Window(Settings settings);
 				void Save() override;
 			protected:
 				QLineEdit backgroundColor;
@@ -451,7 +451,7 @@ namespace UI
 					ApplicationSetting foregroundColor;
 					ApplicationSetting backgroundColor;
 				};
-				Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				QLineEdit font;
@@ -483,7 +483,7 @@ namespace UI
 					ApplicationSetting backgroundColor;
 					ApplicationSetting statusInterval;
 				};
-				Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				QLineEdit font;
@@ -518,7 +518,7 @@ namespace UI
 					ApplicationSetting accentColor;
 					ApplicationSetting duration;
 				};
-				Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				QLineEdit font;
@@ -552,7 +552,7 @@ namespace UI
 				{
 					ApplicationSetting &suppressedVolume;
 				};
-				Music(Settings settings,QWidget *parent);
+				Music(Settings settings);
 				void Save() override;
 			protected:
 				QSpinBox suppressedVolume;
@@ -564,7 +564,7 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				Settings::Bot &settings;
@@ -648,7 +648,7 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Pulsar(Settings::Pulsar &settings,QWidget *parent);
+				Pulsar(Settings::Pulsar &settings);
 				void Save() override;
 			protected:
 				Settings::Pulsar &settings;
@@ -665,7 +665,7 @@ namespace UI
 				{
 					ApplicationSetting &directory;
 				};
-				Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				QLineEdit directory;
@@ -682,7 +682,7 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent);
+				Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport);
 				void Save() override;
 			protected:
 				QLineEdit administrator;
@@ -704,8 +704,7 @@ namespace UI
 		{
 			Q_OBJECT
 		public:
-			Dialog(QWidget *parent);
-			void AddCategory(Categories::Category *category);
+			Dialog(std::vector<Categories::Category*> categories,QWidget *parent);
 		protected:
 			QWidget entriesFrame;
 			Feedback::Help help;

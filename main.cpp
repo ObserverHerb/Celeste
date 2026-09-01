@@ -49,47 +49,48 @@ int MessageBox(const QString &title,const QString &text,QMessageBox::Icon icon,Q
 void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pulsar,Music::Player &musicPlayer,Log &log,Security &security)
 {
 	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
-	UI::Options::Dialog *configureOptions=new UI::Options::Dialog(&window);
-	UI::Options::Categories::Channel *optionsCategoryChannel=new UI::Options::Categories::Channel(channel->Settings(),errorReport,configureOptions);
-	configureOptions->AddCategory(optionsCategoryChannel);
-	configureOptions->AddCategory(new UI::Options::Categories::Window({
-		.backgroundColor=window.BackgroundColor(),
-		.dimensions=window.Dimensions()
-	},configureOptions));
+	auto optionsCategoryChannel=new UI::Options::Categories::Channel(channel->Settings(),errorReport);
+	auto optionsCategoryBot=new UI::Options::Categories::Bot(bot.Settings(),errorReport);
 	StatusPane statusPane(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Status({
-		.font=statusPane.Font(),
-		.fontSize=statusPane.FontSize(),
-		.foregroundColor=statusPane.ForegroundColor(),
-		.backgroundColor=statusPane.BackgroundColor()
-	},errorReport,configureOptions));
 	ChatPane chatPane(&window);
-	configureOptions->AddCategory(new UI::Options::Categories::Chat({
-		.font=chatPane.Font(),
-		.fontSize=chatPane.FontSize(),
-		.foregroundColor=chatPane.ForegroundColor(),
-		.backgroundColor=chatPane.BackgroundColor(),
-		.statusInterval=chatPane.StatusInterval()
-	},errorReport,configureOptions));
 	AnnouncePane announcePane(QString{},&window,PANE_PRIORITY_IMMEDIATE);
-	configureOptions->AddCategory(new UI::Options::Categories::Pane({
-		.font=announcePane.Font(),
-		.fontSize=announcePane.FontSize(),
-		.foregroundColor=announcePane.ForegroundColor(),
-		.backgroundColor=announcePane.BackgroundColor(),
-		.accentColor=announcePane.AccentColor(),
-		.duration=announcePane.Duration()
-	},errorReport,configureOptions));
-	configureOptions->AddCategory(new UI::Options::Categories::Music({
-		.suppressedVolume=musicPlayer.SuppressedVolume()
-	},configureOptions));
-	UI::Options::Categories::Bot *optionsCategoryBot=new UI::Options::Categories::Bot(bot.Settings(),errorReport,configureOptions);
-	configureOptions->AddCategory(new UI::Options::Categories::Pulsar(pulsar.Settings(),configureOptions));
-	configureOptions->AddCategory(optionsCategoryBot);
-	configureOptions->AddCategory(new UI::Options::Categories::Log({
-		.directory=log.Directory()
-	},errorReport,configureOptions));
-	configureOptions->AddCategory(new UI::Options::Categories::Security(security,errorReport,configureOptions));
+	UI::Options::Dialog *configureOptions=new UI::Options::Dialog({
+		optionsCategoryChannel,
+		new UI::Options::Categories::Window({
+			.backgroundColor=window.BackgroundColor(),
+			.dimensions=window.Dimensions()
+		}),
+		new UI::Options::Categories::Status({
+			.font=statusPane.Font(),
+			.fontSize=statusPane.FontSize(),
+			.foregroundColor=statusPane.ForegroundColor(),
+			.backgroundColor=statusPane.BackgroundColor()
+		},errorReport),
+		new UI::Options::Categories::Chat({
+			.font=chatPane.Font(),
+			.fontSize=chatPane.FontSize(),
+			.foregroundColor=chatPane.ForegroundColor(),
+			.backgroundColor=chatPane.BackgroundColor(),
+			.statusInterval=chatPane.StatusInterval()
+		},errorReport),
+		new UI::Options::Categories::Pane({
+			.font=announcePane.Font(),
+			.fontSize=announcePane.FontSize(),
+			.foregroundColor=announcePane.ForegroundColor(),
+			.backgroundColor=announcePane.BackgroundColor(),
+			.accentColor=announcePane.AccentColor(),
+			.duration=announcePane.Duration()
+		},errorReport),
+		new UI::Options::Categories::Music({
+			.suppressedVolume=musicPlayer.SuppressedVolume()
+		}),
+		new UI::Options::Categories::Pulsar(pulsar.Settings()),
+		optionsCategoryBot,
+		new UI::Options::Categories::Log({
+			.directory=log.Directory()
+		},errorReport),
+		new UI::Options::Categories::Security(security,errorReport)
+	},&window);
 
 	configureOptions->connect(optionsCategoryChannel,&UI::Options::Categories::Channel::Changed,channel,&Channel::Disconnect);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,std::shared_ptr<QImage>,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);

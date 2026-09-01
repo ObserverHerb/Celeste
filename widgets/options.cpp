@@ -9,7 +9,7 @@ namespace UI
 	{
 		namespace Categories
 		{
-			Category::Category(QWidget *parent,const QString &name) : QFrame(parent),
+			Category::Category(const QString &name) : QFrame(nullptr),
 				verticalLayout(this),
 				header(this),
 				details(nullptr),
@@ -95,7 +95,7 @@ namespace UI
 				if (color.isValid()) control.setText(color.name(QColor::HexArgb));
 			}
 
-			Channel::Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Channel")),
+			Channel::Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Channel")),
 				name(this),
 				protection(this),
 				settings(settings),
@@ -156,7 +156,7 @@ namespace UI
 				if (changed) emit Changed();
 			}
 
-			Window::Window(Settings settings,QWidget *parent) : Category(parent,QStringLiteral("Main Window")),
+			Window::Window(Settings settings) : Category(QStringLiteral("Main Window")),
 				backgroundColor(this),
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
@@ -219,7 +219,7 @@ namespace UI
 				settings.dimensions.Set(QSize{width.value(),height.value()});
 			}
 
-			Status::Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Status")),
+			Status::Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Status")),
 				font(this),
 				fontSize(this),
 				selectFont(Text::CHOOSE,this),
@@ -298,7 +298,7 @@ namespace UI
 				settings.backgroundColor.Set(backgroundColor.text());
 			}
 
-			Chat::Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Chat")),
+			Chat::Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Chat")),
 				font(this),
 				fontSize(this),
 				selectFont(Text::CHOOSE,this),
@@ -382,7 +382,7 @@ namespace UI
 				settings.statusInterval.Set(statusInterval.value());
 			}
 
-			Pane::Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Panes")),
+			Pane::Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Panes")),
 				font(this),
 				fontSize(this),
 				selectFont(Text::CHOOSE,this),
@@ -481,7 +481,7 @@ namespace UI
 				settings.duration.Set(duration.value());
 			}
 
-			Music::Music(Settings settings,QWidget *parent) : Category(parent,QStringLiteral("Music")),
+			Music::Music(Settings settings) : Category(QStringLiteral("Music")),
 				suppressedVolume(this),
 				settings(settings)
 			{
@@ -510,7 +510,7 @@ namespace UI
 				settings.suppressedVolume.Set(suppressedVolume.value());
 			}
 
-			Bot::Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Bot Core")),
+			Bot::Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Bot Core")),
 				settings(settings),
 				arrivalSound(this),
 				selectArrivalSound(Text::BROWSE,this),
@@ -882,7 +882,7 @@ namespace UI
 				settings.monkeyKeyboardVolume.Set(monkeyKeyboardVolume.value());
 			}
 
-			Pulsar::Pulsar(Settings::Pulsar &settings,QWidget *parent) : Category(parent,u"Pulsar"_s),
+			Pulsar::Pulsar(Settings::Pulsar &settings) : Category(u"Pulsar"_s),
 				settings(settings),
 				subsystemEnabled(this),
 				reconnectDelay(this)
@@ -915,7 +915,7 @@ namespace UI
 				settings.reconnectDelay.Set(reconnectDelay.value());
 			}
 
-			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,u"Logging"_s),
+			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(u"Logging"_s),
 				directory(this),
 				selectDirectory(Text::BROWSE,this),
 				settings(settings),
@@ -962,7 +962,7 @@ namespace UI
 				settings.directory.Set(directory.text());
 			}
 
-			Security::Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport,QWidget *parent) : Category(parent,QStringLiteral("Security")),
+			Security::Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Security")),
 				administrator(this),
 				clientID(this),
 				token(this),
@@ -1035,14 +1035,15 @@ namespace UI
 			}
 		}
 
-		Dialog::Dialog(QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
+		Dialog::Dialog(std::vector<Categories::Category*> categories,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			entriesFrame(this),
 			help(this),
 			buttons(this),
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
 			apply(Text::BUTTON_APPLY,this),
-			scrollLayout(nullptr)
+			scrollLayout(nullptr),
+			categories(std::move(categories))
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#options { background-color: palette(base); }");
 
@@ -1068,6 +1069,12 @@ namespace UI
 			scrollLayout=new QVBoxLayout(&entriesFrame);
 			scrollLayout->setAlignment(Qt::AlignBottom);
 			entriesFrame.setLayout(scrollLayout);
+			for (auto category : this->categories)
+			{
+				scrollLayout->addWidget(category);
+				connect(category,&Categories::Category::Help,&help,&Feedback::Help::Message);
+				categories.push_back(category);
+			}
 
 			QWidget *rightPane=new QWidget(this);
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
@@ -1090,17 +1097,6 @@ namespace UI
 			lowerLayout->addWidget(&buttons);
 
 			setSizeGripEnabled(true);
-		}
-
-		void Dialog::AddCategory(Categories::Category *category)
-		{
-			// need to do it this way because all UI elements in Celeste require
-			// a parent, but we have to wait until after the parent dialog exists
-			// to create and attach the categories, so these can't be passed into
-			// the constructor
-			scrollLayout->addWidget(category);
-			connect(category,&Categories::Category::Help,&help,&Feedback::Help::Message);
-			categories.push_back(category);
 		}
 
 		void Dialog::Save()
