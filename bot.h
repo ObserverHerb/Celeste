@@ -9,6 +9,7 @@
 #include <QDateTime>
 #include <QTimer>
 #include <unordered_map>
+#include <flat_map>
 #include <deque>
 #include "entities.h"
 #include "subsystem/subsystem.h"
@@ -75,7 +76,7 @@ protected:
 	Settings::Bot settings;
 	static std::unordered_map<QString,std::unordered_map<QString,QString>> badgeIconURLs;
 	static std::chrono::milliseconds launchTimestamp;
-	static const std::unordered_map<QString,CommandType> COMMAND_TYPE_LOOKUP;
+	static const std::flat_map<QString,CommandType> COMMAND_TYPE_LOOKUP;
 	void DeserializeCommands(const QJsonDocument &json);
 	QJsonDocument LoadDynamicCommands();
 	void StageRedemptionCommand(const QString &name,const QJsonObject &jsonObject);

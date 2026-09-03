@@ -1,4 +1,5 @@
 #include <QCoreApplication>
+#include <flat_map>
 #include "channel.h"
 #include "globals.h"
 
@@ -41,7 +42,7 @@ enum class IRCCommand
 	PING
 };
 
-const std::unordered_map<QString,IRCCommand> nonNumericIRCCommands={
+const std::flat_map<QString,IRCCommand> NON_NUMERIC_IRC_COMMANDS={
 	{"CAP",IRCCommand::CAP},
 	{IRC_COMMAND_JOIN,IRCCommand::JOIN},
 	{"PART",IRCCommand::PART},
@@ -59,7 +60,7 @@ enum class CapabilitiesSubcommand
 	NAK
 };
 
-const std::unordered_map<QString,CapabilitiesSubcommand> capabilitiesSubcommands={
+const std::flat_map<QString,CapabilitiesSubcommand> CAPABILITIES_SUBCOMMANDS={
 	{"ACK",CapabilitiesSubcommand::ACK},
 	{"NAK",CapabilitiesSubcommand::NAK}
 };
@@ -70,7 +71,7 @@ enum class Notice
 	DENIED,
 };
 
-const std::unordered_map<QString,Notice> notices={
+const std::flat_map<QString,Notice> NOTICES={
 	{"Login authentication failed",Notice::DENIED},
 	{"Improperly formatted auth",Notice::MALFORMATTED_AUTH}
 };
@@ -156,8 +157,8 @@ void Channel::DispatchMessage(QString prefix,QString source,QString command,QStr
 	int code=command.toInt(&numeric);
 	if (!numeric)
 	{
-		auto nonNumericIRCCommand=nonNumericIRCCommands.find(command);
-		if (nonNumericIRCCommand != nonNumericIRCCommands.end())
+		auto nonNumericIRCCommand=NON_NUMERIC_IRC_COMMANDS.find(command);
+		if (nonNumericIRCCommand != NON_NUMERIC_IRC_COMMANDS.end())
 			code=static_cast<int>(nonNumericIRCCommand->second);
 		else
 			code=-1;
@@ -250,7 +251,7 @@ void Channel::ParseCapabilities(const QStringList &parameters,const QString &cap
 void Channel::DispatchCapabilities(const QString &subCommand,const QStringList &capabilities)
 {
 	int code=-1;
-	if (auto capabilitiesSubcommand=capabilitiesSubcommands.find(subCommand); capabilitiesSubcommand != capabilitiesSubcommands.end()) code=static_cast<int>(capabilitiesSubcommand->second);
+	if (auto capabilitiesSubcommand=CAPABILITIES_SUBCOMMANDS.find(subCommand); capabilitiesSubcommand != CAPABILITIES_SUBCOMMANDS.end()) code=static_cast<int>(capabilitiesSubcommand->second);
 	switch (code)
 	{
 	case static_cast<int>(CapabilitiesSubcommand::ACK):
@@ -267,8 +268,8 @@ void Channel::DispatchCapabilities(const QString &subCommand,const QStringList &
 
 void Channel::ParseNotice(const QString &message)
 {
-	auto notice=notices.find(message);
-	if (notice == notices.end())
+	auto notice=NOTICES.find(message);
+	if (notice == NOTICES.end())
 	{
 		emit Print("Unrecognized notice received",OPERATION_NOTICES);
 		return;

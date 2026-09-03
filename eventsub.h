@@ -4,6 +4,7 @@
 #include <QWebSocket>
 #include <QJsonObject>
 #include <queue>
+#include <flat_map>
 #include "subsystem/subsystem.h"
 #include "settings.h"
 #include "security.h"
@@ -36,8 +37,6 @@ struct SubscriptionDescriptor
 class EventSub : public QObject
 {
 	Q_OBJECT
-	using MessageTypes=std::unordered_map<QString,MessageType>;
-	using SubscriptionTypes=std::unordered_map<QString,SubscriptionDescriptor>;
 public:
 	EventSub(Security &security,QObject *parent=nullptr);
 	void Subscribe();
@@ -45,8 +44,8 @@ public:
 protected:
 	Security &security;
 	QString buffer;
-	MessageTypes messageTypes;
-	SubscriptionTypes subscriptionTypes; // TODO: find a better name for this
+	std::flat_map<QString,MessageType> messageTypes;
+	std::flat_map<QString,SubscriptionDescriptor> subscriptionTypes; // TODO: find a better name for this
 	std::queue<QString> defaultTypes;
 	QWebSocket socket;
 	QString sessionID;

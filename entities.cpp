@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstring>
 #include <numbers>
+#include <flat_map>
 #include "entities.h"
 #include "globals.h"
 #include "network.h"
@@ -439,7 +440,7 @@ namespace Music
 
 		Tag::Tag(const QString &filename) : APIC(nullptr)
 		{
-			static const std::unordered_map<QString,Frame::Frame> FRAMES={
+			static const std::flat_map<QString,Frame::Frame> FRAMES={
 				{"APIC",Frame::Frame::APIC},
 				{"TIT2",Frame::Frame::TIT2},
 				{"TALB",Frame::Frame::TALB},
