@@ -15,6 +15,8 @@
 #include <QLabel>
 #include <QSpinBox>
 #include <QSlider>
+#include <QButtonGroup>
+#include <QRadioButton>
 #include <QGroupBox>
 #include <QGridLayout>
 #include <QVBoxLayout>
@@ -603,8 +605,23 @@ namespace UI
 				QSpinBox monkeyKeyboardBleepLength;
 				QSpinBox monkeyKeyboardBloopRootFrequency;
 				QSpinBox monkeyKeyboardBloopLength;
+				QButtonGroup monkeyKeyboardWaveTypeGroup;
+				QRadioButton monkeyKeyboardWaveTypeSine;
+				QRadioButton monkeyKeyboardWaveTypeTriangle;
+				QRadioButton monkeyKeyboardWaveTypeSawtooth;
+				QRadioButton monkeyKeyboardWaveTypeSquare;
+				QPushButton monkeyKeyboardNoteA;
+				QPushButton monkeyKeyboardNoteB;
+				QPushButton monkeyKeyboardNoteC;
+				QPushButton monkeyKeyboardNoteD;
+				QPushButton monkeyKeyboardNoteE;
+				QPushButton monkeyKeyboardNoteF;
+				QPushButton monkeyKeyboardNoteG;
 				QSlider monkeyKeyboardVolume;
 				QLabel monkeyKeyboardVolumeValue;
+				QButtonGroup monkeyKeyboardPreviewTypeGroup;
+				QRadioButton monkeyKeyboardPreviewTypeBleep;
+				QRadioButton monkeyKeyboardPreviewTypeBloop;
 				std::shared_ptr<Feedback::Error> errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
@@ -614,6 +631,7 @@ namespace UI
 				void PlaySubscriptionSound(const QString &chatter,const QString &path);
 				void PlayRaidSound(const QString &chatter,const unsigned int raiders,const QString &path);
 				void PlayTextWallSound(const QString &message,const QString &path);
+				void PlayMonkeyKeyboardNote(std::chrono::microseconds duration,int rootFrequency,const QString &note);
 				void PlayAdBreakWarningVideo(const QString &path);
 				void PlayAdBreakFinishedVideo(const QString &path);
 			protected slots:
@@ -634,6 +652,7 @@ namespace UI
 				void OpenAdBreakFinishedVideo();
 				void PlayAdBreakFinishedVideo();
 				void MonkeyKeyboardVolumeChanged(int value);
+				void PlayMonkeyKeyboardNote();
 				void ValidateArrivalSound(const QString &path);
 				void ValidatePortraitVideo(const QString &path);
 				void ValidateCheerVideo(const QString &path);

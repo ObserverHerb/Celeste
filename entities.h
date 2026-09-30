@@ -13,6 +13,7 @@
 #include <QFile>
 #include <QJsonObject>
 #include <memory>
+#include <flat_map>
 #include "settings.h"
 #include "security.h"
 
@@ -285,11 +286,19 @@ namespace Music
 		};
 	}
 
+	enum class WaveType
+	{
+		SINE,
+		TRIANGLE,
+		SAWTOOTH,
+		SQUARE
+	};
+
 	class MonkeyKeyboardNote: public QObject
 	{
 		Q_OBJECT
 	public:
-		MonkeyKeyboardNote(std::chrono::microseconds duration,int frequency,qreal volume);
+		MonkeyKeyboardNote(std::chrono::microseconds duration,int frequency,qreal volume,WaveType waveType);
 		void StateChanged(QtAudio::State state);
 		QByteArray data;
 		QBuffer buffer;

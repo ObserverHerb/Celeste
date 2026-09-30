@@ -723,7 +723,7 @@ namespace Music
 		}
 	}
 
-	MonkeyKeyboardNote::MonkeyKeyboardNote(std::chrono::microseconds duration,int frequency,qreal volume): sink(QMediaDevices::defaultAudioOutput(),QMediaDevices::defaultAudioOutput().preferredFormat())
+	MonkeyKeyboardNote::MonkeyKeyboardNote(std::chrono::microseconds duration,int frequency,qreal volume,WaveType waveType): sink(QMediaDevices::defaultAudioOutput(),QMediaDevices::defaultAudioOutput().preferredFormat())
 	{
 		if (sink.isNull()) throw std::runtime_error("Could not find audio output");
 		sink.setVolume(volume);
@@ -735,48 +735,124 @@ namespace Music
 		// generate samples
 		data.resize(bytes);
 		auto samplePositionInBuffer=data.begin();
-		double normalizedRadianFrequency=2.0*std::numbers::pi*frequency/sink.format().sampleRate();
-		double filterCoefficient=2.0*qCos(normalizedRadianFrequency);
-		double initialPhase=0.0;
-		double previousY=qSin(initialPhase-normalizedRadianFrequency);
-		double nextPreviousY=qSin(initialPhase-2.0*normalizedRadianFrequency);
-		while (samplePositionInBuffer != data.end())
-		{
-			// generate sample for sine wave using second order infinite impulse response filter
-			// a fancy term for it using the previous two samples to calculate the next sample
-			double y=filterCoefficient*previousY-nextPreviousY;
-			nextPreviousY=previousY;
-			previousY=y;
-			double value=std::clamp(y,-1.0,1.0);
-
-			// convert to triangle wave
-			if (value < 0.25)
-			{
-				value=4.0*value; // rise from 0 to 1
-			}
-			else if (value < 0.75)
-			{
-				value=2.0-4.0*value; // fall from 1 to -1
-			}
-			else
-			{
-				value=4.0*value-4.0; // rise from -1 to 0
-			}
-
+		auto WriteSampleToBuffer=[this,&samplePositionInBuffer](double value) {
+			value=std::clamp(value,-1.0,1.0);
 			// modify the sample in the buffer
 			switch (sink.format().sampleFormat())
 			{
-			case QAudioFormat::Int32:
-				*reinterpret_cast<qint32*>(samplePositionInBuffer)=qint32(value*double(std::numeric_limits<qint32>::max()));
+				case QAudioFormat::Int16:
+					*reinterpret_cast<qint16*>(samplePositionInBuffer)=qint16(value*double(std::numeric_limits<qint16>::max()));
+					break;
+				case QAudioFormat::Int32:
+					*reinterpret_cast<qint32*>(samplePositionInBuffer)=qint32(value*double(std::numeric_limits<qint32>::max()));
+					break;
+				case QAudioFormat::Float:
+					*reinterpret_cast<float*>(samplePositionInBuffer)=value;
+					break;
+				default:
+					throw std::runtime_error("Unrecognized audio format");
+			}
+			samplePositionInBuffer+=sink.format().bytesPerSample(); // advance iterator by size of sample
+		};
+
+		double initialPhase=0.0;
+		auto sampleRate=sink.format().sampleRate();
+		double phaseStep=static_cast<double>(frequency)/sink.format().sampleRate();
+		auto AdvancePhase=[&phaseStep](double &phase) {
+			phase+=phaseStep;
+			if (phase >= 1.0) phase-=1.0;
+		};
+		auto PolyBLEP=[&phaseStep](double phase)->double { // Polynomial Band-Limited Step smooths harsh edges of waveforms
+			if (phase < phaseStep) // smooth jump at beginning of cycle
+			{
+				phase/=phaseStep;
+				return phase+phase-phase*phase-1.0;
+			}
+			else if (phase > 1.0-phaseStep) // smooth jump at end of cycle
+			{
+				phase=(phase-1.0)/phaseStep;
+				return phase+phase+phase*phase+1.0;
+			}
+			return 0.0; // not near a jump
+		};
+		switch (waveType)
+		{
+			case Music::WaveType::SINE:
+			{
+				// generate sample for sine wave using second order infinite impulse response filter
+				// a fancy term for it using the previous two samples to calculate the next sample
+				double normalizedRadianFrequency=2.0*std::numbers::pi*phaseStep;
+				double filterCoefficient=2.0*qCos(normalizedRadianFrequency);
+				double previousY=qSin(initialPhase-normalizedRadianFrequency);
+				double nextPreviousY=qSin(initialPhase-2.0*normalizedRadianFrequency);
+				while (samplePositionInBuffer != data.end())
+				{
+					double y=filterCoefficient*previousY-nextPreviousY;
+					nextPreviousY=previousY;
+					previousY=y;
+					WriteSampleToBuffer(y);
+				}
 				break;
-			case QAudioFormat::Float:
-				*reinterpret_cast<float*>(samplePositionInBuffer)=value;
-				break;
-			default:
-				throw std::runtime_error("Unrecognized audio format");
 			}
 
-			samplePositionInBuffer+=sink.format().bytesPerSample(); // advance iterator by size of sample
+			// the remaining types are generated using a phase accumulator
+			case Music::WaveType::TRIANGLE:
+			{
+				double phase=initialPhase;
+				while (samplePositionInBuffer != data.end())
+				{
+					double bipolarRamp=-1.0+2.0*phase;
+					WriteSampleToBuffer(2.0*std::abs(bipolarRamp)-1.0);
+					AdvancePhase(phase);
+				}
+				break;
+			}
+
+			case Music::WaveType::SQUARE:
+			{
+				double phase=initialPhase;
+				double attackEnvelopeDuration=std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::milliseconds(2)).count();
+				auto attackSampleCount=static_cast<int>(attackEnvelopeDuration*sampleRate);
+				int sampleCount=0;
+				while (samplePositionInBuffer != data.end())
+				{
+					double value=phase < 0.5 ? 1.0 : -1.0;
+					value+=PolyBLEP(phase);
+					value-=PolyBLEP(std::fmod(phase+0.5,1.0));
+					if (sampleCount < attackSampleCount)
+					{
+						double attackAttenuation=static_cast<double>(sampleCount)/attackSampleCount;
+						value*=attackAttenuation;
+						sampleCount++;
+					}
+					WriteSampleToBuffer(value);
+					AdvancePhase(phase);
+				}
+				break;
+			}
+
+			case Music::WaveType::SAWTOOTH:
+			{
+				double phase=initialPhase;
+				double attackEnvelopeDuration=std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::milliseconds(2)).count();
+				auto attackSampleCount=static_cast<int>(attackEnvelopeDuration*sampleRate);
+				int sampleCount=0;
+				while (samplePositionInBuffer != data.end())
+				{
+					double value=-1.0+2.0*phase;
+					value-=PolyBLEP(phase);
+					if (sampleCount < attackSampleCount)
+					{
+						double attackAttenuation=static_cast<double>(sampleCount)/attackSampleCount;
+						value*=attackAttenuation;
+						sampleCount++;
+					}
+					WriteSampleToBuffer(value);
+					AdvancePhase(phase);
+				}
+				break;
+			}
+
 		}
 
 		buffer.setData(data);
@@ -800,8 +876,7 @@ namespace Music
 				throw std::runtime_error("Failed to open the audio output");
 			case QtAudio::IOError:
 				throw std::runtime_error("Problem reading from the audio buffer");
-			case QtAudio::UnderrunError:
-				throw std::runtime_error("Buffer couldn't keep up with output");
+			// QtAudio::UnderrunError is deprecated
 			case QtAudio::FatalError:
 				throw std::runtime_error("A serious problem occurred in audio subsystem");
 			}

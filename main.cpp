@@ -101,6 +101,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,const unsigned int,const QString&>::of(&UI::Options::Categories::Bot::PlayRaidSound),&window,&Window::AnnounceRaid);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayAdBreakWarningVideo),&window,&Window::AnnounceAdBreakStarting);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&>::of(&UI::Options::Categories::Bot::PlayAdBreakFinishedVideo),&window,&Window::AnnounceAdBreakFinished);
+	configureOptions->connect(optionsCategoryBot,QOverload<std::chrono::microseconds,int,const QString&>::of(&UI::Options::Categories::Bot::PlayMonkeyKeyboardNote),&bot,&Bot::PlayMonkeyKeyboardNote);
 	configureOptions->connect(configureOptions,&UI::Options::Dialog::Refresh,&window,&Window::RefreshChat);
 	configureOptions->connect(configureOptions,&UI::Options::Dialog::finished,[configureOptions](int result) {
 		Q_UNUSED(result)

@@ -106,7 +106,6 @@ protected:
 	void ChangeVibePlaylist(const QString &name);
 	void StreamTitle(const QString &title);
 	void StreamCategory(const QString &category);
-	void MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,const QString &note);
 	void EnableChaosMode();
 signals:
 	void Print(const QString &message,const QString operation=QString(),const QString subsystem=QString("bot core"));
@@ -149,6 +148,7 @@ public slots:
 	void Redemption(const QString &login,const QString &name,const QString &rewardTitle,const QString &message);
 	void Raid(const QString &viewer,const unsigned int viewers);
 	void Cheer(const QString &viewer,const unsigned int count,const QString &message);
+	void PlayMonkeyKeyboardNote(std::chrono::microseconds duration,int rootFrequency,const QString &note);
 	void AdsStarting();
 	void AdsFinished();
 	void SuppressMusic();

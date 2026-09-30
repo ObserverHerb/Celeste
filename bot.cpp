@@ -80,6 +80,13 @@ const std::flat_map<QString,CommandType> Bot::COMMAND_TYPE_LOOKUP={
 	{COMMAND_TYPE_PULSAR,CommandType::PULSAR}
 };
 
+const std::flat_map<QString,Music::WaveType> WAVE_TYPE_LOOKUP={
+	{"sine",Music::WaveType::SINE},
+	{"triangle",Music::WaveType::TRIANGLE},
+	{"sawtooth",Music::WaveType::SAWTOOTH},
+	{"square",Music::WaveType::SQUARE}
+};
+
 std::unordered_map<QString,std::unordered_map<QString,QString>> Bot::badgeIconURLs;
 std::chrono::milliseconds Bot::launchTimestamp=TimeConvert::Now();
 
@@ -113,6 +120,7 @@ Bot::Bot(Music::Player &musicPlayer,Security &security,QObject *parent) : QObjec
 		.monkeyKeyboardBleepRootFrequency{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BleepRootFrequency",220},
 		.monkeyKeyboardBloopLength{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BloopLength",500},
 		.monkeyKeyboardBloopRootFrequency{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"BloopRootFrequency",110},
+		.monkeyKeyboardWaveType{SETTINGS_CATEGORY_MONKEY_KEYBOARD,"WaveType","sine"},
 		.chaosModeDuration{SETTINGS_CATEGORY_COMMANDS,"ChaosModeDuration",30}, // in seconds
 		.chaosModeVideo{SETTINGS_CATEGORY_COMMANDS,"ChaosModeVideo"},
 		.commandNameAgenda{SETTINGS_CATEGORY_COMMANDS,"Agenda","agenda"},
@@ -1299,10 +1307,10 @@ bool Bot::DispatchCommandViaChatMessage(const QString &name,Chat::Message chatMe
 			break;
 		}
 		case NativeCommandFlag::BLEEP:
-			MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBleepLength),settings.monkeyKeyboardBleepRootFrequency,chatMessage.text);
+			PlayMonkeyKeyboardNote(std::chrono::milliseconds(settings.monkeyKeyboardBleepLength),settings.monkeyKeyboardBleepRootFrequency,chatMessage.text);
 			break;
 		case NativeCommandFlag::BLOOP:
-			MonkeyKeyboard(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,chatMessage.text);
+			PlayMonkeyKeyboardNote(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,chatMessage.text);
 			break;
 		default:
 			shortCircuit=false;
@@ -1342,6 +1350,12 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 			case NativeCommandFlag::AGENDA:
 				emit SetAgenda(command.Message());
 				break;
+			case NativeCommandFlag::BLEEP:
+				emit Print("Bleep was processed as a command rather than a chat message. (It should not have gotten here!)");
+				break;
+			case NativeCommandFlag::BLOOP:
+				emit Print("Bloop was processed as a command rather than a chat message. (It should not have gotten here!)");
+				break;
 			case NativeCommandFlag::CATEGORY:
 				StreamCategory(command.Message());
 				break;
@@ -1364,7 +1378,7 @@ void Bot::DispatchCommandViaCommandObject(const Command &command,const QString &
 				ToggleLimitViewer(command.Message());
 				break;
 			case NativeCommandFlag::HTML:
-				emit Print("HTML was processed as a command rather than a chat message. This shouldn't happen!");
+				emit Print("HTML was processed as a command rather than a chat message. (It should not have gotten here!)");
 				break;
 			case NativeCommandFlag::PANIC:
 				DispatchPanic(viewer.DisplayName());
@@ -1845,7 +1859,7 @@ void Bot::StreamCategory(const QString &category)
 	});
 }
 
-void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,const QString &noteMessage)
+void Bot::PlayMonkeyKeyboardNote(std::chrono::microseconds duration,int rootFrequency,const QString &noteMessage)
 {
 	if (noteMessage.isEmpty()) return;
 
@@ -1950,7 +1964,9 @@ void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,co
 
 		try
 		{
-			auto note=new Music::MonkeyKeyboardNote(duration*durationMultiplier,frequency*rootFrequencyMultiplier,NumberConvert::Normalize(settings.monkeyKeyboardVolume));
+			auto waveTypeSetting=WAVE_TYPE_LOOKUP.find(static_cast<QString>(settings.monkeyKeyboardWaveType).toLower());
+			auto waveType=waveTypeSetting == WAVE_TYPE_LOOKUP.end() ? Music::WaveType::SINE : waveTypeSetting->second;
+			auto note=new Music::MonkeyKeyboardNote(duration*durationMultiplier,frequency*rootFrequencyMultiplier,NumberConvert::Normalize(settings.monkeyKeyboardVolume),waveType);
 			connect(note,&Music::MonkeyKeyboardNote::Print,this,&Bot::Print);
 			if (previousNote)
 			{
@@ -1963,9 +1979,9 @@ void Bot::MonkeyKeyboard(std::chrono::microseconds duration,int rootFrequency,co
 			previousNote=note;
 		}
 
-		catch (const std::runtime_error &excpetion)
+		catch (const std::runtime_error &exception)
 		{
-			emit Print("Failed to set up keyboard note","monkey keyboard");
+			emit Print(u"Failed to set up keyboard note: "_s+exception.what(),"monkey keyboard");
 		}
 	}
 }

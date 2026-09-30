@@ -3,6 +3,8 @@
 #include <QFileDialog>
 #include "widgets/widgets.h"
 
+const char *STYLE_NO_FILL="No Fill";
+
 namespace UI
 {
 	namespace Options
@@ -62,6 +64,7 @@ namespace UI
 					for (int columnIndex=0; columnIndex < columns; columnIndex++)
 					{
 						int columnSpan=1;
+						QWidget *widget=widgets[rowIndex][columnIndex];
 						if (columnIndex < 2 && columns < maxColumns)
 						{
 							if (columnIndex < 1)
@@ -73,10 +76,9 @@ namespace UI
 							}
 							else
 							{
-								columnSpan=maxColumns-columns+1; // second widget, so span difference between this row's length and the longest row's length
+								if (!widget->property(STYLE_NO_FILL).toBool()) columnSpan=maxColumns-columns+1; // second widget, so span difference between this row's length and the longest row's length
 							}
 						}
-						QWidget *widget=widgets[rowIndex][columnIndex];
 						detailsLayout.addWidget(widget,rowIndex,columnIndex+columnIndexOffset,1,columnSpan);
 						if (columnSpan > 1) columnIndexOffset=columnSpan-1;
 						widget->installEventFilter(this); // NOTE: this will not fire for labels because they do not fire an enterEvent for mouse hovers
@@ -547,8 +549,23 @@ namespace UI
 				monkeyKeyboardBleepLength(this),
 				monkeyKeyboardBloopRootFrequency(this),
 				monkeyKeyboardBloopLength(this),
+				monkeyKeyboardWaveTypeGroup(this),
+				monkeyKeyboardWaveTypeSine("Sine",this),
+				monkeyKeyboardWaveTypeTriangle("Triangle",this),
+				monkeyKeyboardWaveTypeSawtooth("Sawtooth",this),
+				monkeyKeyboardWaveTypeSquare("Square",this),
+				monkeyKeyboardNoteA("A",this),
+				monkeyKeyboardNoteB("B",this),
+				monkeyKeyboardNoteC("C",this),
+				monkeyKeyboardNoteD("D",this),
+				monkeyKeyboardNoteE("E",this),
+				monkeyKeyboardNoteF("F",this),
+				monkeyKeyboardNoteG("G",this),
 				monkeyKeyboardVolume(Qt::Horizontal,this),
 				monkeyKeyboardVolumeValue(this),
+				monkeyKeyboardPreviewTypeGroup(this),
+				monkeyKeyboardPreviewTypeBleep("Bleep",this),
+				monkeyKeyboardPreviewTypeBloop("Bloop",this),
 				errorReport(errorReport)
 			{
 				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
@@ -576,6 +593,13 @@ namespace UI
 				connect(&selectAdBreakFinishedVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakFinishedVideo);
 				connect(&previewAdBreakFinishedVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakFinishedVideo));
 				connect(&monkeyKeyboardVolume,&QSlider::valueChanged,this,&Bot::MonkeyKeyboardVolumeChanged);
+				connect(&monkeyKeyboardNoteA,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
+				connect(&monkeyKeyboardNoteB,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
+				connect(&monkeyKeyboardNoteC,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
+				connect(&monkeyKeyboardNoteD,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
+				connect(&monkeyKeyboardNoteE,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
+				connect(&monkeyKeyboardNoteF,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
+				connect(&monkeyKeyboardNoteG,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
 
 				arrivalSound.setText(settings.arrivalSound);
 				portraitVideo.setText(settings.portraitVideo);
@@ -607,6 +631,20 @@ namespace UI
 				monkeyKeyboardBloopRootFrequency.setValue(settings.monkeyKeyboardBloopRootFrequency);
 				monkeyKeyboardBloopLength.setRange(1,std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(1)).count());
 				monkeyKeyboardBloopLength.setValue(settings.monkeyKeyboardBloopLength);
+				monkeyKeyboardWaveTypeGroup.addButton(&monkeyKeyboardWaveTypeSine);
+				monkeyKeyboardWaveTypeGroup.addButton(&monkeyKeyboardWaveTypeTriangle);
+				monkeyKeyboardWaveTypeGroup.addButton(&monkeyKeyboardWaveTypeSawtooth);
+				monkeyKeyboardWaveTypeGroup.addButton(&monkeyKeyboardWaveTypeSquare);
+				monkeyKeyboardWaveTypeSine.setProperty(STYLE_NO_FILL,true);
+				auto waveType=static_cast<QString>(settings.monkeyKeyboardWaveType).toLower();
+				for (auto button : monkeyKeyboardWaveTypeGroup.buttons())
+				{
+					if (waveType == button->text().toLower()) button->setChecked(true);
+				}
+				monkeyKeyboardPreviewTypeGroup.addButton(&monkeyKeyboardPreviewTypeBleep);
+				monkeyKeyboardPreviewTypeGroup.addButton(&monkeyKeyboardPreviewTypeBloop);
+				monkeyKeyboardPreviewTypeBleep.setChecked(true);
+				monkeyKeyboardPreviewTypeBleep.setProperty(STYLE_NO_FILL,true);
 				monkeyKeyboardVolume.setRange(0,100);
 				monkeyKeyboardVolume.setValue(settings.monkeyKeyboardVolume);
 				monkeyKeyboardVolumeValue.setText(QString::number(monkeyKeyboardVolume.value())+"%");
@@ -625,8 +663,11 @@ namespace UI
 					{Label(u"Ad Break Warning Video"_s),&adBreakWarningVideo,&selectAdBreakWarningVideo,&previewAdBreakWarningVideo,Label(u"Lead Time"_s),&adBreakWarningLeadTime},
 					{Label(u"Ad Break Finished Video"_s),&adBreakFinishedVideo,&selectAdBreakFinishedVideo,&previewAdBreakFinishedVideo,Label(u"Refresh Interval"_s),&adScheduleRefreshInterval},
 					{Subheading(u"Monkey Keyboard"_s)},
-					{Label(u"Bleep Root Frequency"_s),&monkeyKeyboardBleepRootFrequency,Label(u"Bleep Length"_s),&monkeyKeyboardBleepLength,Label(u"Bloop Root Frequency"_s),&monkeyKeyboardBloopRootFrequency,Label(u"Bloopp Length"_s),&monkeyKeyboardBloopLength},
-					{Label(u"Volume"_s),&monkeyKeyboardVolume,&monkeyKeyboardVolumeValue}
+					{Label(u"Bleep Root Frequency"_s),&monkeyKeyboardBleepRootFrequency,Label(u"Bleep Length"_s),&monkeyKeyboardBleepLength,Label(u"Bloop Root Frequency"_s),&monkeyKeyboardBloopRootFrequency,Label(u"Bloop Length"_s),&monkeyKeyboardBloopLength},
+					{Label(u"Volume"_s),&monkeyKeyboardVolume,&monkeyKeyboardVolumeValue},
+					{Label(u"Wave Type"_s),&monkeyKeyboardWaveTypeSine,&monkeyKeyboardWaveTypeTriangle,&monkeyKeyboardWaveTypeSquare,&monkeyKeyboardWaveTypeSawtooth},
+					{Label(u"Preview Type"_s),&monkeyKeyboardPreviewTypeBleep,&monkeyKeyboardPreviewTypeBloop},
+					{Label(u"Preview Note"_s),&monkeyKeyboardNoteA,&monkeyKeyboardNoteB,&monkeyKeyboardNoteC,&monkeyKeyboardNoteD,&monkeyKeyboardNoteE,&monkeyKeyboardNoteF,&monkeyKeyboardNoteG}
 				});
 			}
 
@@ -770,6 +811,20 @@ namespace UI
 				monkeyKeyboardVolumeValue.setText(QString::number(value)+"%");
 			}
 
+			void Bot::PlayMonkeyKeyboardNote()
+			{
+				auto note=qobject_cast<QPushButton*>(sender());
+				if (monkeyKeyboardPreviewTypeBleep.isChecked())
+				{
+					emit PlayMonkeyKeyboardNote(std::chrono::milliseconds(settings.monkeyKeyboardBleepLength),settings.monkeyKeyboardBleepRootFrequency,note->text());
+
+				}
+				else
+				{
+					emit PlayMonkeyKeyboardNote(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,note->text());
+				}
+			}
+
 			void Bot::ValidateArrivalSound(const QString &path)
 			{
 				QFileInfo candidate(path);
@@ -880,6 +935,8 @@ namespace UI
 				settings.monkeyKeyboardBloopRootFrequency.Set(monkeyKeyboardBloopRootFrequency.value());
 				settings.monkeyKeyboardBloopLength.Set(monkeyKeyboardBloopLength.value());
 				settings.monkeyKeyboardVolume.Set(monkeyKeyboardVolume.value());
+				settings.monkeyKeyboardWaveType.Set(qobject_cast<QRadioButton*>(monkeyKeyboardWaveTypeGroup.checkedButton())->text());
+
 			}
 
 			Pulsar::Pulsar(Settings::Pulsar &settings) : Category(u"Pulsar"_s),
