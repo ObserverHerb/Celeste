@@ -710,9 +710,10 @@ namespace Music
 					chunk=file.read(chunkSize);
 					if (chunk.size() < chunkSize) throw std::runtime_error("Invalid description in frame of mp3 file");
 					if (chunk == QByteArray::fromHex("FFFE") || chunk == QByteArray::fromHex("FEFF")) continue;
+					if (chunk == terminator) break; // ID3 specification states we can null terminate within the frame size
 					data.append(chunk);
 				}
-				while (chunk != terminator);
+				while (data.length() < size-1); // size is part of the frame's "payload"
 				title=data;
 			}
 
