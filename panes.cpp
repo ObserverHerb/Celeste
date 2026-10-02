@@ -748,6 +748,7 @@ void ImageAnnouncePane::resizeEvent(QResizeEvent *event)
 
 void ImageAnnouncePane::Polish()
 {
+	output->setStyleSheet(StyleSheet::Colors<QLabel>(settingForegroundColor,"#00000000")); // clear background color behind text
 	shadow->setColor(settingAccentColor);
 	stack->addWidget(output);
 	stack->addWidget(view);
