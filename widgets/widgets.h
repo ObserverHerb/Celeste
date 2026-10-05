@@ -913,14 +913,14 @@ namespace UI
 
 	namespace Status
 	{
-		template <typename T> // TODO: tie this to a concept that says this had to be a derivative of QWidget
+		template <Concept::Widget TWidget>
 		class Window
 		{
 		public:
 			Window(QWidget *parent) : dialog(new QDialog(parent))
 			{
 
-				pane=new T(&dialog);
+				pane=new TWidget(&dialog);
 				pane->EnableScrollBar();
 				QGridLayout *gridLayout=new QGridLayout(&dialog);
 				gridLayout->setContentsMargins(0,0,0,0);
@@ -933,7 +933,7 @@ namespace UI
 				return dialog;
 			}
 
-			T& Pane()
+			TWidget& Pane()
 			{
 				return *pane;
 			}
@@ -944,7 +944,7 @@ namespace UI
 			}
 		protected:
 			QDialog dialog;
-			T *pane;
+			TWidget *pane;
 		};
 	}
 }
