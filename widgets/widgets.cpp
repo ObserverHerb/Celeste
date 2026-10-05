@@ -172,6 +172,12 @@ namespace UI
 
 	void ColorPreview::Set(const QString &color)
 	{
+		if (color.isEmpty() || !QColor(color).isValid())
+		{
+			hide();
+			return;
+		}
+		show();
 		setStyleSheet(QString("border: 1px solid black; color: %1; background-color: %1;").arg(color));
 	}
 
