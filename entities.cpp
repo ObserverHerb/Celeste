@@ -714,7 +714,7 @@ namespace Music
 					data.append(chunk);
 				}
 				while (data.length() < size-1); // size is part of the frame's "payload"
-				title=data;
+				title=encoding == Encoding::UTF_16 ? static_cast<QString>(QStringDecoder(QStringDecoder::Utf16LE)(data)) : data; // TODO: handle big-endian and UTF-8
 			}
 
 			const QString& TIT2::Title() const
