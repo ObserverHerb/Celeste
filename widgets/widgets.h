@@ -114,6 +114,8 @@ namespace UI
 	std::optional<QString> PickColor(QWidget *parent,const QString &initialColor);
 	std::optional<std::tuple<QString,int>> PickFont(QWidget *parent,const QString &initialFamily,int initialPointSize);
 
+	int ScreenWidthThird(QWidget *widget);
+
 	namespace Feedback
 	{
 		class Error: public QObject

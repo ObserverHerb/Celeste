@@ -30,6 +30,8 @@ add_executable(Celeste
 	widgets/general.cpp
 	widgets/commands.cpp
 	widgets/options.cpp
+	widgets/eventsub.cpp
+	widgets/playlist.cpp
 	entities.h
 	entities.cpp
 	subsystem/subsystem.h
