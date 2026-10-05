@@ -675,7 +675,7 @@ namespace UI
 
 		void Entry::Browse()
 		{
-			QString candidate;
+			std::optional<QString> candidate;
 			if (Random())
 			{
 				candidate=QFileDialog::getExistingDirectory(this, Text::DIALOG_TITLE_DIRECTORY,Filesystem::HomePath().absolutePath(),QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
@@ -683,11 +683,11 @@ namespace UI
 			else
 			{
 				if (static_cast<UI::Commands::Type>(static_cast<int>(type)) == UI::Commands::Type::VIDEO)
-					candidate=OpenVideo(this);
+					candidate=*OpenVideo(this);
 				else
-					candidate=OpenAudio(this);
+					candidate=*OpenAudio(this);
 			}
-			if (!candidate.isEmpty()) (*path)->setText(candidate);
+			if (candidate && !candidate->isEmpty()) (*path)->setText(*candidate);
 		}
 
 		void Entry::SelectAliases()
