@@ -108,41 +108,34 @@ protected:
 
 namespace UI
 {
-	QString OpenVideo(QWidget *parent,QString initialPath=QString());
-	QString OpenAudio(QWidget *parent,QString initialPath=QString());
-
-	class Color : public QLabel
-	{
-		Q_OBJECT
-	public:
-		Color(QWidget *parent,const QString &color);
-		void Set(const QString &color);
-	};
+	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath=QString());
+	std::optional<QString> OpenAudio(QWidget *parent,const QString &initialPath=QString());
+	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath=QString());
+	std::optional<QString> PickColor(QWidget *parent,const QString &initialColor);
+	std::optional<std::tuple<QString,int>> PickFont(QWidget *parent,const QString &initialFamily,int initialPointSize);
 
 	namespace Feedback
 	{
-		class Error : public QObject
+		class Error: public QObject
 		{
 			Q_OBJECT
-		private:
-			using ErrorList=std::unordered_set<QString>;
 		public:
 			Error();
 			void SwapTrackingName(const QString &oldName,const QString &newName);
+			void ValidStyle(QWidget *widget);
+			void InvalidStyle(QWidget *widget);
 		protected:
-			ErrorList errors;
+			std::unordered_set<QString> errors;
 			void CompileErrorMessages();
 		signals:
 			void Clear(bool clear);
 			void Count(int errors);
 			void ReportProblem(const QString &message);
 		public slots:
-			void Valid(QWidget *widget);
-			void Invalid(QWidget *widget);
-			void ValidateFont(QWidget *widget,const QString &family,const int pointSize);
+			void StyleSource(bool valid,QWidget *widget);
 		};
 
-		class Help : public QGroupBox
+		class Help: public QGroupBox
 		{
 			Q_OBJECT
 		public:
@@ -154,6 +147,93 @@ namespace UI
 		};
 	}
 
+	class ColorPreview: public QLabel
+	{
+		Q_OBJECT
+	public:
+		ColorPreview(QWidget *parent,const QString &color);
+	public slots:
+		void Set(const QString &color);
+	};
+
+	class ColorEdit: public QLineEdit
+	{
+		Q_OBJECT
+	public:
+		ColorEdit(QWidget *parent);
+	signals:
+		void NeedValidatedStyle(bool valid,QWidget *widget);
+		void Valid(bool valid);
+	protected slots:
+		void Validate(const QString &color);
+	};
+
+	class RequiredEdit: public QLineEdit
+	{
+		Q_OBJECT
+	public:
+		RequiredEdit(QWidget *parent);
+	signals:
+		void NeedValidatedStyle(bool valid,QWidget *widget);
+		void Valid(bool valid);
+	protected slots:
+		void Validate(const QString &text);
+	};
+
+	class PathEdit: public QLineEdit
+	{
+		Q_OBJECT
+	public:
+		PathEdit(const QStringList &acceptableFileExtensions,QWidget *parent,bool allowDirectories=false);
+		QStringList acceptableFileExtensions;
+		bool allowDirectories;
+	signals:
+		void NeedValidatedStyle(bool valid,QWidget *widget);
+		void Valid(bool valid);
+	protected slots:
+		void Validate(const QString &path);
+	};
+
+	class DirectoryEdit: public QLineEdit
+	{
+		Q_OBJECT
+	public:
+		DirectoryEdit(QWidget *parent);
+	signals:
+		void NeedValidatedStyle(bool valid,QWidget *widget);
+		void Valid(bool valid);
+	protected slots:
+		void Validate(const QString &path);
+	};
+
+	class FontEdit: public QLineEdit
+	{
+		Q_OBJECT
+	public:
+		FontEdit(QSpinBox *pointSize,QWidget *parent);
+	protected:
+		QSpinBox *pointSize;
+	signals:
+		void NeedValidatedStyle(bool valid,QWidget *widget);
+		void Valid(bool valid);
+	protected slots:
+		void Validate(const QString &family);
+		void Validate(int pointSize);
+		void Validate(const QString &family,int pointSize);
+	};
+
+	class WebAddressEdit: public QLineEdit
+	{
+		Q_OBJECT
+	public:
+		WebAddressEdit(QWidget *parent);
+	signals:
+		void NeedValidatedStyle(bool valid,QWidget *widget);
+		void Valid(bool valid);
+	protected slots:
+		void Validate(const QString &address);
+	};
+
 	namespace Text
 	{
 		inline const char *BROWSE="Browse";
@@ -161,7 +241,6 @@ namespace UI
 		inline const char *PREVIEW="Preview";
 		inline const char *DIALOG_TITLE_FILE="Choose File";
 		inline const char *DIALOG_TITLE_DIRECTORY="Choose Directory";
-		inline const char *DIALOG_TITLE_FONT="Choose Font";
 		inline const char *FILE_TYPE_VIDEO="mp4";
 		inline const char *FILE_TYPE_AUDIO="mp3";
 		inline const char *BUTTON_SAVE="&Save";
@@ -399,25 +478,22 @@ namespace UI
 				void Help(const QString &text);
 			protected slots:
 				void ToggleDetails();
-				void PickColor(QLineEdit &control);
 			};
 
 			class Channel : public Category
 			{
 				Q_OBJECT
 			public:
-				Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport);
+				Channel(Settings::Channel &settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit name;
+				RequiredEdit name;
 				QCheckBox protection;
 				Settings::Channel &settings;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void Changed();
-			protected slots:
-				void ValidateName(const QString &text);
 			};
 
 			class Window : public Category
@@ -429,15 +505,16 @@ namespace UI
 					ApplicationSetting &backgroundColor;
 					ApplicationSetting &dimensions;
 				};
-				Window(Settings settings);
+				Window(Settings settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit backgroundColor;
-				Color previewBackgroundColor;
+				ColorEdit backgroundColor;
+				ColorPreview previewBackgroundColor;
 				QPushButton selectBackgroundColor;
 				QSpinBox width;
 				QSpinBox height;
 				Settings settings;
+				Feedback::Error &errorReport;
 				void PickBackgroundColor();
 				bool eventFilter(QObject *object,QEvent *event) override;
 			};
@@ -453,20 +530,20 @@ namespace UI
 					ApplicationSetting foregroundColor;
 					ApplicationSetting backgroundColor;
 				};
-				Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
+				Status(Settings settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit font;
 				QSpinBox fontSize;
+				FontEdit font;
 				QPushButton selectFont;
-				QLineEdit foregroundColor;
-				Color previewForegroundColor;
+				ColorEdit foregroundColor;
+				ColorPreview previewForegroundColor;
 				QPushButton selectForegroundColor;
-				QLineEdit backgroundColor;
-				Color previewBackgroundColor;
+				ColorEdit backgroundColor;
+				ColorPreview previewBackgroundColor;
 				QPushButton selectBackgroundColor;
 				Settings settings;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				void PickFont();
 				void PickForegroundColor();
 				void PickBackgroundColor();
@@ -485,21 +562,21 @@ namespace UI
 					ApplicationSetting backgroundColor;
 					ApplicationSetting statusInterval;
 				};
-				Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
+				Chat(Settings settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit font;
 				QSpinBox fontSize;
+				FontEdit font;
 				QPushButton selectFont;
-				QLineEdit foregroundColor;
-				Color previewForegroundColor;
+				ColorEdit foregroundColor;
+				ColorPreview previewForegroundColor;
 				QPushButton selectForegroundColor;
-				QLineEdit backgroundColor;
-				Color previewBackgroundColor;
+				ColorEdit backgroundColor;
+				ColorPreview previewBackgroundColor;
 				QPushButton selectBackgroundColor;
 				QSpinBox statusInterval;
 				Settings settings;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void PickFont();
@@ -520,24 +597,24 @@ namespace UI
 					ApplicationSetting accentColor;
 					ApplicationSetting duration;
 				};
-				Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
+				Pane(Settings settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit font;
 				QSpinBox fontSize;
+				FontEdit font;
 				QPushButton selectFont;
-				QLineEdit foregroundColor;
-				Color previewForegroundColor;
+				ColorEdit foregroundColor;
+				ColorPreview previewForegroundColor;
 				QPushButton selectForegroundColor;
-				QLineEdit backgroundColor;
-				Color previewBackgroundColor;
+				ColorEdit backgroundColor;
+				ColorPreview previewBackgroundColor;
 				QPushButton selectBackgroundColor;
-				QLineEdit accentColor;
-				Color previewAccentColor;
+				ColorEdit accentColor;
+				ColorPreview previewAccentColor;
 				QPushButton selectAccentColor;
 				QSpinBox duration;
 				Settings settings;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void PickFont();
@@ -566,38 +643,38 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport);
+				Bot(Settings::Bot &settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
 				Settings::Bot &settings;
-				QLineEdit arrivalSound;
+				PathEdit arrivalSound;
 				QPushButton selectArrivalSound;
 				QPushButton previewArrivalSound;
-				QLineEdit portraitVideo;
+				PathEdit portraitVideo;
 				QPushButton selectPortraitVideo;
 				QPushButton previewPortraitVideo;
-				QLineEdit cheerVideo;
+				PathEdit cheerVideo;
 				QPushButton selectCheerVideo;
 				QPushButton previewCheerVideo;
-				QLineEdit subscriptionSound;
+				PathEdit subscriptionSound;
 				QPushButton selectSubscriptionSound;
 				QPushButton previewSubscriptionSound;
-				QLineEdit raidSound;
+				PathEdit raidSound;
 				QSpinBox postRaidEventDelay;
 				QSpinBox postRaidEventDelayThreshold;
 				QPushButton selectRaidSound;
 				QPushButton previewRaidSound;
 				QSpinBox inactivityCooldown;
 				QSpinBox helpCooldown;
-				QLineEdit textWallSound;
+				PathEdit textWallSound;
 				QPushButton selectTextWallSound;
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
-				QLineEdit adBreakWarningVideo;
+				PathEdit adBreakWarningVideo;
 				QPushButton selectAdBreakWarningVideo;
 				QPushButton previewAdBreakWarningVideo;
 				QSpinBox adBreakWarningLeadTime;
-				QLineEdit adBreakFinishedVideo;
+				PathEdit adBreakFinishedVideo;
 				QPushButton selectAdBreakFinishedVideo;
 				QPushButton previewAdBreakFinishedVideo;
 				QSpinBox adScheduleRefreshInterval;
@@ -622,7 +699,7 @@ namespace UI
 				QButtonGroup monkeyKeyboardPreviewTypeGroup;
 				QRadioButton monkeyKeyboardPreviewTypeBleep;
 				QRadioButton monkeyKeyboardPreviewTypeBloop;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void PlayArrivalSound(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
@@ -653,14 +730,6 @@ namespace UI
 				void PlayAdBreakFinishedVideo();
 				void MonkeyKeyboardVolumeChanged(int value);
 				void PlayMonkeyKeyboardNote();
-				void ValidateArrivalSound(const QString &path);
-				void ValidatePortraitVideo(const QString &path);
-				void ValidateCheerVideo(const QString &path);
-				void ValidateSubscriptionSound(const QString &path);
-				void ValidateRaidSound(const QString &path);
-				void ValidateTextWallSound(const QString &path);
-				void ValidateAdBreakWarningVideo(const QString &path);
-				void ValidateAdBreakFinishedVideo(const QString &path);
 			};
 
 			class Pulsar: public Category
@@ -684,38 +753,36 @@ namespace UI
 				{
 					ApplicationSetting &directory;
 				};
-				Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport);
+				Log(Settings settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit directory;
+				DirectoryEdit directory;
 				QPushButton selectDirectory;
 				Settings settings;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void OpenDirectory();
-				void ValidateDirectory(const QString &path);
 			};
 
 			class Security : public Category
 			{
 				Q_OBJECT
 			public:
-				Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport);
+				Security(::Security &settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
-				QLineEdit administrator;
-				QLineEdit clientID;
-				QLineEdit token;
-				QLineEdit callbackURL;
-				QLineEdit permissions;
+				RequiredEdit administrator;
+				RequiredEdit clientID;
+				RequiredEdit token;
+				WebAddressEdit callbackURL;
+				RequiredEdit permissions;
 				QPushButton selectPermissions;
 				::Security &settings;
-				std::shared_ptr<Feedback::Error> errorReport;
+				Feedback::Error &errorReport;
 				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void SelectPermissions();
-				void ValidateURL(const QString &text);
 			};
 		}
 
@@ -723,7 +790,7 @@ namespace UI
 		{
 			Q_OBJECT
 		public:
-			Dialog(std::vector<Categories::Category*> categories,QWidget *parent);
+			Dialog(std::vector<Categories::Category*> categories,std::unique_ptr<Feedback::Error> errorReport,QWidget *parent);
 		protected:
 			QWidget entriesFrame;
 			Feedback::Help help;
@@ -732,6 +799,9 @@ namespace UI
 			QPushButton save;
 			QPushButton apply;
 			QVBoxLayout *scrollLayout;
+			QGroupBox errorBox;
+			QLabel errorMessages;
+			std::unique_ptr<Feedback::Error> errorReport;
 			std::vector<Categories::Category*> categories;
 		signals:
 			void Refresh();

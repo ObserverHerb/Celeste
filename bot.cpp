@@ -766,7 +766,7 @@ void Bot::RequestRedemptionList(Subsystem::Interchange::Transaction *transaction
 
 void Bot::Ping()
 {
-	if (settings.portraitVideo)
+	if (settings.portraitVideo && !static_cast<QString>(settings.portraitVideo).isEmpty())
 		emit ShowPortraitVideo(settings.portraitVideo);
 	else
 		emit Print("Letting Twitch server know we're still here...");
@@ -816,7 +816,7 @@ void Bot::Subscription(const QString &login,const QString &displayName)
 		viewer=inserted.first;
 	}
 
-	if (static_cast<QString>(settings.subscriptionSound).isEmpty())
+	if (!settings.subscriptionSound || static_cast<QString>(settings.raidSound).isEmpty())
 	{
 		emit Print("No audio path set for subscriptions","announce subscription");
 		return;
@@ -828,22 +828,27 @@ void Bot::Subscription(const QString &login,const QString &displayName)
 void Bot::Raid(const QString &viewer,const unsigned int viewers)
 {
 	lastRaid=QDateTime::currentDateTime();
-	if (settings.raidSound) emit AnnounceRaid(viewer,viewers,settings.raidSound);
+	if (!settings.raidSound || static_cast<QString>(settings.raidSound).isEmpty())
+	{
+		emit Print("No audio path set for raids","announce raid");
+		return;
+	}
+	emit AnnounceRaid(viewer,viewers,settings.raidSound);
 }
 
 void Bot::Cheer(const QString &viewer,const unsigned int count,const QString &message)
 {
-	if (static_cast<QString>(settings.cheerVideo).isEmpty())
+	if (!settings.cheerVideo || static_cast<QString>(settings.cheerVideo).isEmpty())
 	{
 		emit Print("No video path set for cheers","announce cheer");
 		return;
 	}
-	emit AnnounceCheer(viewer,count,message,settings.cheerVideo);
+	emit AnnounceCheer(viewer,count,message,File::List(settings.cheerVideo).Random());
 }
 
 void Bot::AdsStarting()
 {
-	if (static_cast<QString>(settings.adWarningVideo).isEmpty())
+	if (!settings.adWarningVideo || static_cast<QString>(settings.adWarningVideo).isEmpty())
 	{
 		emit Print("No video path set for ad break warning","ad break starting");
 		return;
@@ -855,7 +860,7 @@ void Bot::AdsStarting()
 
 void Bot::AdsFinished()
 {
-	if (static_cast<QString>(settings.adFinishedVideo).isEmpty())
+	if (!settings.adFinishedVideo || static_cast<QString>(settings.adFinishedVideo).isEmpty())
 	{
 		emit Print("No video path set for finished ad break","ad break finished");
 		return;
@@ -903,7 +908,10 @@ void Bot::DispatchArrival(const QString &login)
 			try
 			{
 				// Do we have a sound configured to announce them with? If so, fire the signal.
-				if (settings.arrivalSound) emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settings.arrivalSound).Random());
+				if (settings.arrivalSound && !static_cast<QString>(settings.arrivalSound).isEmpty())
+					emit AnnounceArrival(viewer.DisplayName(),profileImage,File::List(settings.arrivalSound).Random());
+				else
+					Print("No audio path set for announcing arrivals",OPERATION);
 
 				// Do we have any commands that are triggered by the viewers we've seen?
 				for (const Command &candidateCommand : commands | std::views::values | std::views::filter([](const Command &command) {
@@ -950,9 +958,9 @@ void Bot::DispatchArrival(const QString &login)
 			{
 				emit Print(u"Unknown error announcing arrival"_s,OPERATION);
 			}
-		});
+		},Qt::QueuedConnection);
 		connect(profileImage,&Viewer::ProfileImage::Remote::Print,this,&Bot::Print);
-	});
+	},Qt::QueuedConnection);
 }
 
 void Bot::ParseChatMessage(const QString &prefix,const QString &source,const QStringList &parameters,const QString &message)
@@ -1989,14 +1997,10 @@ void Bot::PlayMonkeyKeyboardNote(std::chrono::microseconds duration,int rootFreq
 void Bot::EnableChaosMode()
 {
 	chaosModeClock.start();
-	if (settings.chaosModeVideo)
-	{
+	if (settings.chaosModeVideo && !static_cast<QString>(settings.chaosModeVideo).isEmpty())
 		emit PlayVideo(settings.chaosModeVideo,true);
-	}
 	else
-	{
 		emit Print("!! CHAOS !! MODE !! ENABLED !!");
-	}
 }
 
 std::optional<CommandType> Bot::ValidCommandType(const QString &type)

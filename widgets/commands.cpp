@@ -554,9 +554,9 @@ namespace UI
 		{
 			bool valid=!text.isEmpty();
 			if (valid)
-				errorReport.Valid(*name);
+				errorReport.ValidStyle(*name);
 			else
-				errorReport.Invalid(*name);
+				errorReport.InvalidStyle(*name);
 			return valid;
 		}
 
@@ -566,7 +566,7 @@ namespace UI
 
 			if (!candidate.exists())
 			{
-				errorReport.Invalid(*path);
+				errorReport.InvalidStyle(*path);
 				return false;
 			}
 
@@ -574,16 +574,16 @@ namespace UI
 			{
 				bool valid=candidate.isDir();
 				if (valid)
-					errorReport.Valid(*path);
+					errorReport.ValidStyle(*path);
 				else
-					errorReport.Invalid(*path);
+					errorReport.InvalidStyle(*path);
 				return valid;
 			}
 			else
 			{
 				if (candidate.isDir())
 				{
-					errorReport.Invalid(*path);
+					errorReport.InvalidStyle(*path);
 					return false;
 				}
 
@@ -602,9 +602,9 @@ namespace UI
 					break;
 				}
 				if (valid)
-					errorReport.Valid(*path);
+					errorReport.ValidStyle(*path);
 				else
-					errorReport.Invalid(*path);
+					errorReport.InvalidStyle(*path);
 				return valid;
 			}
 		}
@@ -614,9 +614,9 @@ namespace UI
 			if (static_cast<UI::Commands::Type>(static_cast<int>(type)) != UI::Commands::Type::AUDIO) return false;
 			bool valid=Message().isEmpty();
 			if (valid)
-				errorReport.Valid(*message);
+				errorReport.ValidStyle(*message);
 			else
-				errorReport.Invalid(*message);
+				errorReport.InvalidStyle(*message);
 			return valid;
 		}
 
@@ -794,7 +794,7 @@ namespace UI
 			discard(Text::BUTTON_DISCARD,this),
 			save(Text::BUTTON_SAVE,this),
 			newEntry("&New",this),
-			errorBox("Errors",this),
+			errorBox("Problems",this),
 			errorMessages(&errorBox),
 			statusBar(this),
 			commands(std::move(commands))
@@ -830,6 +830,9 @@ namespace UI
 				QVBoxLayout *errorBoxLayout=new QVBoxLayout(&errorBox);
 				errorBox.setLayout(errorBoxLayout);
 				errorBox.setVisible(false);
+				connect(&errorReport,&Feedback::Error::Clear,&save,&QPushButton::setEnabled);
+				connect(&errorReport,&Feedback::Error::Count,&errorBox,&QGroupBox::setVisible);
+				connect(&errorReport,&Feedback::Error::ReportProblem,&errorMessages,&QLabel::setText);
 				errorBoxLayout->addWidget(&errorMessages);
 				rightLayout->addWidget(&errorBox,1,0,1,2);
 				statusBar.setSizeGripEnabled(false);
@@ -901,9 +904,6 @@ namespace UI
 								}
 								auto entry=new Entry(*command,availableRedemptionTitles,errorReport,&entriesFrame);
 								connect(entry,&Entry::Help,&help,&UI::Feedback::Help::Message);
-								connect(&errorReport,&Feedback::Error::Clear,&save,&QPushButton::setEnabled);
-								connect(&errorReport,&Feedback::Error::Count,&errorBox,&QGroupBox::setVisible);
-								connect(&errorReport,&Feedback::Error::ReportProblem,&errorMessages,&QLabel::setText);
 								scrollLayout.addWidget(entry);
 								entryIterator->second=entry;
 

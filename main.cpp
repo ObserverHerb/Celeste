@@ -48,9 +48,9 @@ int MessageBox(const QString &title,const QString &text,QMessageBox::Icon icon,Q
 
 void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pulsar,Music::Player &musicPlayer,Log &log,Security &security)
 {
-	std::shared_ptr<UI::Feedback::Error> errorReport=std::make_shared<UI::Feedback::Error>();
-	auto optionsCategoryChannel=new UI::Options::Categories::Channel(channel->Settings(),errorReport);
-	auto optionsCategoryBot=new UI::Options::Categories::Bot(bot.Settings(),errorReport);
+	auto errorReport=new UI::Feedback::Error();
+	auto optionsCategoryChannel=new UI::Options::Categories::Channel(channel->Settings(),*errorReport);
+	auto optionsCategoryBot=new UI::Options::Categories::Bot(bot.Settings(),*errorReport);
 	StatusPane statusPane(&window);
 	ChatPane chatPane(&window);
 	AnnouncePane announcePane(QString{},&window,PANE_PRIORITY_IMMEDIATE);
@@ -59,20 +59,20 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 		new UI::Options::Categories::Window({
 			.backgroundColor=window.BackgroundColor(),
 			.dimensions=window.Dimensions()
-		}),
+		},*errorReport),
 		new UI::Options::Categories::Status({
 			.font=statusPane.Font(),
 			.fontSize=statusPane.FontSize(),
 			.foregroundColor=statusPane.ForegroundColor(),
 			.backgroundColor=statusPane.BackgroundColor()
-		},errorReport),
+		},*errorReport),
 		new UI::Options::Categories::Chat({
 			.font=chatPane.Font(),
 			.fontSize=chatPane.FontSize(),
 			.foregroundColor=chatPane.ForegroundColor(),
 			.backgroundColor=chatPane.BackgroundColor(),
 			.statusInterval=chatPane.StatusInterval()
-		},errorReport),
+		},*errorReport),
 		new UI::Options::Categories::Pane({
 			.font=announcePane.Font(),
 			.fontSize=announcePane.FontSize(),
@@ -80,7 +80,7 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 			.backgroundColor=announcePane.BackgroundColor(),
 			.accentColor=announcePane.AccentColor(),
 			.duration=announcePane.Duration()
-		},errorReport),
+		},*errorReport),
 		new UI::Options::Categories::Music({
 			.suppressedVolume=musicPlayer.SuppressedVolume()
 		}),
@@ -88,9 +88,9 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 		optionsCategoryBot,
 		new UI::Options::Categories::Log({
 			.directory=log.Directory()
-		},errorReport),
-		new UI::Options::Categories::Security(security,errorReport)
-	},&window);
+		},*errorReport),
+		new UI::Options::Categories::Security(security,*errorReport)
+	},std::unique_ptr<UI::Feedback::Error>(errorReport),&window); // takes ownership of errorReport
 
 	configureOptions->connect(optionsCategoryChannel,&UI::Options::Categories::Channel::Changed,channel,&Channel::Disconnect);
 	configureOptions->connect(optionsCategoryBot,QOverload<const QString&,std::shared_ptr<QImage>,const QString&>::of(&UI::Options::Categories::Bot::PlayArrivalSound),&window,&Window::AnnounceArrival);
@@ -351,7 +351,7 @@ int main(int argc,char *argv[])
 		});
 		window.connect(&window,&Window::ConfigureOptions,&window,[&window,channel,&celeste,&pulsar,&musicPlayer,&log,&security]() {
 			ShowOptions(window,channel,celeste,pulsar,musicPlayer,log,security);
-		});
+		},Qt::QueuedConnection);
 		window.connect(&window,&Window::ConfigureCommands,&window,[&window,&celeste]() {
 			ShowCommands(window,celeste);
 		});

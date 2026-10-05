@@ -91,26 +91,21 @@ namespace UI
 				details->setVisible(!details->isVisible());
 			}
 
-			void Category::PickColor(QLineEdit &control)
-			{
-				QColor color=QColorDialog::getColor(control.text(),this,QStringLiteral("Choose a Color"),QColorDialog::ShowAlphaChannel);
-				if (color.isValid()) control.setText(color.name(QColor::HexArgb));
-			}
-
-			Channel::Channel(Settings::Channel &settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Channel")),
+			Channel::Channel(Settings::Channel &settings,Feedback::Error &errorReport) : Category(u"Channel"_s),
 				name(this),
 				protection(this),
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&name,&QLineEdit::textChanged,this,&Channel::ValidateName);
+				connect(&name,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 
+				name.setObjectName(u"Channel name"_s);
 				name.setText(settings.name);
 				protection.setChecked(settings.protect);
 
 				Rows({
-					{Label(QStringLiteral("Name")),&name},
-					{Label(QStringLiteral("Protection")),&protection}
+					{Label(u"Name"_s),&name},
+					{Label(u"Protection"_s),&protection}
 				});
 			}
 
@@ -120,28 +115,19 @@ namespace UI
 				{
 					if (object == &name)
 					{
-						emit Help(QStringLiteral("Name of the channel Celeste will join on launch"));
+						emit Help(u"Name of the channel Celeste will join on launch"_s);
 						return false;
 					}
 
 					if (object == &protection)
 					{
-						emit Help(QStringLiteral("When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."));
+						emit Help(u"When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."_s);
 						return false;
 					}
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
 				return false;
-			}
-
-			void Channel::ValidateName(const QString &text)
-			{
-				bool valid=!text.isEmpty();
-				if (valid)
-					errorReport->Valid(&name);
-				else
-					errorReport->Invalid(&name);
 			}
 
 			void Channel::Save()
@@ -155,17 +141,22 @@ namespace UI
 				// is all the same QSettings object under the hood, so it's saving all of the settings
 				settings.name.Save();
 
-				if (changed) emit Changed();
+				if (changed) emit Changed(); // need to reconnect to Twitch if this setting gets changed
 			}
 
-			Window::Window(Settings settings) : Category(QStringLiteral("Main Window")),
+			Window::Window(Settings settings,Feedback::Error &errorReport): Category(u"Main Window"_s),
 				backgroundColor(this),
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
 				width(this),
 				height(this),
-				settings(settings)
+				settings(settings),
+				errorReport(errorReport)
 			{
+				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
+
+				backgroundColor.setObjectName(u"Window background color");
 				backgroundColor.setText(settings.backgroundColor);
 				QRect desktop=QGuiApplication::primaryScreen()->availableVirtualGeometry();
 				width.setRange(1,desktop.width());
@@ -188,19 +179,19 @@ namespace UI
 				{
 					if (object == &backgroundColor || object == &selectBackgroundColor)
 					{
-						emit Help(QStringLiteral("This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."));
+						emit Help(u"This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."_s);
 						return false;
 					}
 
 					if (object == &width)
 					{
-						emit Help(QStringLiteral("The width (in pixels) of the application window's contents (the part seen by OBS)"));
+						emit Help(u"The width (in pixels) of the application window's contents (the part seen by OBS)"_s);
 						return false;
 					}
 
 					if (object == &height)
 					{
-						emit Help(QStringLiteral("The height (in pixels) of the application window's contents (the part seen by OBS)"));
+						emit Help(u"The height (in pixels) of the application window's contents (the part seen by OBS)"_s);
 						return false;
 					}
 				}
@@ -211,8 +202,9 @@ namespace UI
 
 			void Window::PickBackgroundColor()
 			{
-				PickColor(backgroundColor);
-				previewBackgroundColor.Set(backgroundColor.text());
+				auto selection=PickColor(this,backgroundColor.text());
+				if (!selection) return;
+				backgroundColor.setText(*selection);
 			}
 
 			void Window::Save()
@@ -221,9 +213,9 @@ namespace UI
 				settings.dimensions.Set(QSize{width.value(),height.value()});
 			}
 
-			Status::Status(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Status")),
-				font(this),
+			Status::Status(Settings settings,Feedback::Error &errorReport) : Category(u"Status"_s),
 				fontSize(this),
+				font(&fontSize,this),
 				selectFont(Text::CHOOSE,this),
 				foregroundColor(this),
 				previewForegroundColor(this,settings.foregroundColor),
@@ -234,58 +226,61 @@ namespace UI
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&font,&QLineEdit::textChanged,this,[this](const QString &family) {
-					this->errorReport->ValidateFont(&font,family,fontSize.value());
-				});
-				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,[this](int pointSize) {
-					this->errorReport->ValidateFont(&font,font.text(),pointSize);
-				});
+				connect(&font,&FontEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectFont,&QPushButton::clicked,this,&Status::PickFont);
+				connect(&foregroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&foregroundColor,&ColorEdit::textChanged,&previewForegroundColor,&ColorPreview::Set);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Status::PickForegroundColor);
+				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Status::PickBackgroundColor);
 
+				font.setObjectName(u"Status pane font"_s);
 				font.setText(settings.font);
 				fontSize.setRange(1,std::numeric_limits<short>::max());
 				fontSize.setValue(settings.fontSize);
+				foregroundColor.setObjectName(u"Status pane foreground color"_s);
 				foregroundColor.setText(settings.foregroundColor);
+				backgroundColor.setObjectName(u"Status pane background color"_s);
 				backgroundColor.setText(settings.backgroundColor);
 
 				Rows({
-					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
-					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
-					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+					{Label(u"Font"_s),&font,Label(u"Size"_s),&fontSize,&selectFont},
+					{Label(u"Text Color"_s),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
+					{Label(u"Background Color"_s),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
 				});
 			}
 
 			void Status::PickFont()
 			{
-				bool ok=false;
-				QFont candidate(font.text(),fontSize.value());
-				candidate=QFontDialog::getFont(&ok,candidate,this,Text::DIALOG_TITLE_FONT);
-				if (!ok) return;
-				font.setText(candidate.family());
-				fontSize.setValue(candidate.pointSize());
+				auto selection=UI::PickFont(this,font.text(),fontSize.value());
+				if (!selection) return;
+				auto [family,pointSize]=*selection;
+				font.setText(family);
+				fontSize.setValue(pointSize);
 			}
 
 			void Status::PickForegroundColor()
 			{
-				PickColor(foregroundColor);
-				previewForegroundColor.Set(foregroundColor.text());
+				auto selection=PickColor(this,foregroundColor.text());
+				if (!selection) return;
+				foregroundColor.setText(*selection);
 			}
 
 			void Status::PickBackgroundColor()
 			{
-				PickColor(backgroundColor);
-				previewBackgroundColor.Set(backgroundColor.text());
+				auto selection=PickColor(this,backgroundColor.text());
+				if (!selection) return;
+				backgroundColor.setText(*selection);
 			}
 
 			bool Status::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &font || object == &fontSize || object == &selectFont) emit Help(QStringLiteral("The font that will be used in the initialization screen when the bot is first launched and connecting to Twitch"));
-					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of text in the initialization screen that is shown when the bot is first launched and connecting to Twitch"));
-					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background in the initialization screen that is shown when the bot is first launched and connecting to Twitch"));
+					if (object == &font || object == &fontSize || object == &selectFont) emit Help(u"The font that will be used in the initialization screen when the bot is first launched and connecting to Twitch"_s);
+					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(u"The color of text in the initialization screen that is shown when the bot is first launched and connecting to Twitch"_s);
+					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(u"The color of the background in the initialization screen that is shown when the bot is first launched and connecting to Twitch"_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -300,9 +295,9 @@ namespace UI
 				settings.backgroundColor.Set(backgroundColor.text());
 			}
 
-			Chat::Chat(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Chat")),
-				font(this),
+			Chat::Chat(Settings settings,Feedback::Error &errorReport) : Category(u"Chat"_s),
 				fontSize(this),
+				font(&fontSize,this),
 				selectFont(Text::CHOOSE,this),
 				foregroundColor(this),
 				previewForegroundColor(this,settings.foregroundColor),
@@ -314,61 +309,65 @@ namespace UI
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&font,&QLineEdit::textChanged,this,[this](const QString &family) {
-					this->errorReport->ValidateFont(&font,family,fontSize.value());
-				});
-				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,[this](int pointSize) {
-					this->errorReport->ValidateFont(&font,font.text(),pointSize);
-				});
+				connect(&font,&FontEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectFont,&QPushButton::clicked,this,&Chat::PickFont);
+				connect(&foregroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&foregroundColor,&ColorEdit::textChanged,&previewForegroundColor,&ColorPreview::Set);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Chat::PickForegroundColor);
+				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Chat::PickBackgroundColor);
 
+				font.setObjectName(u"Chat pane font"_s);
 				font.setText(settings.font);
 				fontSize.setRange(1,std::numeric_limits<short>::max());
 				fontSize.setValue(settings.fontSize);
+				foregroundColor.setObjectName(u"Chat pane foreground color"_s);
 				foregroundColor.setText(settings.foregroundColor);
+				backgroundColor.setObjectName(u"Chat pane background color"_s);
 				backgroundColor.setText(settings.backgroundColor);
+
 				statusInterval.setRange(TimeConvert::ONE_SECOND_IN_MILLISECONDS.count(),std::numeric_limits<int>::max());
 
 				Rows({
-					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
-					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
-					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
-					{Label(QStringLiteral("Status Duration")),&statusInterval}
+					{Label(u"Font"_s),&font,Label(u"Size"_s),&fontSize,&selectFont},
+					{Label(u"Text Color"_s),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
+					{Label(u"Background Color"_s),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+					{Label(u"Status Duration"_s),&statusInterval}
 				});
 			}
 
 			void Chat::PickFont()
 			{
-				bool ok=false;
-				QFont candidate(font.text(),fontSize.value());
-				candidate=QFontDialog::getFont(&ok,candidate,this,Text::DIALOG_TITLE_FONT);
-				if (!ok) return;
-				font.setText(candidate.family());
-				fontSize.setValue(candidate.pointSize());
+				auto selection=UI::PickFont(this,font.text(),fontSize.value());
+				if (!selection) return;
+				auto [family,pointSize]=*selection;
+				font.setText(family);
+				fontSize.setValue(pointSize);
 			}
 
 			void Chat::PickForegroundColor()
 			{
-				PickColor(foregroundColor);
-				previewForegroundColor.Set(foregroundColor.text());
+				auto selection=PickColor(this,foregroundColor.text());
+				if (!selection) return;
+				foregroundColor.setText(*selection);
 			}
 
 			void Chat::PickBackgroundColor()
 			{
-				PickColor(backgroundColor);
-				previewBackgroundColor.Set(backgroundColor.text());
+				auto selection=PickColor(this,backgroundColor.text());
+				if (!selection) return;
+				backgroundColor.setText(*selection);
 			}
 
 			bool Chat::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &font || object == &fontSize || object == &selectFont) emit Help(QStringLiteral("The font that will be used to display chat messages"));
-					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of chat message text"));
-					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background behind chat messages"));
-					if (object == &statusInterval) emit Help(QStringLiteral("How long (in milliseconds) updates and error messages should display at the bottom of the chat pane"));
+					if (object == &font || object == &fontSize || object == &selectFont) emit Help(u"The font that will be used to display chat messages"_s);
+					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(u"The color of chat message text"_s);
+					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(u"The color of the background behind chat messages"_s);
+					if (object == &statusInterval) emit Help(u"How long (in milliseconds) updates and error messages should display at the bottom of the chat pane"_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -384,9 +383,9 @@ namespace UI
 				settings.statusInterval.Set(statusInterval.value());
 			}
 
-			Pane::Pane(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Panes")),
-				font(this),
+			Pane::Pane(Settings settings,Feedback::Error &errorReport) : Category(u"Panes"_s),
 				fontSize(this),
+				font(&fontSize,this),
 				selectFont(Text::CHOOSE,this),
 				foregroundColor(this),
 				previewForegroundColor(this,settings.foregroundColor),
@@ -401,72 +400,79 @@ namespace UI
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&font,&QLineEdit::textChanged,this,[this](const QString &family) {
-					this->errorReport->ValidateFont(&font,family,fontSize.value());
-				});
-				connect(&fontSize,QOverload<const int>::of(&QSpinBox::valueChanged),this,[this](int pointSize) {
-					this->errorReport->ValidateFont(&font,font.text(),pointSize);
-				});
+				connect(&font,&FontEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectFont,&QPushButton::clicked,this,&Pane::PickFont);
+				connect(&foregroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&foregroundColor,&ColorEdit::textChanged,&previewForegroundColor,&ColorPreview::Set);
 				connect(&selectForegroundColor,&QPushButton::clicked,this,&Pane::PickForegroundColor);
+				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
 				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Pane::PickBackgroundColor);
+				connect(&accentColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&accentColor,&ColorEdit::textChanged,&previewAccentColor,&ColorPreview::Set);
 				connect(&selectAccentColor,&QPushButton::clicked,this,&Pane::PickAccentColor);
 
+				font.setObjectName(u"Announcements font"_s);
 				font.setText(settings.font);
 				fontSize.setRange(1,std::numeric_limits<short>::max());
 				fontSize.setValue(settings.fontSize);
+				foregroundColor.setObjectName(u"Announcements text color"_s);
 				foregroundColor.setText(settings.foregroundColor);
+				backgroundColor.setObjectName(u"Announcements background color"_s);
 				backgroundColor.setText(settings.backgroundColor);
+				accentColor.setObjectName(u"Announcements accent color"_s);
 				accentColor.setText(settings.accentColor);
 				duration.setRange(TimeConvert::ONE_SECOND_IN_MILLISECONDS.count(),std::numeric_limits<int>::max());
 				duration.setValue(settings.duration);
 
 				Rows({
-					{Label(QStringLiteral("Font")),&font,Label(QStringLiteral("Size")),&fontSize,&selectFont},
-					{Label(QStringLiteral("Text Color")),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
-					{Label(QStringLiteral("Background Color")),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
-					{Label(QStringLiteral("Accent Color")),&accentColor,&previewAccentColor,&selectAccentColor},
-					{Label(QStringLiteral("Duration")),&duration}
+					{Label(u"Font"_s),&font,Label(u"Size"_s),&fontSize,&selectFont},
+					{Label(u"Text Color"_s),&foregroundColor,&previewForegroundColor,&selectForegroundColor},
+					{Label(u"Background Color"_s),&backgroundColor,&previewBackgroundColor,&selectBackgroundColor},
+					{Label(u"Accent Color"_s),&accentColor,&previewAccentColor,&selectAccentColor},
+					{Label(u"Duration"_s),&duration}
 				});
 			}
 
 			void Pane::PickFont()
 			{
-				bool ok=false;
-				QFont candidate(font.text(),fontSize.value());
-				candidate=QFontDialog::getFont(&ok,candidate,this,Text::DIALOG_TITLE_FONT);
-				if (!ok) return;
-				font.setText(candidate.family());
-				fontSize.setValue(candidate.pointSize());
+				auto selection=UI::PickFont(this,font.text(),fontSize.value());
+				if (!selection) return;
+				auto [family,pointSize]=*selection;
+				font.setText(family);
+				fontSize.setValue(pointSize);
 			}
 
 			void Pane::PickForegroundColor()
 			{
-				PickColor(foregroundColor);
-				previewForegroundColor.Set(foregroundColor.text());
+				auto selection=PickColor(this,foregroundColor.text());
+				if (!selection) return;
+				foregroundColor.setText(*selection);
 			}
 
 			void Pane::PickBackgroundColor()
 			{
-				PickColor(backgroundColor);
-				previewBackgroundColor.Set(backgroundColor.text());
+				auto selection=PickColor(this,backgroundColor.text());
+				if (!selection) return;
+				backgroundColor.setText(*selection);
 			}
 
 			void Pane::PickAccentColor()
 			{
-				PickColor(accentColor);
-				previewAccentColor.Set(accentColor.text());
+				auto selection=PickColor(this,accentColor.text());
+				if (!selection) return;
+				accentColor.setText(*selection);
 			}
 
 			bool Pane::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &font || object == &fontSize || object == &selectFont) emit Help(QStringLiteral("The font that will be used in event panes (such as raid and subscription announcements)"));
-					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(QStringLiteral("The color of text in event panes (such as raid and subscription announcements)"));
-					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(QStringLiteral("The color of the background in event panes (such as raid and subscription announcements)"));
-					if (object == &accentColor || object == &selectAccentColor) emit Help(QStringLiteral("The color of text effects, such as drop shadows"));
-					if (object == &duration) emit Help(QStringLiteral("The amount of time (in milliseconds) that an announcement will display. This only affects announcements that don't have an associated audio or video file, otherwise the duration will be the duration of the associated audio or video."));
+					if (object == &font || object == &fontSize || object == &selectFont) emit Help(u"The font that will be used in event panes (such as raid and subscription announcements)"_s);
+					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(u"The color of text in event panes (such as raid and subscription announcements)"_s);
+					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(u"The color of the background in event panes (such as raid and subscription announcements)"_s);
+					if (object == &accentColor || object == &selectAccentColor) emit Help(u"The color of text effects, such as drop shadows"_s);
+					if (object == &duration) emit Help(u"The amount of time (in milliseconds) that an announcement will display. This only affects announcements that don't have an associated audio or video file, otherwise the duration will be the duration of the associated audio or video."_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -483,7 +489,7 @@ namespace UI
 				settings.duration.Set(duration.value());
 			}
 
-			Music::Music(Settings settings) : Category(QStringLiteral("Music")),
+			Music::Music(Settings settings) : Category(u"Music"_s),
 				suppressedVolume(this),
 				settings(settings)
 			{
@@ -492,7 +498,7 @@ namespace UI
 				suppressedVolume.setValue(settings.suppressedVolume);
 
 				Rows({
-					{Label(QStringLiteral("Suppressed Volume")),&suppressedVolume}
+					{Label(u"Suppressed Volume"_s),&suppressedVolume}
 				});
 			}
 
@@ -500,7 +506,7 @@ namespace UI
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &suppressedVolume) emit Help(QStringLiteral("The volume the music should duck to when another pane is playing audio."));
+					if (object == &suppressedVolume) emit Help(u"The volume the music should duck to when another pane is playing audio."_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -512,36 +518,36 @@ namespace UI
 				settings.suppressedVolume.Set(suppressedVolume.value());
 			}
 
-			Bot::Bot(Settings::Bot &settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Bot Core")),
+			Bot::Bot(Settings::Bot &settings,Feedback::Error &errorReport) : Category(u"Bot Core"_s),
 				settings(settings),
-				arrivalSound(this),
+				arrivalSound({Text::FILE_TYPE_AUDIO},this,true),
 				selectArrivalSound(Text::BROWSE,this),
 				previewArrivalSound(Text::PREVIEW,this),
-				portraitVideo(this),
+				portraitVideo({Text::FILE_TYPE_VIDEO},this),
 				selectPortraitVideo(Text::BROWSE,this),
 				previewPortraitVideo(Text::PREVIEW,this),
-				cheerVideo(this),
+				cheerVideo({Text::FILE_TYPE_VIDEO},this,true),
 				selectCheerVideo(Text::BROWSE,this),
 				previewCheerVideo(Text::PREVIEW,this),
-				subscriptionSound(this),
+				subscriptionSound({Text::FILE_TYPE_AUDIO},this),
 				selectSubscriptionSound(Text::BROWSE,this),
 				previewSubscriptionSound(Text::PREVIEW,this),
-				raidSound(this),
+				raidSound({Text::FILE_TYPE_AUDIO},this),
 				postRaidEventDelay(this),
 				postRaidEventDelayThreshold(this),
 				selectRaidSound(Text::BROWSE,this),
 				previewRaidSound(Text::PREVIEW,this),
 				inactivityCooldown(this),
 				helpCooldown(this),
-				textWallSound(this),
+				textWallSound({Text::FILE_TYPE_AUDIO},this),
 				selectTextWallSound(Text::BROWSE,this),
 				previewTextWallSound(Text::PREVIEW,this),
 				textWallThreshold(this),
-				adBreakWarningVideo(this),
+				adBreakWarningVideo({Text::FILE_TYPE_VIDEO},this),
 				selectAdBreakWarningVideo(Text::BROWSE,this),
 				previewAdBreakWarningVideo(Text::PREVIEW,this),
 				adBreakWarningLeadTime(this),
-				adBreakFinishedVideo(this),
+				adBreakFinishedVideo({Text::FILE_TYPE_VIDEO},this),
 				selectAdBreakFinishedVideo(Text::BROWSE,this),
 				previewAdBreakFinishedVideo(Text::PREVIEW,this),
 				adScheduleRefreshInterval(this),
@@ -568,28 +574,36 @@ namespace UI
 				monkeyKeyboardPreviewTypeBloop("Bloop",this),
 				errorReport(errorReport)
 			{
-				connect(&arrivalSound,&QLineEdit::textChanged,this,&Bot::ValidateArrivalSound);
+				connect(&arrivalSound,&PathEdit::Valid,&previewArrivalSound,&QPushButton::setEnabled);
+				connect(&arrivalSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
 				connect(&previewArrivalSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayArrivalSound));
-				connect(&portraitVideo,&QLineEdit::textChanged,this,&Bot::ValidatePortraitVideo);
+				connect(&portraitVideo,&PathEdit::Valid,&previewPortraitVideo,&QPushButton::setEnabled);
+				connect(&portraitVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectPortraitVideo,&QPushButton::clicked,this,&Bot::OpenPortraitVideo);
 				connect(&previewPortraitVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayPortraitVideo));
-				connect(&cheerVideo,&QLineEdit::textChanged,this,&Bot::ValidateCheerVideo);
+				connect(&cheerVideo,&PathEdit::Valid,&previewCheerVideo,&QPushButton::setEnabled);
+				connect(&cheerVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectCheerVideo,&QPushButton::clicked,this,&Bot::OpenCheerVideo);
 				connect(&previewCheerVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayCheerVideo));
-				connect(&subscriptionSound,&QLineEdit::textChanged,this,&Bot::ValidateSubscriptionSound);
+				connect(&subscriptionSound,&PathEdit::Valid,&previewSubscriptionSound,&QPushButton::setEnabled);
+				connect(&subscriptionSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectSubscriptionSound,&QPushButton::clicked,this,&Bot::OpenSubscriptionSound);
 				connect(&previewSubscriptionSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlaySubscriptionSound));
-				connect(&raidSound,&QLineEdit::textChanged,this,&Bot::ValidateRaidSound);
+				connect(&raidSound,&PathEdit::Valid,&previewRaidSound,&QPushButton::setEnabled);
+				connect(&raidSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectRaidSound,&QPushButton::clicked,this,&Bot::OpenRaidSound);
 				connect(&previewRaidSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayRaidSound));
-				connect(&textWallSound,&QLineEdit::textChanged,this,&Bot::ValidateTextWallSound);
+				connect(&textWallSound,&PathEdit::Valid,&previewTextWallSound,&QPushButton::setEnabled);
+				connect(&textWallSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectTextWallSound,&QPushButton::clicked,this,&Bot::OpenTextWallSound);
 				connect(&previewTextWallSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayTextWallSound));
-				connect(&adBreakWarningVideo,&QLineEdit::textChanged,this,&Bot::ValidateAdBreakWarningVideo);
+				connect(&adBreakWarningVideo,&PathEdit::Valid,&previewAdBreakWarningVideo,&QPushButton::setEnabled);
+				connect(&adBreakWarningVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectAdBreakWarningVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakWarningVideo);
 				connect(&previewAdBreakWarningVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakWarningVideo));
-				connect(&adBreakFinishedVideo,&QLineEdit::textChanged,this,&Bot::ValidateAdBreakFinishedVideo);
+				connect(&adBreakFinishedVideo,&PathEdit::Valid,&previewAdBreakFinishedVideo,&QPushButton::setEnabled);
+				connect(&adBreakFinishedVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectAdBreakFinishedVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakFinishedVideo);
 				connect(&previewAdBreakFinishedVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakFinishedVideo));
 				connect(&monkeyKeyboardVolume,&QSlider::valueChanged,this,&Bot::MonkeyKeyboardVolumeChanged);
@@ -601,10 +615,15 @@ namespace UI
 				connect(&monkeyKeyboardNoteF,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
 				connect(&monkeyKeyboardNoteG,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
 
+				arrivalSound.setObjectName(u"Arrival Announcement Audio"_s);
 				arrivalSound.setText(settings.arrivalSound);
+				portraitVideo.setObjectName(u"Portrait (Ping) Video"_s);
 				portraitVideo.setText(settings.portraitVideo);
+				cheerVideo.setObjectName(u"Cheer (Bits) Video"_s);
 				cheerVideo.setText(settings.cheerVideo);
+				subscriptionSound.setObjectName(u"Subscription Announcement"_s);
 				subscriptionSound.setText(settings.subscriptionSound);
+				raidSound.setObjectName(u"Raid Announcement"_s);
 				raidSound.setText(settings.raidSound);
 				postRaidEventDelay.setRange(1,std::numeric_limits<int>::max());
 				postRaidEventDelay.setValue(settings.raidInterruptDuration);
@@ -616,10 +635,13 @@ namespace UI
 				helpCooldown.setValue(settings.helpCooldown);
 				textWallThreshold.setRange(1,std::numeric_limits<int>::max());
 				textWallThreshold.setValue(settings.textWallThreshold);
+				textWallSound.setObjectName(u"Wall-of-Text Sound"_s);
 				textWallSound.setText(settings.textWallSound);
+				adBreakWarningVideo.setObjectName(u"Ad Break Warning Video"_s);
 				adBreakWarningVideo.setText(settings.adWarningVideo);
 				adBreakWarningLeadTime.setRange(1,std::numeric_limits<int>::max());
 				adBreakWarningLeadTime.setValue(settings.adWarningLeadTime);
+				adBreakFinishedVideo.setObjectName(u"Ad Break Finished Video"_s);
 				adBreakFinishedVideo.setText(settings.adFinishedVideo);
 				adScheduleRefreshInterval.setRange(30,std::numeric_limits<int>::max());
 				adScheduleRefreshInterval.setValue(settings.adScheduleRefreshInterval);
@@ -650,20 +672,20 @@ namespace UI
 				monkeyKeyboardVolumeValue.setText(QString::number(monkeyKeyboardVolume.value())+"%");
 
 				Rows({
-					{Label(u"Arrival Announcement Audio"_s),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
-					{Label(u"Portrait (Ping) Video"_s),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
-					{Label(u"Cheer (Bits) Video"_s),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
-					{Label(u"Subscription Announcement"_s),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
-					{Label(u"Raid Announcement"_s),&raidSound,&selectRaidSound,&previewRaidSound},
+					{Label(arrivalSound.objectName()),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
+					{Label(portraitVideo.objectName()),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
+					{Label(cheerVideo.objectName()),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
+					{Label(subscriptionSound.objectName()),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
+					{Label(raidSound.objectName()),&raidSound,&selectRaidSound,&previewRaidSound},
 					{Label(u"Post-Raid Greeting Delay"_s),&postRaidEventDelay,Label(u"Threshold"_s),&postRaidEventDelayThreshold},
 					{Label(u"Inactivity Cooldown"_s),&inactivityCooldown},
 					{Label(u"Help Cooldown"_s),&helpCooldown},
-					{Label(u"Wall-of-Text Sound"_s),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(u"Threshold"_s),&textWallThreshold},
+					{Label(textWallSound.objectName()),&textWallSound,&selectTextWallSound,&previewTextWallSound,Label(u"Threshold"_s),&textWallThreshold},
 					{Subheading(u"Ads"_s)},
-					{Label(u"Ad Break Warning Video"_s),&adBreakWarningVideo,&selectAdBreakWarningVideo,&previewAdBreakWarningVideo,Label(u"Lead Time"_s),&adBreakWarningLeadTime},
-					{Label(u"Ad Break Finished Video"_s),&adBreakFinishedVideo,&selectAdBreakFinishedVideo,&previewAdBreakFinishedVideo,Label(u"Refresh Interval"_s),&adScheduleRefreshInterval},
+					{Label(adBreakWarningVideo.objectName()),&adBreakWarningVideo,&selectAdBreakWarningVideo,&previewAdBreakWarningVideo,Label(u"Lead Time"_s),&adBreakWarningLeadTime},
+					{Label(adBreakFinishedVideo.objectName()),&adBreakFinishedVideo,&selectAdBreakFinishedVideo,&previewAdBreakFinishedVideo,Label(u"Refresh Interval"_s),&adScheduleRefreshInterval},
 					{Subheading(u"Monkey Keyboard"_s)},
-					{Label(u"Bleep Root Frequency"_s),&monkeyKeyboardBleepRootFrequency,Label(u"Bleep Length"_s),&monkeyKeyboardBleepLength,Label(u"Bloop Root Frequency"_s),&monkeyKeyboardBloopRootFrequency,Label(u"Bloop Length"_s),&monkeyKeyboardBloopLength},
+					{Label(u"Bleep Root Frequency"_s),&monkeyKeyboardBleepRootFrequency,Label(u"Bleep Length (ms)"_s),&monkeyKeyboardBleepLength,Label(u"Bloop Root Frequency"_s),&monkeyKeyboardBloopRootFrequency,Label(u"Bloop Length (ms)"_s),&monkeyKeyboardBloopLength},
 					{Label(u"Volume"_s),&monkeyKeyboardVolume,&monkeyKeyboardVolumeValue},
 					{Label(u"Wave Type"_s),&monkeyKeyboardWaveTypeSine,&monkeyKeyboardWaveTypeTriangle,&monkeyKeyboardWaveTypeSquare,&monkeyKeyboardWaveTypeSawtooth},
 					{Label(u"Preview Type"_s),&monkeyKeyboardPreviewTypeBleep,&monkeyKeyboardPreviewTypeBloop},
@@ -702,8 +724,9 @@ namespace UI
 
 			void Bot::OpenArrivalSound()
 			{
-				QString candidate=OpenAudio(this,arrivalSound.text());
-				if (!candidate.isEmpty()) arrivalSound.setText(candidate);
+				auto selection=OpenAudio(this,arrivalSound.text());
+				if (!selection) return;
+				arrivalSound.setText(*selection);
 			}
 
 			void Bot::PlayArrivalSound()
@@ -729,8 +752,9 @@ namespace UI
 
 			void Bot::OpenPortraitVideo()
 			{
-				QString candidate=OpenVideo(this,portraitVideo.text());
-				if (!candidate.isEmpty()) portraitVideo.setText(candidate);
+				auto selection=OpenVideo(this,portraitVideo.text());
+				if (!selection) return;
+				portraitVideo.setText(*selection);
 			}
 
 			void Bot::PlayPortraitVideo()
@@ -740,8 +764,9 @@ namespace UI
 
 			void Bot::OpenCheerVideo()
 			{
-				QString candidate=OpenVideo(this,cheerVideo.text());
-				if (!candidate.isEmpty()) cheerVideo.setText(candidate);
+				auto selection=OpenVideo(this,cheerVideo.text());
+				if (!selection) return;
+				cheerVideo.setText(*selection);
 			}
 
 			void Bot::PlayCheerVideo()
@@ -751,8 +776,9 @@ namespace UI
 
 			void Bot::OpenSubscriptionSound()
 			{
-				QString candidate=OpenAudio(this,subscriptionSound.text());
-				if (!candidate.isEmpty()) subscriptionSound.setText(candidate);
+				auto selection=OpenAudio(this,subscriptionSound.text());
+				if (!selection) return;
+				subscriptionSound.setText(*selection);
 			}
 
 			void Bot::PlaySubscriptionSound()
@@ -762,8 +788,9 @@ namespace UI
 
 			void Bot::OpenRaidSound()
 			{
-				QString candidate=OpenAudio(this,raidSound.text());
-				if (!candidate.isEmpty()) raidSound.setText(candidate);
+				auto selection=OpenAudio(this,raidSound.text());
+				if (!selection) return;
+				raidSound.setText(*selection);
 			}
 
 			void Bot::PlayRaidSound()
@@ -773,8 +800,9 @@ namespace UI
 
 			void Bot::OpenTextWallSound()
 			{
-				QString candidate=OpenAudio(this,textWallSound.text());
-				if (!candidate.isEmpty()) textWallSound.setText(candidate);
+				auto selection=OpenAudio(this,textWallSound.text());
+				if (!selection) return;
+				textWallSound.setText(*selection);
 			}
 
 			void Bot::PlayTextWallSound()
@@ -786,8 +814,9 @@ namespace UI
 
 			void Bot::OpenAdBreakWarningVideo()
 			{
-				QString candidate=OpenVideo(this,adBreakWarningVideo.text());
-				if (!candidate.isEmpty()) adBreakWarningVideo.setText(candidate);
+				auto selection=OpenVideo(this,adBreakWarningVideo.text());
+				if (!selection) return;
+				adBreakWarningVideo.setText(*selection);
 			}
 
 			void Bot::PlayAdBreakWarningVideo()
@@ -797,8 +826,9 @@ namespace UI
 
 			void Bot::OpenAdBreakFinishedVideo()
 			{
-				QString candidate=OpenVideo(this,adBreakFinishedVideo.text());
-				if (!candidate.isEmpty()) adBreakFinishedVideo.setText(candidate);
+				auto selection=OpenVideo(this,adBreakFinishedVideo.text());
+				if (!selection) return;
+				adBreakFinishedVideo.setText(*selection);
 			}
 
 			void Bot::PlayAdBreakFinishedVideo()
@@ -823,94 +853,6 @@ namespace UI
 				{
 					emit PlayMonkeyKeyboardNote(std::chrono::milliseconds(settings.monkeyKeyboardBloopLength),settings.monkeyKeyboardBloopRootFrequency,note->text());
 				}
-			}
-
-			void Bot::ValidateArrivalSound(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && (candidate.isDir() || candidate.suffix() == Text::FILE_TYPE_AUDIO);
-				if (valid)
-					errorReport->Valid(&arrivalSound);
-				else
-					errorReport->Invalid(&arrivalSound);
-				previewArrivalSound.setEnabled(valid);
-			}
-
-			void Bot::ValidatePortraitVideo(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
-				if (valid)
-					errorReport->Valid(&portraitVideo);
-				else
-					errorReport->Invalid(&portraitVideo);
-				previewPortraitVideo.setEnabled(valid);
-			}
-
-			void Bot::ValidateCheerVideo(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
-				if (valid)
-					errorReport->Valid(&cheerVideo);
-				else
-					errorReport->Invalid(&cheerVideo);
-				previewCheerVideo.setEnabled(valid);
-			}
-
-			void Bot::ValidateSubscriptionSound(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_AUDIO;
-				if (valid)
-					errorReport->Valid(&subscriptionSound);
-				else
-					errorReport->Invalid(&subscriptionSound);
-				previewSubscriptionSound.setEnabled(valid);
-			}
-
-			void Bot::ValidateRaidSound(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_AUDIO;
-				if (valid)
-					errorReport->Valid(&raidSound);
-				else
-					errorReport->Invalid(&raidSound);
-				previewRaidSound.setEnabled(valid);
-			}
-
-			void Bot::ValidateTextWallSound(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() &&candidate.suffix() == Text::FILE_TYPE_AUDIO;
-				if (valid)
-					errorReport->Valid(&textWallSound);
-				else
-					errorReport->Invalid(&textWallSound);
-				textWallSound.setEnabled(valid);
-			}
-
-			void Bot::ValidateAdBreakWarningVideo(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
-				if (valid)
-					errorReport->Valid(&adBreakWarningVideo);
-				else
-					errorReport->Invalid(&adBreakWarningVideo);
-				previewAdBreakWarningVideo.setEnabled(valid);
-			}
-
-			void Bot::ValidateAdBreakFinishedVideo(const QString &path)
-			{
-				QFileInfo candidate(path);
-				bool valid=candidate.exists() && candidate.suffix() == Text::FILE_TYPE_VIDEO;
-				if (valid)
-					errorReport->Valid(&adBreakFinishedVideo);
-				else
-					errorReport->Invalid(&adBreakFinishedVideo);
-				previewAdBreakFinishedVideo.setEnabled(valid);
 			}
 
 			void Bot::Save()
@@ -972,42 +914,35 @@ namespace UI
 				settings.reconnectDelay.Set(reconnectDelay.value());
 			}
 
-			Log::Log(Settings settings,std::shared_ptr<Feedback::Error> errorReport) : Category(u"Logging"_s),
+			Log::Log(Settings settings,Feedback::Error &errorReport) : Category(u"Logging"_s),
 				directory(this),
 				selectDirectory(Text::BROWSE,this),
 				settings(settings),
 				errorReport(errorReport)
 			{
-				connect(&directory,&QLineEdit::textChanged,this,&Log::ValidateDirectory);
+				connect(&directory,&DirectoryEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectDirectory,&QPushButton::clicked,this,&Log::OpenDirectory);
 
+				directory.setObjectName("Log file directory");
 				directory.setText(settings.directory);
 
 				Rows({
-					{Label(QStringLiteral("Folder")),&directory,&selectDirectory}
+					{Label(u"Folder"_s),&directory,&selectDirectory}
 				});
 			}
 
 			void Log::OpenDirectory()
 			{
-				const QString initialPath=directory.text();
-				QString candidate=QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this,Text::DIALOG_TITLE_DIRECTORY,initialPath.isEmpty() ? Filesystem::DataPath().absolutePath() : initialPath));
-				if (!candidate.isEmpty()) directory.setText(candidate);
-			}
-
-			void Log::ValidateDirectory(const QString &path)
-			{
-				if (QDir(path).exists())
-					errorReport->Valid(&directory);
-				else
-					errorReport->Invalid(&directory);
+				auto selection=UI::OpenDirectory(this,directory.text());
+				if (!selection) return;
+				directory.setText(*selection);
 			}
 
 			bool Log::eventFilter(QObject *object,QEvent *event)
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &directory || object == &selectDirectory) emit Help(QStringLiteral("The folder where the bot will store log files, one log file per day. The bot logs to the file for the day the bot was launched."));
+					if (object == &directory || object == &selectDirectory) emit Help(u"The folder where the bot will store log files, one log file per day. The bot logs to the file for the day the bot was launched."_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -1019,7 +954,7 @@ namespace UI
 				settings.directory.Set(directory.text());
 			}
 
-			Security::Security(::Security &settings,std::shared_ptr<Feedback::Error> errorReport) : Category(QStringLiteral("Security")),
+			Security::Security(::Security &settings,Feedback::Error &errorReport) : Category(u"Security"_s),
 				administrator(this),
 				clientID(this),
 				token(this),
@@ -1031,25 +966,33 @@ namespace UI
 			{
 				details->setVisible(false);
 
+				connect(&administrator,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&clientID,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&token,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&permissions,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+				connect(&selectPermissions,&QPushButton::clicked,this,&Security::SelectPermissions);
+				connect(&callbackURL,&WebAddressEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
+
+				administrator.setObjectName(u"Administrator account name missing");
 				administrator.setText(settings.Administrator());
+				clientID.setObjectName(u"Client ID is missing");
 				clientID.setText(settings.ClientID());
 				clientID.setEchoMode(QLineEdit::Password);
+				token.setObjectName(u"Authorization token is missing");
 				token.setText(settings.OAuthToken());
 				token.setEchoMode(QLineEdit::Password);
-				callbackURL.setText(settings.CallbackURL());
+				permissions.setObjectName(u"Twitch scope list is missing");
 				permissions.setText(settings.Scope());
+				callbackURL.setObjectName("Security callback URL");
 				callbackURL.setText(settings.CallbackURL());
 				callbackURL.setInputMethodHints(Qt::ImhUrlCharactersOnly);
 
-				connect(&selectPermissions,&QPushButton::clicked,this,&Security::SelectPermissions);
-				connect(&callbackURL,&QLineEdit::textChanged,this,&Security::ValidateURL);
-
 				Rows({
-					{Label(QStringLiteral("Administrator (Broascaster)")),&administrator},
-					{Label(QStringLiteral("Client ID")),&clientID},
-					{Label(QStringLiteral("OAuth Token")),&token},
-					{Label(QStringLiteral("Callback URL")),&callbackURL},
-					{Label(QStringLiteral("Permissions")),&permissions,&selectPermissions}
+					{Label(u"Administrator (Broascaster)"_s),&administrator},
+					{Label(u"Client ID"_s),&clientID},
+					{Label(u"OAuth Token"_s),&token},
+					{Label(u"Callback URL"_s),&callbackURL},
+					{Label(u"Permissions"_s),&permissions,&selectPermissions}
 				});
 			}
 
@@ -1057,11 +1000,11 @@ namespace UI
 			{
 				if (event->type() == QEvent::HoverEnter)
 				{
-					if (object == &administrator) emit Help(QStringLiteral("Twitch user name of the broadcaster."));
-					if (object == &clientID) emit Help(QStringLiteral("Client ID from Twitch developer console."));
-					if (object == &token) emit Help(QStringLiteral(R"(OAuth token obtained from Twitch authorization process (usually automatic, but can be manually obtained and entered). This is for "Authorization code grant flow" for Celeste's main API calls.)"));
-					if (object == &callbackURL) emit Help(QStringLiteral("The URL Twitch will contact with an OAuth token (or error message)."));
-					if (object == &permissions || object == &selectPermissions) emit Help(QStringLiteral(R"(The list of permissions (Twitch refers to as "scopes") the bot will require.)"));
+					if (object == &administrator) emit Help(u"Twitch user name of the broadcaster."_s);
+					if (object == &clientID) emit Help(u"Client ID from Twitch developer console."_s);
+					if (object == &token) emit Help(uR"(OAuth token obtained from Twitch authorization process (usually automatic, but can be manually obtained and entered). This is for "Authorization code grant flow" for Celeste's main API calls.)"_s);
+					if (object == &callbackURL) emit Help(u"The URL Twitch will contact with an OAuth token (or error message)."_s);
+					if (object == &permissions || object == &selectPermissions) emit Help(uR"(The list of permissions (Twitch refers to as "scopes") the bot will require.)"_s);
 				}
 
 				if (event->type() == QEvent::HoverLeave) emit Help("");
@@ -1082,17 +1025,9 @@ namespace UI
 				settings.CallbackURL().Set(callbackURL.text());
 				settings.Scope().Set(permissions.text());
 			}
-
-			void Security::ValidateURL(const QString &text)
-			{
-				if (QUrl(text).isValid())
-					errorReport->Valid(&callbackURL);
-				else
-					errorReport->Invalid(&callbackURL);
-			}
 		}
 
-		Dialog::Dialog(std::vector<Categories::Category*> categories,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
+		Dialog::Dialog(std::vector<Categories::Category*> categories,std::unique_ptr<Feedback::Error> errorReport,QWidget *parent) : QDialog(parent,Qt::Dialog|Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowCloseButtonHint),
 			entriesFrame(this),
 			help(this),
 			buttons(this),
@@ -1100,6 +1035,9 @@ namespace UI
 			save(Text::BUTTON_SAVE,this),
 			apply(Text::BUTTON_APPLY,this),
 			scrollLayout(nullptr),
+			errorBox("Problems",this),
+			errorMessages(&errorBox),
+			errorReport(std::move(errorReport)),
 			categories(std::move(categories))
 		{
 			setStyleSheet("QFrame { background-color: palette(window); } QScrollArea, QWidget#options { background-color: palette(base); }");
@@ -1137,6 +1075,15 @@ namespace UI
 			QGridLayout *rightLayout=new QGridLayout(rightPane);
 			rightPane->setLayout(rightLayout);
 			rightLayout->addWidget(&help,0,0,1,2);
+			QVBoxLayout *errorBoxLayout=new QVBoxLayout(&errorBox);
+			errorBox.setLayout(errorBoxLayout);
+			errorBox.setVisible(false);
+			connect(this->errorReport.get(),&Feedback::Error::Clear,&save,&QPushButton::setEnabled);
+			connect(this->errorReport.get(),&Feedback::Error::Clear,&apply,&QPushButton::setEnabled);
+			connect(this->errorReport.get(),&Feedback::Error::Count,&errorBox,&QGroupBox::setVisible);
+			connect(this->errorReport.get(),&Feedback::Error::ReportProblem,&errorMessages,&QLabel::setText);
+			errorBoxLayout->addWidget(&errorMessages);
+			rightLayout->addWidget(&errorBox,1,0,1,2);
 			upperLayout->addWidget(rightPane);
 
 			QWidget *lowerContent=new QWidget(this);

@@ -14,6 +14,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTextFrame>
+#include <QColorSpace>
 #include <algorithm>
 #include "globals.h"
 #include "widgets/widgets.h"
@@ -35,7 +36,6 @@ namespace StyleSheet
 	}
 }
 
-
 namespace UI
 {
 	int ScreenWidthThird(QWidget *widget)
@@ -50,14 +50,41 @@ namespace UI
 		return item;
 	}
 
-	QString OpenVideo(QWidget *parent,QString initialPath)
+	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath)
 	{
-		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO)));
+		auto path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO));
+		if (!QDir(path).exists()) return std::nullopt;
+		return QDir::toNativeSeparators(path);
 	}
 
-	QString OpenAudio(QWidget *parent,QString initialPath)
+	std::optional<QString> OpenAudio(QWidget *parent,const QString &initialPath)
 	{
-		return QDir::toNativeSeparators(QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO)));
+		auto path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO));
+		if (!QDir(path).exists()) return std::nullopt;
+		return QDir::toNativeSeparators(path);
+	}
+
+	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath)
+	{
+		auto path=QFileDialog::getExistingDirectory(parent,Text::DIALOG_TITLE_DIRECTORY,initialPath.isEmpty() ? Filesystem::DataPath().absolutePath() : initialPath);
+		if (!QDir(path).exists()) return std::nullopt;
+		return QDir::toNativeSeparators(path);
+	}
+
+	std::optional<QString> PickColor(QWidget *parent,const QString &initialColor)
+	{
+		auto color=QColorDialog::getColor(initialColor,parent,u"Choose a Color"_s,QColorDialog::ShowAlphaChannel);
+		if (!color.isValid()) return std::nullopt;
+		return color.name(QColor::HexArgb);
+	}
+
+	std::optional<std::tuple<QString,int>> PickFont(QWidget *parent,const QString &initialFamily,int initialPointSize)
+	{
+		bool ok=false;
+		QFont candidate(initialFamily,initialPointSize);
+		candidate=QFontDialog::getFont(&ok,candidate,parent,u"Choose Font"_s);
+		if (!ok) return std::nullopt;
+		return {{candidate.family(),candidate.pointSize()}};
 	}
 
 	namespace Feedback
@@ -75,7 +102,15 @@ namespace UI
 			CompileErrorMessages();
 		}
 
-		void Error::Valid(QWidget *widget)
+		void Error::StyleSource(bool valid,QWidget *widget)
+		{
+			if (valid)
+				ValidStyle(widget);
+			else
+				InvalidStyle(widget);
+		}
+
+		void Error::ValidStyle(QWidget *widget)
 		{
 			widget->setStyleSheet("background-color: none;");
 			errors.erase(widget->objectName());
@@ -83,25 +118,32 @@ namespace UI
 			CompileErrorMessages();
 		}
 
-		void Error::Invalid(QWidget *widget)
+		void Error::InvalidStyle(QWidget *widget)
 		{
-			widget->setStyleSheet("background-color: LavenderBlush;");
+			auto backgroundColor=widget->palette().color(QPalette::Window);
+			QColor invalidColor("LavenderBlush");
+			auto CalculateLinearLuminance=[](const QColor &color)->float {
+				return 0.2126f*color.redF()+0.7152f*color.greenF()+0.0722f*color.blueF();; // WCAG luminance coefficients
+			};
+			QColorSpace rgbSpace=QColorSpace(QColorSpace::SRgb);
+			QColorSpace linearSpace(QColorSpace::SRgbLinear);
+			QColorTransform toLinear=rgbSpace.transformationToColorSpace(linearSpace);
+			QColorTransform toSRGB=linearSpace.transformationToColorSpace(rgbSpace);
+			QColor invalidLinear=toLinear.map(invalidColor);
+			float invalidLuminance=CalculateLinearLuminance(invalidLinear);
+			QColor backgroundLinear=toLinear.map(backgroundColor);
+			float backgroundLuminance=CalculateLinearLuminance(backgroundLinear);
+			float scale=backgroundLuminance/invalidLuminance;
+			widget->setStyleSheet(u"background-color: %0;"_s.arg(
+				toSRGB.map(QColor::fromRgbF(
+					std::clamp(invalidLinear.redF()*scale,0.0f,1.0f),
+					std::clamp(invalidLinear.greenF()*scale,0.0f,1.0f),
+					std::clamp(invalidLinear.blueF()*scale,0.0f,1.0f),
+					invalidLinear.alphaF()
+				)).name(QColor::NameFormat::HexArgb)
+			));
 			if (errors.insert(widget->objectName()).second) emit Clear(false);
 			CompileErrorMessages();
-		}
-
-		void Error::ValidateFont(QWidget *widget,const QString &family,const int pointSize)
-		{
-			if (QFontDatabase::families().contains(family,Qt::CaseInsensitive))
-			{
-				auto availableSizes=QFontDatabase::pointSizes(family);
-				if (availableSizes.isEmpty() || availableSizes.contains(pointSize)) // empty means scalable font so all point sizes valid
-				{
-					Valid(widget);
-					return;
-				}
-			}
-			Invalid(widget);
 		}
 
 		void Error::CompileErrorMessages()
@@ -128,15 +170,104 @@ namespace UI
 		}
 	}
 
-	Color::Color(QWidget *parent,const QString &color) : QLabel(parent)
+	ColorPreview::ColorPreview(QWidget *parent,const QString &color): QLabel(parent)
 	{
 		Set(color);
 		setText(QStringLiteral("preview"));
 	}
 
-	void Color::Set(const QString &color)
+	void ColorPreview::Set(const QString &color)
 	{
 		setStyleSheet(QString("border: 1px solid black; color: %1; background-color: %1;").arg(color));
+	}
+
+	ColorEdit::ColorEdit(QWidget *parent): QLineEdit(parent)
+	{
+		connect(this,&QLineEdit::textChanged,this,&ColorEdit::Validate);
+	}
+
+	void ColorEdit::Validate(const QString &color)
+	{
+		bool valid=QColor(color).isValid();
+		emit NeedValidatedStyle(valid,this);
+		emit Valid(valid);
+	}
+
+	RequiredEdit::RequiredEdit(QWidget *parent): QLineEdit(parent)
+	{
+		connect(this,&QLineEdit::textChanged,this,&RequiredEdit::Validate);
+	}
+
+	void RequiredEdit::Validate(const QString &text)
+	{
+		bool valid=!text.isEmpty();
+		emit NeedValidatedStyle(valid,this);
+		emit Valid(valid);
+	}
+
+	PathEdit::PathEdit(const QStringList &acceptableFileExtensions,QWidget *parent,bool allowDirectories): QLineEdit(parent), acceptableFileExtensions(acceptableFileExtensions), allowDirectories(allowDirectories)
+	{
+		connect(this,&QLineEdit::textChanged,this,&PathEdit::Validate);
+	}
+
+	void PathEdit::Validate(const QString &path)
+	{
+		QFileInfo candidate(path);
+		bool valid=candidate.exists() && (allowDirectories ? candidate.isDir() : false || acceptableFileExtensions.contains(candidate.suffix()));
+		emit NeedValidatedStyle(valid,this);
+		emit Valid(valid);
+	}
+
+	DirectoryEdit::DirectoryEdit(QWidget *parent): QLineEdit(parent)
+	{
+		connect(this,&QLineEdit::textChanged,this,&DirectoryEdit::Validate);
+	}
+
+	void DirectoryEdit::Validate(const QString &path)
+	{
+		bool valid=QDir(path).exists();
+		emit NeedValidatedStyle(valid,this);
+		emit Valid(valid);
+	}
+
+	FontEdit::FontEdit(QSpinBox *pointSize,QWidget *parent): QLineEdit(parent), pointSize(pointSize)
+	{
+		connect(this,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&FontEdit::Validate));
+		connect(pointSize,&QSpinBox::valueChanged,this,QOverload<int>::of(&FontEdit::Validate));
+	}
+
+	void FontEdit::Validate(const QString &family,int pointSize)
+	{
+		bool valid=false;
+		if (QFontDatabase::families().contains(family,Qt::CaseInsensitive))
+		{
+			auto availableSizes=QFontDatabase::pointSizes(family);
+			if (availableSizes.isEmpty() || availableSizes.contains(pointSize)) valid=true;// empty means scalable font so all point sizes valid
+		}
+		emit NeedValidatedStyle(valid,this);
+		emit Valid(valid);
+	}
+
+	void FontEdit::Validate(const QString &family)
+	{
+		Validate(family,pointSize->value());
+	}
+
+	void FontEdit::Validate(int pointSize)
+	{
+		Validate(text(),pointSize);
+	}
+
+	WebAddressEdit::WebAddressEdit(QWidget *parent): QLineEdit(parent)
+	{
+		connect(this,&QLineEdit::textChanged,this,&WebAddressEdit::Validate);
+	}
+
+	void WebAddressEdit::Validate(const QString &address)
+	{
+		bool valid=QUrl(address,QUrl::StrictMode).isValid();
+		emit NeedValidatedStyle(valid,this);
+		emit Valid(valid);
 	}
 
 	namespace Security
