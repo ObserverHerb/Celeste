@@ -225,7 +225,7 @@ namespace UI
 
 	void DirectoryEdit::Validate(const QString &path)
 	{
-		bool valid=QDir(path).exists();
+		bool valid=!path.isEmpty() && QDir(path).exists(); // QDir falls back to root on empty string
 		emit NeedValidatedStyle(valid,this);
 		emit Valid(valid);
 	}
