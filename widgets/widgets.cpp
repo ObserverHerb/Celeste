@@ -482,7 +482,7 @@ namespace UI
 
 			catch (const std::exception &exception)
 			{
-				QMessageBox{QMessageBox::Warning,OPERATION,u"Unknown error: "_s,QMessageBox::Ok}.exec();
+				QMessageBox{QMessageBox::Warning,OPERATION,u"Unknown error: "_s+exception.what(),QMessageBox::Ok}.exec();
 			}
 		}
 
