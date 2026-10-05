@@ -149,7 +149,8 @@ namespace UI
 		void Error::CompileErrorMessages()
 		{
 			QString messages;
-			for (const QString &error : errors) messages+=error+"<br>";
+
+			for (const QString &error : errors) messages+=error+"\n";
 			emit ReportProblem(messages.trimmed());
 			emit Count(messages.size());
 		}
