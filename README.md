@@ -1,6 +1,6 @@
 # Celeste
 
-[Celeste](https://twitch.hlmjr.com/celeste.html) is a Twitch bot written in C++/[Qt](https://www.qt.io/product/framework). It's purpose is to watch for commands that appear in chat and function as a widget in your OBS scene collection that displays reactions to those commands, while maintaining a minimal CPU/memory footprint. It is cross-platform and open source.
+[Celeste](https://www.engineeringdeck.com/index.php/celeste/) is a Twitch bot written in C++/[Qt](https://www.qt.io/product/framework). It's purpose is to watch for commands that appear in chat and function as a widget in your OBS scene collection that displays reactions to those commands, while maintaining a minimal CPU/memory footprint. It is cross-platform and open source.
 
 ## Configuration
 
@@ -20,13 +20,13 @@ The following files also exist:
 
 ### Installing
 
-An installer is available for Windows on the [releases page](https://github.com/EngineeringDeck/Celeste/releases). Debian and rpm packages (and likely a Gentoo ebuild) will be avilable for Linux soon.
+An installer is available for Windows on the [releases page](https://github.com/EngineeringDeck/Celeste/releases). Debian and rpm packages (and likely a Gentoo ebuild) for Linux are planned.
 
 ### Contributing
 
 Celeste can be built from source on Windows, Linux, and macOS. You will need, at a minimum, the following:
 
-* cmake >= v3.28
+* cmake >= v3.29
 * A build of the Qt Framework that contains these modules:
   * QtWidgets
   * QtNetwork
@@ -35,4 +35,4 @@ Celeste can be built from source on Windows, Linux, and macOS. You will need, at
   * QtMultimediaWidgets
   * QtWebSockets
 
-To build the Pulsar plugin for [OBS Studio](https://obsproject.com), you will need the OBS source in a directory named `obs-source` under the root of Celeste's source directory.
+On Windows you will also need to install Visual Studio (with the "Desktop development with C++" module), Inno Setup 7, a Perl interpreter, a Python interpreter, and Powershell 7.5+. Then run `windows-bootstrap.ps1` from a Powershell terminal.

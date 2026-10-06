@@ -1,0 +1,58 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 29,
+    "patch": 0
+  },
+	"configurePresets": [
+		{
+			"name": "msvc-release",
+			"displayName": "Qt ${QtVersionString} for Windows",
+			"generator": "Ninja",
+			"binaryDir": "`${sourceDir}/build",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			},
+			"vendor": {
+				"microsoft.com/VisualStudioSettings/CMake/1.0": {
+					"hostOS": "Windows"
+				}
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"Qt6_DIR": "$(${WorkingDirectory}.Replace('\','/'))/$($BuildConfigurations['release']['OutputDirectory'])/lib/cmake/Qt6",
+				"BUILD_INSTALLER": "ON",
+				"WITH_PULSAR": "ON"
+			},
+			"environment": {
+				"PATH": "$(${WorkingDirectory}.Replace('\','/'))/$($BuildConfigurations['release']['OutputDirectory'])/bin;$(${InnoSetupDirectory}.Replace('\','/'));`$penv{PATH}"
+			}
+
+		},
+		{
+			"name": "msvc-debug",
+			"displayName": "Qt ${QtVersionString} for Windows (Debug)",
+			"generator": "Ninja",
+			"binaryDir": "`${sourceDir}/build",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			},
+			"vendor": {
+				"microsoft.com/VisualStudioSettings/CMake/1.0": {
+					"hostOS": "Windows"
+				}
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"Qt6_DIR": "$(${WorkingDirectory}.Replace('\','/'))/$($BuildConfigurations['debug']['OutputDirectory'])/lib/cmake/Qt6",
+				"BUILD_INSTALLER": "OFF"
+			},
+			"environment": {
+				"PATH": "$(${WorkingDirectory}.Replace('\','/'))/$($BuildConfigurations['debug']['OutputDirectory'])/bin;`$penv{PATH}"
+			}
+		}
+	]
+}

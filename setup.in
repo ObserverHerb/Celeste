@@ -20,8 +20,8 @@ OutputDir=.
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed=x64os
+ArchitecturesInstallIn64BitMode=x64os
 UninstallDisplayIcon="{app}\celeste.exe"
 SetupIconFile="@CMAKE_SOURCE_DIR@\resources\celeste.ico"
 
@@ -31,8 +31,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Pulsar.dll"; DestDir: "{code:OBSLocation}"; Flags: ignoreversion; Components: pulsar
-Source: "libcrypto-3-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "libssl-3-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "@Qt6_DIR@\..\..\..\bin\libcrypto-$($([version]$OpenSSLVersion).Major)-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "@Qt6_DIR@\..\..\..\bin\libssl-$($([version]$OpenSSLVersion).Major)-x64.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Qt6Core.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Qt6Gui.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Qt6Mqtt.dll"; DestDir: "{app}"; Flags: ignoreversion
@@ -42,7 +42,6 @@ Source: "Qt6Network.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Qt6Svg.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Qt6WebSockets.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Qt6Widgets.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "generic\*"; DestDir: "{app}\generic"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "iconengines\*"; DestDir: "{app}\iconengines"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "multimedia\*"; DestDir: "{app}\multimedia"; Flags: ignoreversion recursesubdirs createallsubdirs

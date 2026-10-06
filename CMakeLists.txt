@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.29)
 
-project(Celeste LANGUAGES CXX VERSION 4.00)
+project(Celeste LANGUAGES CXX VERSION 4.00.20261002)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -85,21 +85,6 @@ if(WITH_PULSAR)
 	if(WIN32)
 		set(OBS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/obs-studio)
 		set(OBS_LIB_DIR ${OBS_SOURCE_DIR}/build_x64)
-		if(NOT EXISTS ${OBS_SOURCE_DIR})
-			include(FetchContent)
-			FetchContent_Declare(
-				obs-studio
-				GIT_REPOSITORY	https://github.com/obsproject/obs-studio.git
-				GIT_TAG			origin/master
-				SOURCE_DIR		${OBS_SOURCE_DIR}
-			)
-			FetchContent_Populate(obs-studio)
-		endif()
-		if(NOT EXISTS ${OBS_LIB_DIR})
-			execute_process(COMMAND cmake -DENABLE_BROWSER=OFF --preset windows-x64 WORKING_DIRECTORY ${OBS_SOURCE_DIR})
-			execute_process(COMMAND cmake --build --preset windows-x64 WORKING_DIRECTORY ${OBS_SOURCE_DIR})
-		endif()
-
 		include_directories(${OBS_SOURCE_DIR}/libobs ${OBS_LIB_DIR}/config ${OBS_SOURCE_DIR}/frontend/api/)
 		target_include_directories(Pulsar SYSTEM PRIVATE ${OBS_INCLUDE_DIR}/obs)
 
@@ -131,27 +116,6 @@ endif()
 option(BUILD_INSTALLER "Build the Windows installer (Requires Inno Setup)" ON)
 if(BUILD_INSTALLER)
 	if(WIN32)
-		find_program(NASM "nasm")
-		if(NASM)
-			include(ExternalProject)
-			ExternalProject_Add(
-				openssl
-				URL "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.5.1.zip"
-				BUILD_IN_SOURCE ON
-				CONFIGURE_COMMAND perl Configure --prefix=${CMAKE_BINARY_DIR} --openssldir=${CMAKE_BINARY_DIR}
-				BUILD_COMMAND nmake
-				INSTALL_COMMAND nmake install
-				USES_TERMINAL_DOWNLOAD TRUE
-				USES_TERMINAL_UPDATE TRUE
-				USES_TERMINAL_CONFIGURE TRUE
-				USES_TERMINAL_BUILD TRUE
-				USES_TERMINAL_INSTALL TRUE
-				USES_TERMINAL_TEST TRUE
-			)
-		else()
-			message(FATAL_ERROR "nasm is required to build OpenSSL")
-		endif()
-
 		find_program(WINDEPLOYQT "windeployqt")
 		find_program(INNO_SETUP "iscc")
 		if(WINDEPLOYQT AND INNO_SETUP)
