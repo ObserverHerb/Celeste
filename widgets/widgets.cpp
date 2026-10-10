@@ -50,11 +50,22 @@ namespace UI
 		return QDir::toNativeSeparators(path);
 	}
 
-	std::optional<QString> OpenAudio(QWidget *parent,const QString &initialPath)
+	std::optional<QString> OpenAudio(QWidget *parent,QString initialPath,bool allowDirectories)
 	{
-		auto path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO));
-		if (!QDir(path).exists()) return std::nullopt;
-		return QDir::toNativeSeparators(path);
+		QString path;
+		if (allowDirectories)
+		{
+			if (initialPath.isEmpty()) initialPath=Filesystem::DataPath().absolutePath();
+			path=QFileDialog::getExistingDirectory(parent,Text::DIALOG_TITLE_DIRECTORY);
+		}
+		else
+		{
+			if (initialPath.isEmpty()) initialPath=Filesystem::HomePath().absolutePath();
+			path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO));
+		}
+		auto info=QFileInfo(path);
+		if (!info.exists()) return std::nullopt;
+		return QDir::toNativeSeparators(info.absoluteFilePath());
 	}
 
 	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath)
@@ -105,7 +116,7 @@ namespace UI
 
 		void Error::ValidStyle(QWidget *widget)
 		{
-			widget->setStyleSheet("background-color: none;");
+			widget->setStyleSheet(u".%0 { background-color: none; }"_s.arg(QString(widget->metaObject()->className()).replace(':','-')));
 			errors.erase(widget->objectName());
 			if (errors.size() == 0) emit Clear(true);
 			CompileErrorMessages();
@@ -127,13 +138,14 @@ namespace UI
 			QColor backgroundLinear=toLinear.map(backgroundColor);
 			float backgroundLuminance=CalculateLinearLuminance(backgroundLinear);
 			float scale=backgroundLuminance/invalidLuminance;
-			widget->setStyleSheet(u"background-color: %0;"_s.arg(
+			widget->setStyleSheet(u".%1 { background-color: %0; }"_s.arg(
 				toSRGB.map(QColor::fromRgbF(
 					std::clamp(invalidLinear.redF()*scale,0.0f,1.0f),
 					std::clamp(invalidLinear.greenF()*scale,0.0f,1.0f),
 					std::clamp(invalidLinear.blueF()*scale,0.0f,1.0f),
 					invalidLinear.alphaF()
-				)).name(QColor::NameFormat::HexArgb)
+				)).name(QColor::NameFormat::HexArgb),
+				QString(widget->metaObject()->className()).replace(':','-')
 			));
 			if (errors.insert(widget->objectName()).second) emit Clear(false);
 			CompileErrorMessages();
@@ -186,6 +198,13 @@ namespace UI
 		connect(this,&QLineEdit::textChanged,this,&ColorEdit::Validate);
 	}
 
+	void ColorEdit::PickColor()
+	{
+		auto selection=UI::PickColor(this,text());
+		if (!selection) return;
+		setText(*selection);
+	}
+
 	void ColorEdit::Validate(const QString &color)
 	{
 		bool valid=QColor(color).isValid();
@@ -213,7 +232,7 @@ namespace UI
 	void PathEdit::Validate(const QString &path)
 	{
 		QFileInfo candidate(path);
-		bool valid=candidate.exists() && (allowDirectories ? candidate.isDir() : false || acceptableFileExtensions.contains(candidate.suffix()));
+		bool valid=candidate.exists() && ((allowDirectories ? candidate.isDir() : false) || acceptableFileExtensions.contains(candidate.suffix()));
 		emit NeedValidatedStyle(valid,this);
 		emit Valid(valid);
 	}
@@ -221,6 +240,13 @@ namespace UI
 	DirectoryEdit::DirectoryEdit(QWidget *parent): QLineEdit(parent)
 	{
 		connect(this,&QLineEdit::textChanged,this,&DirectoryEdit::Validate);
+	}
+
+	void DirectoryEdit::Browse()
+	{
+		auto selection=OpenDirectory(this,text());
+		if (!selection) return;
+		setText(*selection);
 	}
 
 	void DirectoryEdit::Validate(const QString &path)
@@ -234,6 +260,15 @@ namespace UI
 	{
 		connect(this,&QLineEdit::textChanged,this,QOverload<const QString&>::of(&FontEdit::Validate));
 		connect(pointSize,&QSpinBox::valueChanged,this,QOverload<int>::of(&FontEdit::Validate));
+	}
+
+	void FontEdit::PickFont()
+	{
+		auto selection=UI::PickFont(this,text(),pointSize->value());
+		if (!selection) return;
+		auto [familyCandidate,sizeCandidate]=*selection;
+		setText(familyCandidate);
+		pointSize->setValue(sizeCandidate);
 	}
 
 	void FontEdit::Validate(const QString &family,int pointSize)

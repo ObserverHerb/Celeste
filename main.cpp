@@ -83,8 +83,8 @@ void ShowOptions(ApplicationWindow &window,Channel *channel,Bot &bot,Pulsar &pul
 		},*errorReport),
 		new UI::Options::Categories::Music({
 			.suppressedVolume=musicPlayer.SuppressedVolume()
-		}),
-		new UI::Options::Categories::Pulsar(pulsar.Settings()),
+		},*errorReport),
+		new UI::Options::Categories::Pulsar(pulsar.Settings(),*errorReport),
 		optionsCategoryBot,
 		new UI::Options::Categories::Log({
 			.directory=log.Directory()

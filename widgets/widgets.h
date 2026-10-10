@@ -109,7 +109,7 @@ protected:
 namespace UI
 {
 	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath=QString());
-	std::optional<QString> OpenAudio(QWidget *parent,const QString &initialPath=QString());
+	std::optional<QString> OpenAudio(QWidget *parent,QString initialPath=QString(),bool allowDirectories=false);
 	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath=QString());
 	std::optional<QString> PickColor(QWidget *parent,const QString &initialColor);
 	std::optional<std::tuple<QString,int>> PickFont(QWidget *parent,const QString &initialFamily,int initialPointSize);
@@ -166,6 +166,8 @@ namespace UI
 	signals:
 		void NeedValidatedStyle(bool valid,QWidget *widget);
 		void Valid(bool valid);
+	public slots:
+		void PickColor();
 	protected slots:
 		void Validate(const QString &color);
 	};
@@ -204,6 +206,8 @@ namespace UI
 	signals:
 		void NeedValidatedStyle(bool valid,QWidget *widget);
 		void Valid(bool valid);
+	public slots:
+		void Browse();
 	protected slots:
 		void Validate(const QString &path);
 	};
@@ -218,6 +222,8 @@ namespace UI
 	signals:
 		void NeedValidatedStyle(bool valid,QWidget *widget);
 		void Valid(bool valid);
+	public slots:
+		void PickFont();
 	protected slots:
 		void Validate(const QString &family);
 		void Validate(int pointSize);
@@ -465,17 +471,19 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Category(const QString &name);
+				Category(const QString &name,Feedback::Error &errorReport);
 				virtual void Save()=0;
 			protected:
 				QVBoxLayout verticalLayout;
 				QPushButton header;
 				QFrame *details;
 				QGridLayout detailsLayout;
+				Feedback::Error &errorReport;
+				std::flat_map<QObject*,std::shared_ptr<QString>> helpTexts;
 				QLabel* Label(const QString &text);
 				QLabel* Subheading(const QString &text);
 				void Rows(std::vector<std::vector<QWidget*>> widgets);
-				virtual bool eventFilter(QObject *object,QEvent *event) override=0;
+				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void Help(const QString &text);
 			protected slots:
@@ -492,8 +500,6 @@ namespace UI
 				RequiredEdit name;
 				QCheckBox protection;
 				Settings::Channel &settings;
-				Feedback::Error &errorReport;
-				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void Changed();
 			};
@@ -516,9 +522,6 @@ namespace UI
 				QSpinBox width;
 				QSpinBox height;
 				Settings settings;
-				Feedback::Error &errorReport;
-				void PickBackgroundColor();
-				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Status : public Category
@@ -545,11 +548,6 @@ namespace UI
 				ColorPreview previewBackgroundColor;
 				QPushButton selectBackgroundColor;
 				Settings settings;
-				Feedback::Error &errorReport;
-				void PickFont();
-				void PickForegroundColor();
-				void PickBackgroundColor();
-				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Chat : public Category
@@ -578,12 +576,6 @@ namespace UI
 				QPushButton selectBackgroundColor;
 				QSpinBox statusInterval;
 				Settings settings;
-				Feedback::Error &errorReport;
-				bool eventFilter(QObject *object,QEvent *event) override;
-			protected slots:
-				void PickFont();
-				void PickForegroundColor();
-				void PickBackgroundColor();
 			};
 
 			class Pane : public Category
@@ -616,13 +608,6 @@ namespace UI
 				QPushButton selectAccentColor;
 				QSpinBox duration;
 				Settings settings;
-				Feedback::Error &errorReport;
-				bool eventFilter(QObject *object,QEvent *event) override;
-			protected slots:
-				void PickFont();
-				void PickForegroundColor();
-				void PickBackgroundColor();
-				void PickAccentColor();
 			};
 
 			class Music : public Category
@@ -633,12 +618,11 @@ namespace UI
 				{
 					ApplicationSetting &suppressedVolume;
 				};
-				Music(Settings settings);
+				Music(Settings settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
 				QSpinBox suppressedVolume;
 				Settings settings;
-				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Bot : public Category
@@ -701,8 +685,6 @@ namespace UI
 				QButtonGroup monkeyKeyboardPreviewTypeGroup;
 				QRadioButton monkeyKeyboardPreviewTypeBleep;
 				QRadioButton monkeyKeyboardPreviewTypeBloop;
-				Feedback::Error &errorReport;
-				bool eventFilter(QObject *object,QEvent *event) override;
 			signals:
 				void PlayArrivalSound(const QString &name,std::shared_ptr<QImage> profileImage,const QString &audioPath);
 				void PlayPortraitVideo(const QString &path);
@@ -738,13 +720,12 @@ namespace UI
 			{
 				Q_OBJECT
 			public:
-				Pulsar(Settings::Pulsar &settings);
+				Pulsar(Settings::Pulsar &settings,Feedback::Error &errorReport);
 				void Save() override;
 			protected:
 				Settings::Pulsar &settings;
 				QCheckBox subsystemEnabled;
 				QSpinBox reconnectDelay;
-				bool eventFilter(QObject *object,QEvent *event) override;
 			};
 
 			class Log : public Category
@@ -761,10 +742,6 @@ namespace UI
 				DirectoryEdit directory;
 				QPushButton selectDirectory;
 				Settings settings;
-				Feedback::Error &errorReport;
-				bool eventFilter(QObject *object,QEvent *event) override;
-			protected slots:
-				void OpenDirectory();
 			};
 
 			class Security : public Category
@@ -781,8 +758,6 @@ namespace UI
 				RequiredEdit permissions;
 				QPushButton selectPermissions;
 				::Security &settings;
-				Feedback::Error &errorReport;
-				bool eventFilter(QObject *object,QEvent *event) override;
 			protected slots:
 				void SelectPermissions();
 			};

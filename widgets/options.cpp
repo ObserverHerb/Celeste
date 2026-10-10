@@ -11,11 +11,12 @@ namespace UI
 	{
 		namespace Categories
 		{
-			Category::Category(const QString &name) : QFrame(nullptr),
+			Category::Category(const QString &name,Feedback::Error &errorReport) : QFrame(nullptr),
 				verticalLayout(this),
 				header(this),
 				details(nullptr),
-				detailsLayout(nullptr)
+				detailsLayout(nullptr),
+				errorReport(errorReport)
 			{
 				setLayout(&verticalLayout);
 				setFrameShape(QFrame::Box);
@@ -91,12 +92,29 @@ namespace UI
 				details->setVisible(!details->isVisible());
 			}
 
-			Channel::Channel(Settings::Channel &settings,Feedback::Error &errorReport) : Category(u"Channel"_s),
+			bool Category::eventFilter(QObject *object,QEvent *event)
+			{
+				if (event->type() == QEvent::HoverEnter)
+				{
+					auto element=helpTexts.find(object);
+					if (element != helpTexts.end()) emit Help(*element->second);
+					return false;
+				}
+
+				if (event->type() == QEvent::HoverLeave) emit Help("");
+				return false;
+			}
+
+			Channel::Channel(Settings::Channel &settings,Feedback::Error &errorReport) : Category(u"Channel"_s,errorReport),
 				name(this),
 				protection(this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
+				helpTexts={
+					{&name,std::make_shared<QString>(u"Name of the channel Celeste will join on launch"_s)},
+					{&protection,std::make_shared<QString>(u"When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."_s)}
+				};
+
 				connect(&name,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 
 				name.setObjectName(u"Channel name"_s);
@@ -107,27 +125,6 @@ namespace UI
 					{Label(u"Name"_s),&name},
 					{Label(u"Protection"_s),&protection}
 				});
-			}
-
-			bool Channel::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &name)
-					{
-						emit Help(u"Name of the channel Celeste will join on launch"_s);
-						return false;
-					}
-
-					if (object == &protection)
-					{
-						emit Help(u"When the bot is closed, enable protections such as turning on emote-only chat? This is intended to prevent situations such as offline hate raids."_s);
-						return false;
-					}
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
 			}
 
 			void Channel::Save()
@@ -144,17 +141,24 @@ namespace UI
 				if (changed) emit Changed(); // need to reconnect to Twitch if this setting gets changed
 			}
 
-			Window::Window(Settings settings,Feedback::Error &errorReport): Category(u"Main Window"_s),
+			Window::Window(Settings settings,Feedback::Error &errorReport): Category(u"Main Window"_s,errorReport),
 				backgroundColor(this),
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
 				width(this),
 				height(this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
+				auto backgroundColorHelpText=std::make_shared<QString>(u"This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."_s);
+				helpTexts={
+					{&backgroundColor,backgroundColorHelpText},{&selectBackgroundColor,backgroundColorHelpText},
+					{&width,std::make_shared<QString>(u"The width (in pixels) of the application window's contents (the part seen by OBS)"_s)},
+					{&height,std::make_shared<QString>(u"The height (in pixels) of the application window's contents (the part seen by OBS)"_s)}
+				};
+
 				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
+				connect(&selectBackgroundColor,&QPushButton::clicked,&backgroundColor,&ColorEdit::PickColor);
 
 				backgroundColor.setObjectName(u"Window background color");
 				backgroundColor.setText(settings.backgroundColor);
@@ -169,42 +173,6 @@ namespace UI
 					{Label(u"Width"_s),&width},
 					{Label(u"Height"_s),&height}
 				});
-
-				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Window::PickBackgroundColor);
-			}
-
-			bool Window::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &backgroundColor || object == &selectBackgroundColor)
-					{
-						emit Help(u"This is the background color of the main window. Note that this is <em>not</em> the background color of individual panes (such as the chat pane)."_s);
-						return false;
-					}
-
-					if (object == &width)
-					{
-						emit Help(u"The width (in pixels) of the application window's contents (the part seen by OBS)"_s);
-						return false;
-					}
-
-					if (object == &height)
-					{
-						emit Help(u"The height (in pixels) of the application window's contents (the part seen by OBS)"_s);
-						return false;
-					}
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
-			}
-
-			void Window::PickBackgroundColor()
-			{
-				auto selection=PickColor(this,backgroundColor.text());
-				if (!selection) return;
-				backgroundColor.setText(*selection);
 			}
 
 			void Window::Save()
@@ -213,7 +181,7 @@ namespace UI
 				settings.dimensions.Set(QSize{width.value(),height.value()});
 			}
 
-			Status::Status(Settings settings,Feedback::Error &errorReport) : Category(u"Status"_s),
+			Status::Status(Settings settings,Feedback::Error &errorReport) : Category(u"Status"_s,errorReport),
 				fontSize(this),
 				font(&fontSize,this),
 				selectFont(Text::CHOOSE,this),
@@ -223,17 +191,25 @@ namespace UI
 				backgroundColor(this),
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
+				auto fontHelpText=std::make_shared<QString>(u"The font that will be used in the initialization screen when the bot is first launched and connecting to Twitch"_s);
+				auto foregroundColorHelpText=std::make_shared<QString>(u"The color of text in the initialization screen that is shown when the bot is first launched and connecting to Twitch"_s);
+				auto backgroundColorHelpText=std::make_shared<QString>(u"The color of the background in the initialization screen that is shown when the bot is first launched and connecting to Twitch"_s);
+				helpTexts={
+					{&font,fontHelpText},{&fontSize,fontHelpText},{&selectFont,fontHelpText},
+					{&foregroundColor,foregroundColorHelpText},{&selectForegroundColor,foregroundColorHelpText},
+					{&backgroundColor,backgroundColorHelpText},{&selectBackgroundColor,backgroundColorHelpText}
+				};
+
 				connect(&font,&FontEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectFont,&QPushButton::clicked,this,&Status::PickFont);
+				connect(&selectFont,&QPushButton::clicked,&font,&FontEdit::PickFont);
 				connect(&foregroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&foregroundColor,&ColorEdit::textChanged,&previewForegroundColor,&ColorPreview::Set);
-				connect(&selectForegroundColor,&QPushButton::clicked,this,&Status::PickForegroundColor);
+				connect(&selectForegroundColor,&QPushButton::clicked,&foregroundColor,&ColorEdit::PickColor);
 				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
-				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Status::PickBackgroundColor);
+				connect(&selectBackgroundColor,&QPushButton::clicked,&backgroundColor,&ColorEdit::PickColor);
 
 				font.setObjectName(u"Status pane font"_s);
 				font.setText(settings.font);
@@ -251,42 +227,6 @@ namespace UI
 				});
 			}
 
-			void Status::PickFont()
-			{
-				auto selection=UI::PickFont(this,font.text(),fontSize.value());
-				if (!selection) return;
-				auto [family,pointSize]=*selection;
-				font.setText(family);
-				fontSize.setValue(pointSize);
-			}
-
-			void Status::PickForegroundColor()
-			{
-				auto selection=PickColor(this,foregroundColor.text());
-				if (!selection) return;
-				foregroundColor.setText(*selection);
-			}
-
-			void Status::PickBackgroundColor()
-			{
-				auto selection=PickColor(this,backgroundColor.text());
-				if (!selection) return;
-				backgroundColor.setText(*selection);
-			}
-
-			bool Status::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &font || object == &fontSize || object == &selectFont) emit Help(u"The font that will be used in the initialization screen when the bot is first launched and connecting to Twitch"_s);
-					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(u"The color of text in the initialization screen that is shown when the bot is first launched and connecting to Twitch"_s);
-					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(u"The color of the background in the initialization screen that is shown when the bot is first launched and connecting to Twitch"_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
-			}
-
 			void Status::Save()
 			{
 				settings.font.Set(font.text());
@@ -295,7 +235,7 @@ namespace UI
 				settings.backgroundColor.Set(backgroundColor.text());
 			}
 
-			Chat::Chat(Settings settings,Feedback::Error &errorReport) : Category(u"Chat"_s),
+			Chat::Chat(Settings settings,Feedback::Error &errorReport) : Category(u"Chat"_s,errorReport),
 				fontSize(this),
 				font(&fontSize,this),
 				selectFont(Text::CHOOSE,this),
@@ -306,17 +246,26 @@ namespace UI
 				previewBackgroundColor(this,settings.backgroundColor),
 				selectBackgroundColor(Text::CHOOSE,this),
 				statusInterval(this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
+				auto fontHelpText=std::make_shared<QString>(u"The font that will be used to display chat messages"_s);
+				auto foregroundColorHelpText=std::make_shared<QString>(u"The color of chat message text"_s);
+				auto backgroundColorHelpText=std::make_shared<QString>(u"The color of the background behind chat messages"_s);
+				helpTexts={
+					{&font,fontHelpText},{&fontSize,fontHelpText},{&selectFont,fontHelpText},
+					{&foregroundColor,foregroundColorHelpText},{&selectForegroundColor,foregroundColorHelpText},
+					{&backgroundColor,backgroundColorHelpText},{&selectBackgroundColor,backgroundColorHelpText},
+					{&statusInterval,std::make_shared<QString>(u"How long (in milliseconds) updates and error messages should display at the bottom of the chat pane"_s)}
+				};
+
 				connect(&font,&FontEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectFont,&QPushButton::clicked,this,&Chat::PickFont);
+				connect(&selectFont,&QPushButton::clicked,&font,&FontEdit::PickFont);
 				connect(&foregroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&foregroundColor,&ColorEdit::textChanged,&previewForegroundColor,&ColorPreview::Set);
-				connect(&selectForegroundColor,&QPushButton::clicked,this,&Chat::PickForegroundColor);
+				connect(&selectForegroundColor,&QPushButton::clicked,&foregroundColor,&ColorEdit::PickColor);
 				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
-				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Chat::PickBackgroundColor);
+				connect(&selectBackgroundColor,&QPushButton::clicked,&backgroundColor,&ColorEdit::PickColor);
 
 				font.setObjectName(u"Chat pane font"_s);
 				font.setText(settings.font);
@@ -337,43 +286,6 @@ namespace UI
 				});
 			}
 
-			void Chat::PickFont()
-			{
-				auto selection=UI::PickFont(this,font.text(),fontSize.value());
-				if (!selection) return;
-				auto [family,pointSize]=*selection;
-				font.setText(family);
-				fontSize.setValue(pointSize);
-			}
-
-			void Chat::PickForegroundColor()
-			{
-				auto selection=PickColor(this,foregroundColor.text());
-				if (!selection) return;
-				foregroundColor.setText(*selection);
-			}
-
-			void Chat::PickBackgroundColor()
-			{
-				auto selection=PickColor(this,backgroundColor.text());
-				if (!selection) return;
-				backgroundColor.setText(*selection);
-			}
-
-			bool Chat::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &font || object == &fontSize || object == &selectFont) emit Help(u"The font that will be used to display chat messages"_s);
-					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(u"The color of chat message text"_s);
-					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(u"The color of the background behind chat messages"_s);
-					if (object == &statusInterval) emit Help(u"How long (in milliseconds) updates and error messages should display at the bottom of the chat pane"_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
-			}
-
 			void Chat::Save()
 			{
 				settings.font.Set(font.text());
@@ -383,7 +295,7 @@ namespace UI
 				settings.statusInterval.Set(statusInterval.value());
 			}
 
-			Pane::Pane(Settings settings,Feedback::Error &errorReport) : Category(u"Panes"_s),
+			Pane::Pane(Settings settings,Feedback::Error &errorReport) : Category(u"Panes"_s,errorReport),
 				fontSize(this),
 				font(&fontSize,this),
 				selectFont(Text::CHOOSE,this),
@@ -397,20 +309,31 @@ namespace UI
 				previewAccentColor(this,settings.accentColor),
 				selectAccentColor(Text::CHOOSE,this),
 				duration(this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
+				auto fontHelpText=std::make_shared<QString>(u"The font that will be used in event panes (such as raid and subscription announcements)"_s);
+				auto foregroundColorHelpText=std::make_shared<QString>(u"The color of text in event panes (such as raid and subscription announcements)"_s);
+				auto backgroundColorHelpText=std::make_shared<QString>(u"The color of the background in event panes (such as raid and subscription announcements)"_s);
+				auto accentColorHelpText=std::make_shared<QString>(u"The color of text effects, such as drop shadows"_s);
+				helpTexts={
+					{&font,fontHelpText},{&fontSize,fontHelpText},{&selectFont,fontHelpText},
+					{&foregroundColor,foregroundColorHelpText},{&selectForegroundColor,foregroundColorHelpText},
+					{&backgroundColor,backgroundColorHelpText},{&selectBackgroundColor,backgroundColorHelpText},
+					{&accentColor,accentColorHelpText},{&selectAccentColor,accentColorHelpText},
+					{&duration,std::make_shared<QString>(u"The amount of time (in milliseconds) that an announcement will display. This only affects announcements that don't have an associated audio or video file, otherwise the duration will be the duration of the associated audio or video."_s)}
+				};
+
 				connect(&font,&FontEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectFont,&QPushButton::clicked,this,&Pane::PickFont);
+				connect(&selectFont,&QPushButton::clicked,&font,&FontEdit::PickFont);
 				connect(&foregroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&foregroundColor,&ColorEdit::textChanged,&previewForegroundColor,&ColorPreview::Set);
-				connect(&selectForegroundColor,&QPushButton::clicked,this,&Pane::PickForegroundColor);
+				connect(&selectForegroundColor,&QPushButton::clicked,&foregroundColor,&ColorEdit::PickColor);
 				connect(&backgroundColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&backgroundColor,&ColorEdit::textChanged,&previewBackgroundColor,&ColorPreview::Set);
-				connect(&selectBackgroundColor,&QPushButton::clicked,this,&Pane::PickBackgroundColor);
+				connect(&selectBackgroundColor,&QPushButton::clicked,&backgroundColor,&ColorEdit::PickColor);
 				connect(&accentColor,&ColorEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&accentColor,&ColorEdit::textChanged,&previewAccentColor,&ColorPreview::Set);
-				connect(&selectAccentColor,&QPushButton::clicked,this,&Pane::PickAccentColor);
+				connect(&selectAccentColor,&QPushButton::clicked,&accentColor,&ColorEdit::PickColor);
 
 				font.setObjectName(u"Announcements font"_s);
 				font.setText(settings.font);
@@ -434,51 +357,6 @@ namespace UI
 				});
 			}
 
-			void Pane::PickFont()
-			{
-				auto selection=UI::PickFont(this,font.text(),fontSize.value());
-				if (!selection) return;
-				auto [family,pointSize]=*selection;
-				font.setText(family);
-				fontSize.setValue(pointSize);
-			}
-
-			void Pane::PickForegroundColor()
-			{
-				auto selection=PickColor(this,foregroundColor.text());
-				if (!selection) return;
-				foregroundColor.setText(*selection);
-			}
-
-			void Pane::PickBackgroundColor()
-			{
-				auto selection=PickColor(this,backgroundColor.text());
-				if (!selection) return;
-				backgroundColor.setText(*selection);
-			}
-
-			void Pane::PickAccentColor()
-			{
-				auto selection=PickColor(this,accentColor.text());
-				if (!selection) return;
-				accentColor.setText(*selection);
-			}
-
-			bool Pane::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &font || object == &fontSize || object == &selectFont) emit Help(u"The font that will be used in event panes (such as raid and subscription announcements)"_s);
-					if (object == &foregroundColor || object == &selectForegroundColor) emit Help(u"The color of text in event panes (such as raid and subscription announcements)"_s);
-					if (object == &backgroundColor || object == &selectBackgroundColor) emit Help(u"The color of the background in event panes (such as raid and subscription announcements)"_s);
-					if (object == &accentColor || object == &selectAccentColor) emit Help(u"The color of text effects, such as drop shadows"_s);
-					if (object == &duration) emit Help(u"The amount of time (in milliseconds) that an announcement will display. This only affects announcements that don't have an associated audio or video file, otherwise the duration will be the duration of the associated audio or video."_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
-			}
-
 			void Pane::Save()
 			{
 				settings.font.Set(font.text());
@@ -489,10 +367,12 @@ namespace UI
 				settings.duration.Set(duration.value());
 			}
 
-			Music::Music(Settings settings) : Category(u"Music"_s),
+			Music::Music(Settings settings,Feedback::Error &errorReport) : Category(u"Music"_s,errorReport),
 				suppressedVolume(this),
 				settings(settings)
 			{
+				helpTexts={{&suppressedVolume,std::make_shared<QString>(u"The volume the music should duck to when another pane is playing audio."_s)}};
+
 				suppressedVolume.setRange(0,100);
 				suppressedVolume.setSuffix("%");
 				suppressedVolume.setValue(settings.suppressedVolume);
@@ -502,23 +382,12 @@ namespace UI
 				});
 			}
 
-			bool Music::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &suppressedVolume) emit Help(u"The volume the music should duck to when another pane is playing audio."_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
-			}
-
 			void Music::Save()
 			{
 				settings.suppressedVolume.Set(suppressedVolume.value());
 			}
 
-			Bot::Bot(Settings::Bot &settings,Feedback::Error &errorReport) : Category(u"Bot Core"_s),
+			Bot::Bot(Settings::Bot &settings,Feedback::Error &errorReport) : Category(u"Bot Core"_s,errorReport),
 				settings(settings),
 				arrivalSound({Text::FILE_TYPE_AUDIO},this,true),
 				selectArrivalSound(Text::BROWSE,this),
@@ -571,9 +440,39 @@ namespace UI
 				monkeyKeyboardVolumeValue(this),
 				monkeyKeyboardPreviewTypeGroup(this),
 				monkeyKeyboardPreviewTypeBleep("Bleep",this),
-				monkeyKeyboardPreviewTypeBloop("Bloop",this),
-				errorReport(errorReport)
+				monkeyKeyboardPreviewTypeBloop("Bloop",this)
 			{
+				auto arrivalSoundHelpText=std::make_shared<QString>(u"This is the sound that plays each time someone s in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."_s);
+				auto cheerVideoHelpText=std::make_shared<QString>(u"A video (mp4) that plays when a chatter cheers bits."_s);
+				auto portraitVideoHelpText=std::make_shared<QString>(u"Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."_s);
+				auto subscriptionSoundHelpText=std::make_shared<QString>(u"This is the sound that plays when a chatter subscribes to the channel."_s);
+				auto raidSoundHelpText=std::make_shared<QString>(u"This is the sound that plays when another streamer raids the channel."_s);
+				auto textWallSoundHelpText=std::make_shared<QString>(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s);
+				auto adBreakWarningVideoHelpText=std::make_shared<QString>(u"A video (mp4) that plays when an ad break is about to begin"_s);
+				auto adBreakFinishedVideoHelpText=std::make_shared<QString>(u"A video (mp4) that plays when an break has finished"_s);
+				helpTexts={
+					{&arrivalSound,arrivalSoundHelpText},{&selectArrivalSound,arrivalSoundHelpText},{&previewArrivalSound,arrivalSoundHelpText},
+					{&cheerVideo,cheerVideoHelpText},{&selectCheerVideo,cheerVideoHelpText},{&previewCheerVideo,cheerVideoHelpText},
+					{&portraitVideo,portraitVideoHelpText},{&selectPortraitVideo,portraitVideoHelpText},{&previewPortraitVideo,portraitVideoHelpText},
+					{&subscriptionSound,subscriptionSoundHelpText},{&selectSubscriptionSound,subscriptionSoundHelpText},{&previewSubscriptionSound,subscriptionSoundHelpText},
+					{&raidSound,raidSoundHelpText},{&selectRaidSound,raidSoundHelpText},{&previewRaidSound,raidSoundHelpText},
+					{&postRaidEventDelay,std::make_shared<QString>(u"How long (in milliseconds) to wait after a raid before allowing additional media to be triggered"_s)},
+					{&postRaidEventDelayThreshold,std::make_shared<QString>(u"Under this many viewers, there will not be a delay following the raid"_s)},
+					{&inactivityCooldown,std::make_shared<QString>(uR"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"_s)},
+					{&helpCooldown,std::make_shared<QString>(uR"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"_s)},
+					{&textWallThreshold,std::make_shared<QString>(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s)},
+					{&textWallSound,textWallSoundHelpText},{&selectTextWallSound,textWallSoundHelpText},{&previewTextWallSound,textWallSoundHelpText},
+					{&adBreakWarningVideo,adBreakWarningVideoHelpText},{&selectAdBreakWarningVideo,adBreakWarningVideoHelpText},{&previewAdBreakWarningVideo,adBreakWarningVideoHelpText},
+					{&adBreakWarningLeadTime,std::make_shared<QString>(u"How many seconds to warn in advance that an ad break is about to begin"_s)},
+					{&adBreakFinishedVideo,adBreakFinishedVideoHelpText},{&selectAdBreakFinishedVideo,adBreakFinishedVideoHelpText},{&previewAdBreakFinishedVideo,adBreakFinishedVideoHelpText},
+					{&adScheduleRefreshInterval,std::make_shared<QString>(u"How often (in seconds) to ask Twitch for the ad manager schedule"_s)},
+					{&monkeyKeyboardBleepRootFrequency,std::make_shared<QString>(u"This will be the frequency that will be treated as A. The notes B through G will be calculated based off of this one. It is common convention for A4 to be 440Hz. Halve this to drop an octave (A3 = 220Hz), double it to raise an octave (A5 = 880Hz). While this is the international standard, you are not required to follow it. You can set this to any value between 20Hz and 20kHz. Also note that bleep is intended to be the higher note, but this is also not a requirement."_s)},
+					{&monkeyKeyboardBleepLength,std::make_shared<QString>(u"The length, in milliseconds, of the note. Bleep is intended to be the short note, but this is not required or enforced. Set it to any length you like between 1 millisecond and 1 full second."_s)},
+					{&monkeyKeyboardBloopRootFrequency,std::make_shared<QString>(u"This will be the frequency that will be treated as A. The notes B through G will be calculated based off of this one. It is common convention for A4 to be 440Hz. Halve this to drop an octave (A3 = 220Hz), double it to raise an octave (A5 = 880Hz). While this is the international standard, you are not required to follow it. You can set this to any value between 20Hz and 20kHz. Also note that bloop is intended to be the lower note, but this is also not a requirement."_s)},
+					{&monkeyKeyboardBloopLength,std::make_shared<QString>(u"The length, in milliseconds, of the note. Bloop is intended to be the long note, but this is not required or enforced. Set it to any length you like between 1 millisecond and 1 full second."_s)},
+					{&monkeyKeyboardVolume,std::make_shared<QString>(u"How loud a monkey keyboard note is."_s)}
+				};
+
 				connect(&arrivalSound,&PathEdit::Valid,&previewArrivalSound,&QPushButton::setEnabled);
 				connect(&arrivalSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
@@ -693,33 +592,11 @@ namespace UI
 				});
 			}
 
-			bool Bot::eventFilter(QObject *object,QEvent *event)
+			void Bot::OpenArrivalSound()
 			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &arrivalSound || object == &selectArrivalSound || object == &previewArrivalSound) emit Help(u"This is the sound that plays each time someone speak in chat for the first time. This can be a single audio file (mp3), or a folder of audio files. If it's a folder, a random audio file will be chosen from that folder each time."_s);
-					if (object == &portraitVideo || object == &selectPortraitVideo || object == &previewPortraitVideo) emit Help(u"Every so often, Twitch will send a request to the bot asking if it's still connected (ping). This is a video that can play each time that happens."_s);
-					if (object == &cheerVideo || object == &selectCheerVideo || object == &previewCheerVideo) emit Help(u"A video (mp4) that plays when a chatter cheers bits."_s);
-					if (object == &subscriptionSound || object == &selectSubscriptionSound || object == &previewSubscriptionSound) emit Help(u"This is the sound that plays when a chatter subscribes to the channel."_s);
-					if (object == &raidSound || object == &selectRaidSound || object == &previewRaidSound) emit Help(u"This is the sound that plays when another streamer raids the channel."_s);
-					if (object == &postRaidEventDelay) emit Help(u"How long (in milliseconds) to wait after a raid before allowing additional media to be triggered"_s);
-					if (object == &postRaidEventDelayThreshold) emit Help(u"Under this many viewers, there will not be a delay following the raid"_s);
-					if (object == &inactivityCooldown) emit Help(uR"(This is the amount of time (in milliseconds) that must pass without any chat messages before Celeste plays a "roast" video)"_s);
-					if (object == &helpCooldown) emit Help(uR"(This is the amount of time (in milliseconds) between "help" message. A help message is an explanation of a single, randomly chosen command.)"_s);
-					if (object == &textWallThreshold || object == &textWallSound || object == &selectTextWallSound || object == &previewTextWallSound) emit Help(u"This is the sound that plays when a user spams chat with a super long message. The threshold is the number of characters the message needs to be to trigger the sound."_s);
-					if (object == &adBreakWarningVideo || object == &selectAdBreakWarningVideo || object == &previewAdBreakWarningVideo) emit Help(u"A video (mp4) that plays when an ad break is about to begin"_s);
-					if (object == &adBreakWarningLeadTime) emit Help(u"How many seconds to warn in advance that an ad break is about to begin"_s);
-					if (object == &adBreakFinishedVideo || object == &selectAdBreakFinishedVideo || object == &previewAdBreakFinishedVideo) emit Help(u"A video (mp4) that plays when an break has finished"_s);
-					if (object == &adScheduleRefreshInterval) emit Help(u"How often (in seconds) to ask Twitch for the ad manager schedule"_s);
-					if (object == &monkeyKeyboardBleepRootFrequency) emit Help(u"This will be the frequency that will be treated as A. The notes B through G will be calculated based off of this one. It is common convention for A4 to be 440Hz. Halve this to drop an octave (A3 = 220Hz), double it to raise an octave (A5 = 880Hz). While this is the international standard, you are not required to follow it. You can set this to any value between 20Hz and 20kHz. Also note that bleep is intended to be the higher note, but this is also not a requirement."_s);
-					if (object == &monkeyKeyboardBleepLength) emit Help(u"The length, in milliseconds, of the note. Bleep is intended to be the short note, but this is not required or enforced. Set it to any length you like between 1 millisecond and 1 full second."_s);
-					if (object == &monkeyKeyboardBloopRootFrequency) emit Help(u"This will be the frequency that will be treated as A. The notes B through G will be calculated based off of this one. It is common convention for A4 to be 440Hz. Halve this to drop an octave (A3 = 220Hz), double it to raise an octave (A5 = 880Hz). While this is the international standard, you are not required to follow it. You can set this to any value between 20Hz and 20kHz. Also note that bloop is intended to be the lower note, but this is also not a requirement."_s);
-					if (object == &monkeyKeyboardBloopLength) emit Help(u"The length, in milliseconds, of the note. Bloop is intended to be the long note, but this is not required or enforced. Set it to any length you like between 1 millisecond and 1 full second."_s);
-					if (object == &monkeyKeyboardVolume) emit Help(u"How loud a monkey keyboard note is."_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
-				return false;
+				auto selection=OpenAudio(this,arrivalSound.text());
+				if (!selection) return;
+				arrivalSound.setText(*selection);
 			}
 
 			void Bot::OpenArrivalSound()
@@ -881,11 +758,16 @@ namespace UI
 
 			}
 
-			Pulsar::Pulsar(Settings::Pulsar &settings) : Category(u"Pulsar"_s),
+			Pulsar::Pulsar(Settings::Pulsar &settings,Feedback::Error &errorReport) : Category(u"Pulsar"_s,errorReport),
 				settings(settings),
 				subsystemEnabled(this),
 				reconnectDelay(this)
 			{
+				helpTexts={
+					{&subsystemEnabled,std::make_shared<QString>(u"Check this to enable the Pulsar plugin which allows the bot to communicate with OBS Studio. This will only work if the Pulsar plugin was installed when the bot was installed."_s)},
+					{&reconnectDelay,std::make_shared<QString>(u"How long (in milliseconds) to wait until attempting to reconnect to the OBS plugin after a failed attempt"_s)}
+				};
+
 				subsystemEnabled.setChecked(settings.enabled);
 				reconnectDelay.setRange(1,std::numeric_limits<int>::max());
 				reconnectDelay.setValue(settings.reconnectDelay);
@@ -896,32 +778,24 @@ namespace UI
 				});
 			}
 
-			bool Pulsar::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &subsystemEnabled) emit Help(u"Check this to enable the Pulsar plugin which allows the bot to communicate with OBS Studio. This will only work if the Pulsar plugin was installed when the bot was installed."_s);
-					if (object == &reconnectDelay) emit Help(u"How long (in milliseconds) to wait until attempting to reconnect to the OBS plugin after a failed attempt"_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help(u""_s);
-				return false;
-			}
-
 			void Pulsar::Save()
 			{
 				settings.enabled.Set(subsystemEnabled.isChecked());
 				settings.reconnectDelay.Set(reconnectDelay.value());
 			}
 
-			Log::Log(Settings settings,Feedback::Error &errorReport) : Category(u"Logging"_s),
+			Log::Log(Settings settings,Feedback::Error &errorReport) : Category(u"Logging"_s,errorReport),
 				directory(this),
 				selectDirectory(Text::BROWSE,this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
+				auto directoryHelpText=std::make_shared<QString>(u"The folder where the bot will store log files, one log file per day. The bot logs to the file for the day the bot was launched."_s);
+				helpTexts={
+					{&directory,directoryHelpText},{&selectDirectory,directoryHelpText}
+				};
+
 				connect(&directory,&DirectoryEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectDirectory,&QPushButton::clicked,this,&Log::OpenDirectory);
+				connect(&selectDirectory,&QPushButton::clicked,&directory,&DirectoryEdit::Browse);
 
 				directory.setObjectName("Log file directory");
 				directory.setText(settings.directory);
@@ -931,40 +805,30 @@ namespace UI
 				});
 			}
 
-			void Log::OpenDirectory()
-			{
-				auto selection=UI::OpenDirectory(this,directory.text());
-				if (!selection) return;
-				directory.setText(*selection);
-			}
-
-			bool Log::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &directory || object == &selectDirectory) emit Help(u"The folder where the bot will store log files, one log file per day. The bot logs to the file for the day the bot was launched."_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
-			}
-
 			void Log::Save()
 			{
 				settings.directory.Set(directory.text());
 			}
 
-			Security::Security(::Security &settings,Feedback::Error &errorReport) : Category(u"Security"_s),
+			Security::Security(::Security &settings,Feedback::Error &errorReport) : Category(u"Security"_s,errorReport),
 				administrator(this),
 				clientID(this),
 				token(this),
 				callbackURL(this),
 				permissions(this),
 				selectPermissions(Text::CHOOSE,this),
-				settings(settings),
-				errorReport(errorReport)
+				settings(settings)
 			{
 				details->setVisible(false);
+
+				auto permissionsHelpText=std::make_shared<QString>(uR"(The list of permissions (Twitch refers to as "scopes") the bot will require.)"_s);
+				helpTexts={
+					{&administrator,std::make_shared<QString>(u"Twitch user name of the broadcaster."_s)},
+					{&clientID,std::make_shared<QString>(u"Client ID from Twitch developer console."_s)},
+					{&token,std::make_shared<QString>(uR"(OAuth token obtained from Twitch authorization process (usually automatic, but can be manually obtained and entered). This is for "Authorization code grant flow" for Celeste's main API calls.)"_s)},
+					{&callbackURL,std::make_shared<QString>(u"The URL Twitch will contact with an OAuth token (or error message)."_s)},
+					{&permissions,permissionsHelpText},{&selectPermissions,permissionsHelpText}
+				};
 
 				connect(&administrator,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
 				connect(&clientID,&RequiredEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
@@ -994,21 +858,6 @@ namespace UI
 					{Label(u"Callback URL"_s),&callbackURL},
 					{Label(u"Permissions"_s),&permissions,&selectPermissions}
 				});
-			}
-
-			bool Security::eventFilter(QObject *object,QEvent *event)
-			{
-				if (event->type() == QEvent::HoverEnter)
-				{
-					if (object == &administrator) emit Help(u"Twitch user name of the broadcaster."_s);
-					if (object == &clientID) emit Help(u"Client ID from Twitch developer console."_s);
-					if (object == &token) emit Help(uR"(OAuth token obtained from Twitch authorization process (usually automatic, but can be manually obtained and entered). This is for "Authorization code grant flow" for Celeste's main API calls.)"_s);
-					if (object == &callbackURL) emit Help(u"The URL Twitch will contact with an OAuth token (or error message)."_s);
-					if (object == &permissions || object == &selectPermissions) emit Help(uR"(The list of permissions (Twitch refers to as "scopes") the bot will require.)"_s);
-				}
-
-				if (event->type() == QEvent::HoverLeave) emit Help("");
-				return false;
 			}
 
 			void Security::SelectPermissions()
