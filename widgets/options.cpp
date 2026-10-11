@@ -389,35 +389,37 @@ namespace UI
 
 			Bot::Bot(Settings::Bot &settings,Feedback::Error &errorReport) : Category(u"Bot Core"_s,errorReport),
 				settings(settings),
-				arrivalSound({Text::FILE_TYPE_AUDIO},this,true),
-				selectArrivalSound(Text::BROWSE,this),
+				arrivalSound(Text::AUDIO_FILE_EXTENSIONS,this,true),
+				selectArrivalSound(&arrivalSound,&OpenAudio,false,this),
+				selectArrivalSoundFolder(&arrivalSound,&OpenAudio,true,this),
 				previewArrivalSound(Text::PREVIEW,this),
-				portraitVideo({Text::FILE_TYPE_VIDEO},this),
-				selectPortraitVideo(Text::BROWSE,this),
+				portraitVideo(Text::VIDEO_FILE_EXTENSIONS,this),
+				selectPortraitVideo(&portraitVideo,&OpenVideo,false,this),
 				previewPortraitVideo(Text::PREVIEW,this),
-				cheerVideo({Text::FILE_TYPE_VIDEO},this,true),
-				selectCheerVideo(Text::BROWSE,this),
+				cheerVideo(Text::VIDEO_FILE_EXTENSIONS,this,true),
+				selectCheerVideo(&cheerVideo,&OpenVideo,false,this),
+				selectCheerVideoFolder(&cheerVideo,&OpenVideo,true,this),
 				previewCheerVideo(Text::PREVIEW,this),
-				subscriptionSound({Text::FILE_TYPE_AUDIO},this),
-				selectSubscriptionSound(Text::BROWSE,this),
+				subscriptionSound(Text::AUDIO_FILE_EXTENSIONS,this),
+				selectSubscriptionSound(&subscriptionSound,&OpenAudio,false,this),
 				previewSubscriptionSound(Text::PREVIEW,this),
-				raidSound({Text::FILE_TYPE_AUDIO},this),
+				raidSound(Text::AUDIO_FILE_EXTENSIONS,this),
 				postRaidEventDelay(this),
 				postRaidEventDelayThreshold(this),
-				selectRaidSound(Text::BROWSE,this),
+				selectRaidSound(&raidSound,&OpenAudio,false,this),
 				previewRaidSound(Text::PREVIEW,this),
 				inactivityCooldown(this),
 				helpCooldown(this),
-				textWallSound({Text::FILE_TYPE_AUDIO},this),
-				selectTextWallSound(Text::BROWSE,this),
+				textWallSound(Text::AUDIO_FILE_EXTENSIONS,this),
+				selectTextWallSound(&textWallSound,&OpenAudio,false,this),
 				previewTextWallSound(Text::PREVIEW,this),
 				textWallThreshold(this),
-				adBreakWarningVideo({Text::FILE_TYPE_VIDEO},this),
-				selectAdBreakWarningVideo(Text::BROWSE,this),
+				adBreakWarningVideo(Text::VIDEO_FILE_EXTENSIONS,this),
+				selectAdBreakWarningVideo(&adBreakWarningVideo,&OpenVideo,false,this),
 				previewAdBreakWarningVideo(Text::PREVIEW,this),
 				adBreakWarningLeadTime(this),
-				adBreakFinishedVideo({Text::FILE_TYPE_VIDEO},this),
-				selectAdBreakFinishedVideo(Text::BROWSE,this),
+				adBreakFinishedVideo(Text::VIDEO_FILE_EXTENSIONS,this),
+				selectAdBreakFinishedVideo(&adBreakFinishedVideo,&OpenVideo,false,this),
 				previewAdBreakFinishedVideo(Text::PREVIEW,this),
 				adScheduleRefreshInterval(this),
 				monkeyKeyboardBleepRootFrequency(this),
@@ -451,8 +453,8 @@ namespace UI
 				auto adBreakWarningVideoHelpText=std::make_shared<QString>(u"A video (mp4) that plays when an ad break is about to begin"_s);
 				auto adBreakFinishedVideoHelpText=std::make_shared<QString>(u"A video (mp4) that plays when an break has finished"_s);
 				helpTexts={
-					{&arrivalSound,arrivalSoundHelpText},{&selectArrivalSound,arrivalSoundHelpText},{&previewArrivalSound,arrivalSoundHelpText},
-					{&cheerVideo,cheerVideoHelpText},{&selectCheerVideo,cheerVideoHelpText},{&previewCheerVideo,cheerVideoHelpText},
+					{&arrivalSound,arrivalSoundHelpText},{&selectArrivalSound,arrivalSoundHelpText},{&selectArrivalSoundFolder,arrivalSoundHelpText},{&previewArrivalSound,arrivalSoundHelpText},
+					{&cheerVideo,cheerVideoHelpText},{&selectCheerVideo,cheerVideoHelpText},{&selectCheerVideoFolder,cheerVideoHelpText},{&previewCheerVideo,cheerVideoHelpText},
 					{&portraitVideo,portraitVideoHelpText},{&selectPortraitVideo,portraitVideoHelpText},{&previewPortraitVideo,portraitVideoHelpText},
 					{&subscriptionSound,subscriptionSoundHelpText},{&selectSubscriptionSound,subscriptionSoundHelpText},{&previewSubscriptionSound,subscriptionSoundHelpText},
 					{&raidSound,raidSoundHelpText},{&selectRaidSound,raidSoundHelpText},{&previewRaidSound,raidSoundHelpText},
@@ -475,35 +477,27 @@ namespace UI
 
 				connect(&arrivalSound,&PathEdit::Valid,&previewArrivalSound,&QPushButton::setEnabled);
 				connect(&arrivalSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectArrivalSound,&QPushButton::clicked,this,&Bot::OpenArrivalSound);
 				connect(&previewArrivalSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayArrivalSound));
 				connect(&portraitVideo,&PathEdit::Valid,&previewPortraitVideo,&QPushButton::setEnabled);
 				connect(&portraitVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectPortraitVideo,&QPushButton::clicked,this,&Bot::OpenPortraitVideo);
 				connect(&previewPortraitVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayPortraitVideo));
 				connect(&cheerVideo,&PathEdit::Valid,&previewCheerVideo,&QPushButton::setEnabled);
 				connect(&cheerVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectCheerVideo,&QPushButton::clicked,this,&Bot::OpenCheerVideo);
 				connect(&previewCheerVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayCheerVideo));
 				connect(&subscriptionSound,&PathEdit::Valid,&previewSubscriptionSound,&QPushButton::setEnabled);
 				connect(&subscriptionSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectSubscriptionSound,&QPushButton::clicked,this,&Bot::OpenSubscriptionSound);
 				connect(&previewSubscriptionSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlaySubscriptionSound));
 				connect(&raidSound,&PathEdit::Valid,&previewRaidSound,&QPushButton::setEnabled);
 				connect(&raidSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectRaidSound,&QPushButton::clicked,this,&Bot::OpenRaidSound);
 				connect(&previewRaidSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayRaidSound));
 				connect(&textWallSound,&PathEdit::Valid,&previewTextWallSound,&QPushButton::setEnabled);
 				connect(&textWallSound,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectTextWallSound,&QPushButton::clicked,this,&Bot::OpenTextWallSound);
 				connect(&previewTextWallSound,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayTextWallSound));
 				connect(&adBreakWarningVideo,&PathEdit::Valid,&previewAdBreakWarningVideo,&QPushButton::setEnabled);
 				connect(&adBreakWarningVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectAdBreakWarningVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakWarningVideo);
 				connect(&previewAdBreakWarningVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakWarningVideo));
 				connect(&adBreakFinishedVideo,&PathEdit::Valid,&previewAdBreakFinishedVideo,&QPushButton::setEnabled);
 				connect(&adBreakFinishedVideo,&PathEdit::NeedValidatedStyle,&errorReport,&Feedback::Error::StyleSource);
-				connect(&selectAdBreakFinishedVideo,&QPushButton::clicked,this,&Bot::OpenAdBreakFinishedVideo);
 				connect(&previewAdBreakFinishedVideo,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayAdBreakFinishedVideo));
 				connect(&monkeyKeyboardVolume,&QSlider::valueChanged,this,&Bot::MonkeyKeyboardVolumeChanged);
 				connect(&monkeyKeyboardNoteA,&QPushButton::clicked,this,QOverload<>::of(&Bot::PlayMonkeyKeyboardNote));
@@ -571,9 +565,9 @@ namespace UI
 				monkeyKeyboardVolumeValue.setText(QString::number(monkeyKeyboardVolume.value())+"%");
 
 				Rows({
-					{Label(arrivalSound.objectName()),&arrivalSound,&selectArrivalSound,&previewArrivalSound},
+					{Label(arrivalSound.objectName()),&arrivalSound,&selectArrivalSoundFolder,&selectArrivalSound,&previewArrivalSound},
 					{Label(portraitVideo.objectName()),&portraitVideo,&selectPortraitVideo,&previewPortraitVideo},
-					{Label(cheerVideo.objectName()),&cheerVideo,&selectCheerVideo,&previewCheerVideo},
+					{Label(cheerVideo.objectName()),&cheerVideo,&selectCheerVideoFolder,&selectCheerVideo,&previewCheerVideo},
 					{Label(subscriptionSound.objectName()),&subscriptionSound,&selectSubscriptionSound,&previewSubscriptionSound},
 					{Label(raidSound.objectName()),&raidSound,&selectRaidSound,&previewRaidSound},
 					{Label(u"Post-Raid Greeting Delay"_s),&postRaidEventDelay,Label(u"Threshold"_s),&postRaidEventDelayThreshold},
@@ -590,20 +584,6 @@ namespace UI
 					{Label(u"Preview Type"_s),&monkeyKeyboardPreviewTypeBleep,&monkeyKeyboardPreviewTypeBloop},
 					{Label(u"Preview Note"_s),&monkeyKeyboardNoteA,&monkeyKeyboardNoteB,&monkeyKeyboardNoteC,&monkeyKeyboardNoteD,&monkeyKeyboardNoteE,&monkeyKeyboardNoteF,&monkeyKeyboardNoteG}
 				});
-			}
-
-			void Bot::OpenArrivalSound()
-			{
-				auto selection=OpenAudio(this,arrivalSound.text());
-				if (!selection) return;
-				arrivalSound.setText(*selection);
-			}
-
-			void Bot::OpenArrivalSound()
-			{
-				auto selection=OpenAudio(this,arrivalSound.text());
-				if (!selection) return;
-				arrivalSound.setText(*selection);
 			}
 
 			void Bot::PlayArrivalSound()
@@ -627,23 +607,9 @@ namespace UI
 				}
 			}
 
-			void Bot::OpenPortraitVideo()
-			{
-				auto selection=OpenVideo(this,portraitVideo.text());
-				if (!selection) return;
-				portraitVideo.setText(*selection);
-			}
-
 			void Bot::PlayPortraitVideo()
 			{
 				emit PlayPortraitVideo(portraitVideo.text());
-			}
-
-			void Bot::OpenCheerVideo()
-			{
-				auto selection=OpenVideo(this,cheerVideo.text());
-				if (!selection) return;
-				cheerVideo.setText(*selection);
 			}
 
 			void Bot::PlayCheerVideo()
@@ -651,35 +617,14 @@ namespace UI
 				emit PlayCheerVideo(qApp->applicationName(),100,"Hype!",cheerVideo.text());
 			}
 
-			void Bot::OpenSubscriptionSound()
-			{
-				auto selection=OpenAudio(this,subscriptionSound.text());
-				if (!selection) return;
-				subscriptionSound.setText(*selection);
-			}
-
 			void Bot::PlaySubscriptionSound()
 			{
 				emit PlaySubscriptionSound(qApp->applicationName(),subscriptionSound.text());
 			}
 
-			void Bot::OpenRaidSound()
-			{
-				auto selection=OpenAudio(this,raidSound.text());
-				if (!selection) return;
-				raidSound.setText(*selection);
-			}
-
 			void Bot::PlayRaidSound()
 			{
 				emit PlayRaidSound(qApp->applicationName(),100,raidSound.text());
-			}
-
-			void Bot::OpenTextWallSound()
-			{
-				auto selection=OpenAudio(this,textWallSound.text());
-				if (!selection) return;
-				textWallSound.setText(*selection);
 			}
 
 			void Bot::PlayTextWallSound()
@@ -689,23 +634,9 @@ namespace UI
 				emit PlayTextWallSound(message,textWallSound.text());
 			}
 
-			void Bot::OpenAdBreakWarningVideo()
-			{
-				auto selection=OpenVideo(this,adBreakWarningVideo.text());
-				if (!selection) return;
-				adBreakWarningVideo.setText(*selection);
-			}
-
 			void Bot::PlayAdBreakWarningVideo()
 			{
 				emit PlayAdBreakWarningVideo(adBreakWarningVideo.text());
-			}
-
-			void Bot::OpenAdBreakFinishedVideo()
-			{
-				auto selection=OpenVideo(this,adBreakFinishedVideo.text());
-				if (!selection) return;
-				adBreakFinishedVideo.setText(*selection);
 			}
 
 			void Bot::PlayAdBreakFinishedVideo()

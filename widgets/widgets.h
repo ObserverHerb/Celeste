@@ -29,6 +29,7 @@
 #include <QDialog>
 #include <QDir>
 #include <unordered_set>
+#include <flat_set>
 #include <deque>
 #include <concepts>
 #include "widgets/lazy.h"
@@ -108,9 +109,10 @@ protected:
 
 namespace UI
 {
-	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath=QString());
-	std::optional<QString> OpenAudio(QWidget *parent,QString initialPath=QString(),bool allowDirectories=false);
 	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath=QString());
+	std::optional<QString> OpenMedia(const std::flat_set<QString> &acceptableFileExtensions,const QString &extensionFilterText,QWidget *parent,QString initialPath,bool allowDirectories);
+	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath=QString(),bool allowDirectories=false);
+	std::optional<QString> OpenAudio(QWidget *parent,const QString &initialPath=QString(),bool allowDirectories=false);
 	std::optional<QString> PickColor(QWidget *parent,const QString &initialColor);
 	std::optional<std::tuple<QString,int>> PickFont(QWidget *parent,const QString &initialFamily,int initialPointSize);
 
@@ -188,14 +190,28 @@ namespace UI
 	{
 		Q_OBJECT
 	public:
-		PathEdit(const QStringList &acceptableFileExtensions,QWidget *parent,bool allowDirectories=false);
-		QStringList acceptableFileExtensions;
+		PathEdit(const std::flat_set<QString> &acceptableFileExtensions,QWidget *parent,bool allowDirectories=false);
+	protected:
+		const std::flat_set<QString> &acceptableFileExtensions;
 		bool allowDirectories;
 	signals:
 		void NeedValidatedStyle(bool valid,QWidget *widget);
 		void Valid(bool valid);
 	protected slots:
 		void Validate(const QString &path);
+	};
+
+	class BrowseButton: public QPushButton
+	{
+		Q_OBJECT
+	public:
+		BrowseButton(PathEdit *path,std::optional<QString> (*Dialog)(QWidget*,const QString&,bool),bool allowDirectories,QWidget *parent);
+	protected:
+		PathEdit *path;
+		bool allowDirectories;
+		std::optional<QString> (*Dialog)(QWidget*,const QString&,bool allowDirectories);
+	public slots:
+		void Clicked();
 	};
 
 	class DirectoryEdit: public QLineEdit
@@ -249,14 +265,24 @@ namespace UI
 		inline const char *PREVIEW="Preview";
 		inline const char *DIALOG_TITLE_FILE="Choose File";
 		inline const char *DIALOG_TITLE_DIRECTORY="Choose Directory";
-		inline const char *FILE_TYPE_VIDEO="mp4";
-		inline const char *FILE_TYPE_AUDIO="mp3";
+		inline const char *FILE_TYPE_VIDEO_MP4="mp4";
+		inline const char *FILE_TYPE_AUDIO_MP3="mp3";
+		inline const char *FILE_TYPE_AUDIO_WAV="wav";
 		inline const char *BUTTON_SAVE="&Save";
 		inline const char *BUTTON_DISCARD="&Discard";
 		inline const char *BUTTON_APPLY="&Apply";
 		inline const char *BUTTON_ADD="&Add";
 		inline const char *BUTTON_REMOVE="&Remove";
 		inline const char *BUTTON_CLOSE="&Close";
+
+		inline const std::flat_set<QString> AUDIO_FILE_EXTENSIONS={
+			FILE_TYPE_AUDIO_MP3,
+			FILE_TYPE_AUDIO_WAV
+		};
+
+		inline const std::flat_set<QString> VIDEO_FILE_EXTENSIONS={
+			FILE_TYPE_VIDEO_MP4
+		};
 	}
 
 	namespace Security
@@ -634,34 +660,36 @@ namespace UI
 			protected:
 				Settings::Bot &settings;
 				PathEdit arrivalSound;
-				QPushButton selectArrivalSound;
+				BrowseButton selectArrivalSound;
+				BrowseButton selectArrivalSoundFolder;
 				QPushButton previewArrivalSound;
 				PathEdit portraitVideo;
-				QPushButton selectPortraitVideo;
+				BrowseButton selectPortraitVideo;
 				QPushButton previewPortraitVideo;
 				PathEdit cheerVideo;
-				QPushButton selectCheerVideo;
+				BrowseButton selectCheerVideo;
+				BrowseButton selectCheerVideoFolder;
 				QPushButton previewCheerVideo;
 				PathEdit subscriptionSound;
-				QPushButton selectSubscriptionSound;
+				BrowseButton selectSubscriptionSound;
 				QPushButton previewSubscriptionSound;
 				PathEdit raidSound;
 				QSpinBox postRaidEventDelay;
 				QSpinBox postRaidEventDelayThreshold;
-				QPushButton selectRaidSound;
+				BrowseButton selectRaidSound;
 				QPushButton previewRaidSound;
 				QSpinBox inactivityCooldown;
 				QSpinBox helpCooldown;
 				PathEdit textWallSound;
-				QPushButton selectTextWallSound;
+				BrowseButton selectTextWallSound;
 				QPushButton previewTextWallSound;
 				QSpinBox textWallThreshold;
 				PathEdit adBreakWarningVideo;
-				QPushButton selectAdBreakWarningVideo;
+				BrowseButton selectAdBreakWarningVideo;
 				QPushButton previewAdBreakWarningVideo;
 				QSpinBox adBreakWarningLeadTime;
 				PathEdit adBreakFinishedVideo;
-				QPushButton selectAdBreakFinishedVideo;
+				BrowseButton selectAdBreakFinishedVideo;
 				QPushButton previewAdBreakFinishedVideo;
 				QSpinBox adScheduleRefreshInterval;
 				QSpinBox monkeyKeyboardBleepRootFrequency;
@@ -696,21 +724,13 @@ namespace UI
 				void PlayAdBreakWarningVideo(const QString &path);
 				void PlayAdBreakFinishedVideo(const QString &path);
 			protected slots:
-				void OpenArrivalSound();
 				void PlayArrivalSound();
-				void OpenPortraitVideo();
 				void PlayPortraitVideo();
-				void OpenCheerVideo();
 				void PlayCheerVideo();
-				void OpenSubscriptionSound();
 				void PlaySubscriptionSound();
-				void OpenRaidSound();
 				void PlayRaidSound();
-				void OpenTextWallSound();
 				void PlayTextWallSound();
-				void OpenAdBreakWarningVideo();
 				void PlayAdBreakWarningVideo();
-				void OpenAdBreakFinishedVideo();
 				void PlayAdBreakFinishedVideo();
 				void MonkeyKeyboardVolumeChanged(int value);
 				void PlayMonkeyKeyboardNote();

@@ -43,36 +43,30 @@ namespace UI
 		return widget->window()->windowHandle()->screen()->availableGeometry().width()/3;
 	}
 
-	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath)
+	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath)
 	{
-		auto path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("Videos (*.%1)").arg(Text::FILE_TYPE_VIDEO));
-		if (!QDir(path).exists()) return std::nullopt;
+		auto path=QFileDialog::getExistingDirectory(parent,Text::DIALOG_TITLE_DIRECTORY,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
+		if (path.isEmpty() || !QDir(path).exists()) return std::nullopt;
 		return QDir::toNativeSeparators(path);
 	}
 
-	std::optional<QString> OpenAudio(QWidget *parent,QString initialPath,bool allowDirectories)
+	std::optional<QString> OpenMedia(const std::flat_set<QString> &acceptableFileExtensions,const QString &extensionFilterText,QWidget *parent,QString initialPath,bool allowDirectories)
 	{
-		QString path;
-		if (allowDirectories)
-		{
-			if (initialPath.isEmpty()) initialPath=Filesystem::DataPath().absolutePath();
-			path=QFileDialog::getExistingDirectory(parent,Text::DIALOG_TITLE_DIRECTORY);
-		}
-		else
-		{
-			if (initialPath.isEmpty()) initialPath=Filesystem::HomePath().absolutePath();
-			path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,QString("Audios (*.%1)").arg(Text::FILE_TYPE_AUDIO));
-		}
+		if (allowDirectories) return OpenDirectory(parent,initialPath);
+		QString path=QFileDialog::getOpenFileName(parent,Text::DIALOG_TITLE_FILE,initialPath.isEmpty() ? Filesystem::HomePath().absolutePath() : initialPath,QString("%1 (%2)").arg(extensionFilterText,QStringList(acceptableFileExtensions.begin(),acceptableFileExtensions.end()).replaceInStrings(QRegularExpression("^"),"*.").join(" ")));
 		auto info=QFileInfo(path);
 		if (!info.exists()) return std::nullopt;
 		return QDir::toNativeSeparators(info.absoluteFilePath());
 	}
 
-	std::optional<QString> OpenDirectory(QWidget *parent,const QString &initialPath)
+	std::optional<QString> OpenVideo(QWidget *parent,const QString &initialPath,bool allowDirectories)
 	{
-		auto path=QFileDialog::getExistingDirectory(parent,Text::DIALOG_TITLE_DIRECTORY,initialPath.isEmpty() ? Filesystem::DataPath().absolutePath() : initialPath);
-		if (!QDir(path).exists()) return std::nullopt;
-		return QDir::toNativeSeparators(path);
+		return OpenMedia(Text::VIDEO_FILE_EXTENSIONS,"Videos",parent,initialPath,allowDirectories);
+	}
+
+	std::optional<QString> OpenAudio(QWidget *parent,const QString &initialPath,bool allowDirectories)
+	{
+		return OpenMedia(Text::AUDIO_FILE_EXTENSIONS,"Audios",parent,initialPath,allowDirectories);
 	}
 
 	std::optional<QString> PickColor(QWidget *parent,const QString &initialColor)
@@ -224,7 +218,7 @@ namespace UI
 		emit Valid(valid);
 	}
 
-	PathEdit::PathEdit(const QStringList &acceptableFileExtensions,QWidget *parent,bool allowDirectories): QLineEdit(parent), acceptableFileExtensions(acceptableFileExtensions), allowDirectories(allowDirectories)
+	PathEdit::PathEdit(const std::flat_set<QString> &acceptableFileExtensions,QWidget *parent,bool allowDirectories): QLineEdit(parent), acceptableFileExtensions(acceptableFileExtensions), allowDirectories(allowDirectories)
 	{
 		connect(this,&QLineEdit::textChanged,this,&PathEdit::Validate);
 	}
@@ -235,6 +229,18 @@ namespace UI
 		bool valid=candidate.exists() && ((allowDirectories ? candidate.isDir() : false) || acceptableFileExtensions.contains(candidate.suffix()));
 		emit NeedValidatedStyle(valid,this);
 		emit Valid(valid);
+	}
+
+	BrowseButton::BrowseButton(PathEdit *path,std::optional<QString> (*Dialog)(QWidget*,const QString&,bool),bool allowDirectories,QWidget *parent): QPushButton(allowDirectories ? "Choose Folder" : "Choose File",parent), path(path), allowDirectories(allowDirectories), Dialog(Dialog)
+	{
+		connect(this,&QPushButton::clicked,this,&BrowseButton::Clicked);
+	}
+
+	void BrowseButton::Clicked()
+	{
+		auto selection=Dialog(this,path->text(),allowDirectories);
+		if (!selection) return;
+		path->setText(*selection);
 	}
 
 	DirectoryEdit::DirectoryEdit(QWidget *parent): QLineEdit(parent)

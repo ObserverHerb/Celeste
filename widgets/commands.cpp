@@ -592,10 +592,10 @@ namespace UI
 				switch (static_cast<UI::Commands::Type>(static_cast<int>(type)))
 				{
 				case Type::VIDEO:
-					valid=extension == Text::FILE_TYPE_VIDEO;
+					valid=extension == Text::FILE_TYPE_VIDEO_MP4;
 					break;
 				case Type::AUDIO:
-					valid=extension == Text::FILE_TYPE_AUDIO;
+					valid=extension == Text::FILE_TYPE_AUDIO_MP3;
 					break;
 				default:
 					valid=false;
@@ -678,16 +678,16 @@ namespace UI
 			std::optional<QString> candidate;
 			if (Random())
 			{
-				candidate=QFileDialog::getExistingDirectory(this, Text::DIALOG_TITLE_DIRECTORY,Filesystem::HomePath().absolutePath(),QFileDialog::ShowDirsOnly|QFileDialog::DontResolveSymlinks);
+				candidate=OpenDirectory(this,(*path)->text());
 			}
 			else
 			{
 				if (static_cast<UI::Commands::Type>(static_cast<int>(type)) == UI::Commands::Type::VIDEO)
-					candidate=*OpenVideo(this);
+					candidate=OpenVideo(this,(*path)->text());
 				else
-					candidate=*OpenAudio(this);
+					candidate=OpenAudio(this,(*path)->text());
 			}
-			if (candidate && !candidate->isEmpty()) (*path)->setText(*candidate);
+			if (candidate) (*path)->setText(*candidate);
 		}
 
 		void Entry::SelectAliases()

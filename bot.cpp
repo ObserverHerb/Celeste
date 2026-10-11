@@ -816,7 +816,7 @@ void Bot::Subscription(const QString &login,const QString &displayName)
 		viewer=inserted.first;
 	}
 
-	if (!settings.subscriptionSound || static_cast<QString>(settings.raidSound).isEmpty())
+	if (!settings.subscriptionSound || static_cast<QString>(settings.subscriptionSound).isEmpty())
 	{
 		emit Print("No audio path set for subscriptions","announce subscription");
 		return;

@@ -150,7 +150,7 @@ namespace UI
 
 		void Dialog::AddFiles()
 		{
-			const QStringList paths=QFileDialog::getOpenFileNames(this,Text::DIALOG_TITLE_FILE,initialAddFilesPath.absolutePath(),QString("Songs (*.%1)").arg(Text::FILE_TYPE_AUDIO));
+			const QStringList paths=QFileDialog::getOpenFileNames(this,Text::DIALOG_TITLE_FILE,initialAddFilesPath.absolutePath(),QString("Songs (*.%1)").arg(Text::FILE_TYPE_AUDIO_MP3));
 			if (paths.isEmpty()) return;
 			initialAddFilesPath={paths.front()};
 			AddFiles(paths,*qobject_cast<QTableView*>(tabs.currentWidget()),true);
